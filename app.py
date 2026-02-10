@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-from matching_engine import (  # noqa: E402
+from engine import (  # noqa: E402
     run_full_analysis,
     gemini_verify,
     export_excel,
