@@ -300,37 +300,120 @@ def get_type_label(ptype):
 
 # ===== الدوال الرئيسية المطلوبة من app.py =====
 
-def run_full_analysis(my_products, comp_products, gemini_client=None):
+def run_full_analysis(my_file, comp_files, threshold=65):
     """
     تشغيل التحليل الكامل للمنتجات.
     
     المعاملات:
-    - my_products: قائمة منتجات المتجر
-    - comp_products: قائمة منتجات المنافسين
-    - gemini_client: عميل Gemini API (اختياري)
+    - my_file: dict بـ {"name": str, "data": bytes} ملف المتجر
+    - comp_files: list من dicts ملفات المنافسين
+    - threshold: الحد الأدنى لنسبة التطابق (50-100)
     
     الإرجاع:
-    - dict: نتائج التحليل الكاملة
+    - dict: نتائج التحليل الكاملة مع DataFrames
     """
     import pandas as pd
+    from io import BytesIO
     
-    # تشغيل المطابقة الأساسية
-    match_results = match_products(my_products, comp_products)
+    # 1. تحميل ملف المتجر
+    try:
+        my_data = pd.read_excel(BytesIO(my_file["data"])) if my_file["name"].endswith(".xlsx") else pd.read_csv(BytesIO(my_file["data"]))
+        my_products = my_data.to_dict(orient="records")
+    except Exception as e:
+        return {"error": f"خطأ في تحميل ملف المتجر: {str(e)}", "stats": {}}
     
-    # إضافة معلومات إضافية
-    analysis = {
-        "timestamp": pd.Timestamp.now().isoformat(),
-        "total_my_products": len(my_products),
-        "total_comp_products": len(comp_products),
-        "matched_count": len(match_results["raise"]) + len(match_results["lower"]) + len(match_results["ok"]),
-        "missing_count": len(match_results["missing"]),
-        "raise_count": len(match_results["raise"]),
-        "lower_count": len(match_results["lower"]),
-        "ok_count": len(match_results["ok"]),
-        "results": match_results,
+    # 2. تحميل ملفات المنافسين
+    all_comp_products = []
+    for comp_file in comp_files:
+        try:
+            comp_data = pd.read_excel(BytesIO(comp_file["data"])) if comp_file["name"].endswith(".xlsx") else pd.read_csv(BytesIO(comp_file["data"]))
+            comp_products = comp_data.to_dict(orient="records")
+            all_comp_products.extend(comp_products)
+        except Exception as e:
+            continue
+    
+    if not all_comp_products:
+        return {"error": "لم يتم تحميل أي ملفات منافسين", "stats": {}}
+    
+    # 3. تشغيل المطابقة
+    match_results = match_products(my_products, all_comp_products, threshold)
+    
+    # 4. تحويل النتائج إلى DataFrames
+    df_raise = pd.DataFrame([
+        {
+            "المنتج": m["my_product"].get("name", ""),
+            "السعر": m["my_price"],
+            "سعر المنافس": m["comp_price"],
+            "الفرق": m["price_diff"],
+            "النسبة %": m["diff_percent"],
+            "الخطورة": {"high": "حرج", "medium": "متوسط", "low": "عادي"}.get(m["risk_level"], "عادي"),
+            "pid_my": m["my_product"].get("id", ""),
+            "pid_comp": m["comp_product"].get("id", ""),
+        }
+        for m in match_results["raise"]
+    ])
+    
+    df_lower = pd.DataFrame([
+        {
+            "المنتج": m["my_product"].get("name", ""),
+            "السعر": m["my_price"],
+            "سعر المنافس": m["comp_price"],
+            "الفرق": m["price_diff"],
+            "النسبة %": m["diff_percent"],
+            "الخطورة": {"high": "حرج", "medium": "متوسط", "low": "عادي"}.get(m["risk_level"], "عادي"),
+            "pid_my": m["my_product"].get("id", ""),
+            "pid_comp": m["comp_product"].get("id", ""),
+        }
+        for m in match_results["lower"]
+    ])
+    
+    df_approved = pd.DataFrame([
+        {
+            "المنتج": m["my_product"].get("name", ""),
+            "السعر": m["my_price"],
+            "سعر المنافس": m["comp_price"],
+            "الفرق": m["price_diff"],
+            "النسبة %": m["diff_percent"],
+            "pid_my": m["my_product"].get("id", ""),
+            "pid_comp": m["comp_product"].get("id", ""),
+        }
+        for m in match_results["ok"]
+    ])
+    
+    df_missing = pd.DataFrame([
+        {
+            "المنتج": m["comp_product"].get("product_name", m["comp_product"].get("name", "")),
+            "النوع": get_type_label(m["comp_type"]),
+            "الحجم": m["comp_size"],
+            "pid_comp": m["comp_product"].get("id", ""),
+        }
+        for m in match_results["missing"]
+    ])
+    
+    # 5. دمج جميع النتائج
+    df_all = pd.concat([df_raise, df_lower, df_approved], ignore_index=True)
+    
+    # 6. إحصائيات
+    stats = {
+        "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "total": len(df_all),
+        "raise_count": len(df_raise),
+        "lower_count": len(df_lower),
+        "approved_count": len(df_approved),
+        "missing_count": len(df_missing),
+        "critical": len(df_all[df_all["الخطورة"] == "حرج"]) if not df_all.empty else 0,
+        "avg_diff": round(df_all["الفرق"].mean(), 2) if not df_all.empty else 0,
+        "competitors": len(comp_files),
     }
     
-    return analysis
+    return {
+        "stats": stats,
+        "raise": df_raise,
+        "lower": df_lower,
+        "approved": df_approved,
+        "missing": df_missing,
+        "all": df_all,
+    }
 
 
 def gemini_verify(product_name, product_type, gemini_client=None):
