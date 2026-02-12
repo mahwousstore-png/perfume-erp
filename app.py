@@ -90,9 +90,15 @@ st.markdown("""
 WEBHOOK_UPDATE_PRICES = "https://hook.eu2.make.com/99oljy0d6r3chwg6bdfsptcf6bk8htsd"
 WEBHOOK_NEW_PRODUCTS = "https://hook.eu2.make.com/xvubj23dmpxu8qzilstd25cnumrwtdxm"
 
-# ── مفاتيح API الافتراضية ────────────────────────────────────
-DEFAULT_GEMINI_KEY = "AIzaSyAlTpWSkdyIKVavZy6MaaabSFBXBZbOmn8"
-DEFAULT_OPENROUTER_KEY = "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"
+# ── مفاتيح API من Streamlit Secrets (آمن) ────────────────────
+# يتم قراءة المفاتيح من .streamlit/secrets.toml أو Streamlit Cloud Secrets
+try:
+    DEFAULT_GEMINI_KEY = st.secrets.get("GEMINI_API_KEY", "")
+    DEFAULT_OPENROUTER_KEY = st.secrets.get("OPENROUTER_API_KEY", "")
+except:
+    # في حالة عدم وجود ملف secrets، استخدم قيم فارغة
+    DEFAULT_GEMINI_KEY = ""
+    DEFAULT_OPENROUTER_KEY = ""
 
 # ── Supabase قاعدة البيانات السحابية ─────────────────────────
 SUPABASE_URL = "https://csivkasoqkivprldxqlc.supabase.co"
