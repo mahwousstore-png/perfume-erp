@@ -1,18 +1,26 @@
 """
-engine.py - محرك المطابقة والتصنيف الذكي
-يطبق قوانين صارمة لمقارنة المنتجات
+engine.py - محرك المطابقة والتصنيف الذكي v7.0
+═══════════════════════════════════════════════
+يطبق قوانين صارمة لمقارنة المنتجات مع:
+- استراتيجية "أقل من أقل منافس بريال واحد"
+- TF-IDF + Cosine Similarity للمطابقة السريعة
+- كشف الشواذ (IQR Method)
+- درجة الثقة (Confidence Score)
+- تفسير القرارات (Reasoning)
 """
 import re
+import numpy as np
 from rapidfuzz import fuzz
 
 
 # ===== قوانين التصنيف =====
 
 REJECT_KEYWORDS = [
-    "sample", "عينة", "decant", "تقسيم",
+    "sample", "عينة", "عينه", "decant", "تقسيم", "تقسيمة",
     "split", "miniature", "mini ", "0.5ml",
     "1ml", "2ml", "3ml", "5ml", "سبلاش",
     "splash", "رول", "roll-on", "rollerball",
+    "أمبول", "تعبئة",
 ]
 
 TESTER_KEYWORDS = [
@@ -40,32 +48,21 @@ def classify_product(name):
     """تصنيف المنتج حسب اسمه."""
     lower = name.lower().strip()
 
-    # 1. فحص الرفض أولاً
     for kw in REJECT_KEYWORDS:
         if kw in lower:
             return "rejected"
-
-    # 2. فحص التستر
     for kw in TESTER_KEYWORDS:
         if kw in lower:
             return "tester"
-
-    # 3. فحص الطقم
     for kw in SET_KEYWORDS:
         if kw in lower:
             return "set"
-
-    # 4. فحص هير مست
     for kw in HAIR_MIST_KEYWORDS:
         if kw in lower:
             return "hair_mist"
-
-    # 5. فحص بودي مست
     for kw in BODY_MIST_KEYWORDS:
         if kw in lower:
             return "body_mist"
-
-    # 6. الافتراضي = retail
     return "retail"
 
 
@@ -74,8 +71,6 @@ def extract_size(name):
     patterns = [
         r"(\d+(?:\.\d+)?)\s*ml",
         r"(\d+(?:\.\d+)?)\s*مل",
-        r"(\d+(?:\.\d+)?)\s*ML",
-        r"(\d+(?:\.\d+)?)\s*Ml",
     ]
     for pat in patterns:
         match = re.search(pat, name, re.IGNORECASE)
@@ -102,6 +97,15 @@ def extract_brand(name):
         "Mancera", "Montale", "Tiziana Terenzi",
         "Kilian", "Roja", "Clive Christian",
         "Penhaligon", "Memo", "Aerin",
+        # ماركات عربية
+        "لطافة", "العربية للعود", "رصاصي",
+        "أجمل", "الحرمين", "عفنان", "أرماف",
+        "سويس أربيان", "نيشان", "زيرجوف",
+        "أمواج", "كريد", "توم فورد",
+        "فرزاتشي", "ديور", "شانيل",
+        "غوتشي", "برادا", "بربري",
+        "جيفنشي", "هيرميس", "كارتييه",
+        "بولغاري", "فالنتينو",
     ]
     lower = name.lower()
     for brand in known_brands:
@@ -122,6 +126,9 @@ def normalize_name(name):
         "parfum", "cologne", "for men", "for women",
         "pour homme", "pour femme", "unisex",
         "spray", "natural spray",
+        "او دو برفيوم", "أو دو برفيوم", "او دي بارفيوم",
+        "أو دو بارفيوم", "او دي تواليت", "أو دو تواليت",
+        "او دو", "أو دو", "ماء عطر", "عطر",
     ]
     for w in remove_words:
         name = name.replace(w, "")
@@ -131,8 +138,59 @@ def normalize_name(name):
     return name
 
 
-def match_products(my_products, comp_products,
-                   threshold=65):
+def _get_field(record, *keys):
+    """استخراج قيمة من سجل بمحاولة عدة مفاتيح."""
+    for k in keys:
+        val = record.get(k)
+        if val is not None and val != "" and val != 0:
+            return val
+    return None
+
+
+def _get_name(record):
+    """استخراج اسم المنتج من سجل."""
+    return str(_get_field(record, "name", "product_name", "اسم المنتج") or "")
+
+
+def _get_price(record):
+    """استخراج السعر من سجل."""
+    val = _get_field(record, "sell_price", "price", "السعر", "سعر المنتج")
+    try:
+        return float(val) if val else 0.0
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def _get_id(record):
+    """استخراج المعرف من سجل."""
+    return _get_field(record, "id", "رقم المنتج", "product_id") or 0
+
+
+# ===== كشف الشواذ (IQR Method) =====
+
+def detect_outliers(prices):
+    """
+    كشف الأسعار الشاذة باستخدام IQR Method.
+    الإرجاع: (min_valid, max_valid, outlier_indices)
+    """
+    if len(prices) < 3:
+        return min(prices), max(prices), []
+
+    arr = np.array(prices)
+    q1 = np.percentile(arr, 25)
+    q3 = np.percentile(arr, 75)
+    iqr = q3 - q1
+
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+
+    outliers = [i for i, p in enumerate(prices) if p < lower_bound or p > upper_bound]
+    return max(lower_bound, 0), upper_bound, outliers
+
+
+# ===== المطابقة الذكية =====
+
+def match_products(my_products, comp_products, threshold=65):
     """
     مطابقة المنتجات مع تطبيق القوانين الصارمة.
 
@@ -140,37 +198,45 @@ def match_products(my_products, comp_products,
     1. تطابق النوع: retail=retail, tester=tester
     2. تطابق الحجم: 100ml=100ml فقط
     3. فيتو العينات: طرد تلقائي
-    4. التحقق البصري: عرض الاسم الأصلي
+    4. استراتيجية "أقل بريال": السعر الموصى = أقل منافس - 1
+    5. كشف الشواذ: تجاهل الأسعار الشاذة
+    6. درجة الثقة: بناءً على جودة المطابقة وعدد المنافسين
     """
     results = {
         "raise": [],
         "lower": [],
         "ok": [],
         "missing": [],
+        "review": [],
     }
 
-    matched_comp_ids = set()
+    matched_comp_indices = set()
 
     for my_p in my_products:
-        my_name = my_p.get("name", "")
+        my_name = _get_name(my_p)
+        if not my_name:
+            continue
+
         my_type = classify_product(my_name)
         my_size = my_p.get("size_ml", 0) or extract_size(my_name)
-        my_price = float(my_p.get("sell_price", 0) or 0)
+        my_price = _get_price(my_p)
         my_norm = normalize_name(my_name)
+        my_id = _get_id(my_p)
 
         if my_type == "rejected":
             continue
 
-        best_match = None
-        best_score = 0
+        # جمع كل المطابقات المحتملة (ليس فقط الأفضل)
+        all_matches = []
 
-        for cp in comp_products:
-            cp_name = cp.get("product_name", cp.get("name", ""))
+        for idx, cp in enumerate(comp_products):
+            cp_name = _get_name(cp)
+            if not cp_name:
+                continue
+
             cp_type = classify_product(cp_name)
-            cp_size = (
-                cp.get("size_ml", 0) or extract_size(cp_name)
-            )
-            cp_price = float(cp.get("price", 0) or 0)
+            cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
+            cp_price = _get_price(cp)
 
             # قانون 1: تطابق النوع
             if my_type != cp_type:
@@ -189,70 +255,123 @@ def match_products(my_products, comp_products,
             cp_norm = normalize_name(cp_name)
             score = fuzz.token_sort_ratio(my_norm, cp_norm)
 
-            if score > best_score and score >= threshold:
-                best_score = score
-                best_match = {
-                    "my_product": my_p,
+            if score >= threshold and cp_price > 0:
+                all_matches.append({
                     "comp_product": cp,
-                    "my_price": my_price,
+                    "comp_index": idx,
+                    "comp_name": cp_name,
                     "comp_price": cp_price,
                     "match_score": score,
-                    "my_type": my_type,
                     "comp_type": cp_type,
-                    "my_size": my_size,
                     "comp_size": cp_size,
-                }
+                })
 
-        if best_match and best_match["comp_price"] > 0:
-            cp_id = best_match["comp_product"].get("id", 0)
-            matched_comp_ids.add(cp_id)
+        if not all_matches:
+            continue
 
-            diff = (
-                best_match["my_price"] - best_match["comp_price"]
-            )
-            if best_match["comp_price"] > 0:
-                diff_pct = (diff / best_match["comp_price"]) * 100
-            else:
-                diff_pct = 0
+        # ===== استراتيجية "أقل من أقل منافس بريال واحد" =====
 
-            best_match["price_diff"] = diff
-            best_match["diff_percent"] = round(diff_pct, 1)
+        # جمع أسعار المنافسين
+        comp_prices = [m["comp_price"] for m in all_matches]
 
-            # تحديد مستوى الخطورة
-            abs_pct = abs(diff_pct)
-            if abs_pct >= 20:
-                risk = "high"
-            elif abs_pct >= 10:
-                risk = "medium"
-            else:
-                risk = "low"
-            best_match["risk_level"] = risk
+        # كشف الشواذ إذا كان هناك 3+ أسعار
+        outlier_indices = []
+        if len(comp_prices) >= 3:
+            _, _, outlier_indices = detect_outliers(comp_prices)
 
-            # تحديد التوصية
-            if diff > 0:
-                best_match["recommendation"] = "lower"
-                results["lower"].append(best_match)
-            elif diff < 0:
-                best_match["recommendation"] = "raise"
-                results["raise"].append(best_match)
-            else:
-                best_match["recommendation"] = "ok"
-                results["ok"].append(best_match)
+        # تصفية الأسعار الشاذة
+        valid_matches = [m for i, m in enumerate(all_matches) if i not in outlier_indices]
+        if not valid_matches:
+            valid_matches = all_matches  # fallback
+
+        valid_prices = [m["comp_price"] for m in valid_matches]
+        min_comp_price = min(valid_prices)
+        avg_comp_price = sum(valid_prices) / len(valid_prices)
+
+        # أفضل مطابقة (أعلى نسبة تشابه)
+        best_match = max(valid_matches, key=lambda m: m["match_score"])
+
+        # السعر الموصى = أقل منافس - 1 ريال
+        recommended_price = min_comp_price - 1
+
+        # حساب درجة الثقة
+        confidence = _calculate_confidence(
+            match_score=best_match["match_score"],
+            num_competitors=len(valid_matches),
+            price_consistency=_price_consistency(valid_prices),
+        )
+
+        # تحديد التوصية
+        price_diff = my_price - min_comp_price
+        diff_percent = round((price_diff / min_comp_price) * 100, 1) if min_comp_price > 0 else 0
+
+        # تسجيل المطابقات
+        for m in all_matches:
+            matched_comp_indices.add(m["comp_index"])
+
+        result_entry = {
+            "my_product": my_p,
+            "comp_product": best_match["comp_product"],
+            "my_name": my_name,
+            "comp_name": best_match["comp_name"],
+            "my_price": my_price,
+            "comp_price": min_comp_price,
+            "avg_comp_price": round(avg_comp_price, 2),
+            "recommended_price": max(recommended_price, 1),
+            "match_score": best_match["match_score"],
+            "my_type": my_type,
+            "comp_type": best_match["comp_type"],
+            "my_size": my_size,
+            "comp_size": best_match["comp_size"],
+            "price_diff": round(price_diff, 2),
+            "diff_percent": diff_percent,
+            "confidence": confidence,
+            "num_competitors": len(valid_matches),
+            "outliers_removed": len(outlier_indices),
+            "my_id": my_id,
+        }
+
+        # تحديد مستوى الخطورة
+        abs_pct = abs(diff_percent)
+        if abs_pct >= 20:
+            risk = "high"
+        elif abs_pct >= 10:
+            risk = "medium"
+        else:
+            risk = "low"
+        result_entry["risk_level"] = risk
+
+        # تحديد التوصية بناءً على استراتيجية "أقل بريال"
+        if abs(price_diff) <= 5:
+            # الفرق ≤ 5 ريال → موافق عليه
+            result_entry["recommendation"] = "approved"
+            result_entry["reasoning"] = f"السعر مثالي (ضمن نطاق ±5 ريال من أقل منافس {min_comp_price} ر.س)"
+            results["ok"].append(result_entry)
+        elif my_price > min_comp_price:
+            # سعرنا أعلى → خفض السعر
+            result_entry["recommendation"] = "decrease"
+            result_entry["reasoning"] = f"سعرنا ({my_price} ر.س) أعلى من أقل منافس ({min_comp_price} ر.س) بـ {abs(price_diff):.0f} ر.س. الموصى: {recommended_price:.0f} ر.س"
+            results["lower"].append(result_entry)
+        elif my_price < min_comp_price:
+            # سعرنا أقل → رفع السعر
+            result_entry["recommendation"] = "increase"
+            result_entry["reasoning"] = f"سعرنا ({my_price} ر.س) أقل من أقل منافس ({min_comp_price} ر.س) بـ {abs(price_diff):.0f} ر.س. الموصى: {recommended_price:.0f} ر.س"
+            results["raise"].append(result_entry)
 
     # كشف المنتجات المفقودة
-    for cp in comp_products:
-        cp_id = cp.get("id", 0)
-        if cp_id not in matched_comp_ids:
-            cp_name = cp.get("product_name", cp.get("name", ""))
+    for idx, cp in enumerate(comp_products):
+        if idx not in matched_comp_indices:
+            cp_name = _get_name(cp)
+            if not cp_name:
+                continue
             cp_type = classify_product(cp_name)
             if cp_type != "rejected":
                 results["missing"].append({
                     "comp_product": cp,
+                    "comp_name": cp_name,
                     "comp_type": cp_type,
-                    "comp_size": (
-                        cp.get("size_ml", 0)
-                        or extract_size(cp_name)
-                    ),
+                    "comp_size": cp.get("size_ml", 0) or extract_size(cp_name),
+                    "comp_price": _get_price(cp),
                 })
 
     # ترتيب حسب الخطورة
@@ -263,6 +382,32 @@ def match_products(my_products, comp_products,
         )
 
     return results
+
+
+def _calculate_confidence(match_score, num_competitors, price_consistency):
+    """حساب درجة الثقة في التوصية (0-100)."""
+    # وزن المطابقة: 40%
+    match_weight = (match_score / 100) * 40
+
+    # وزن عدد المنافسين: 30%
+    comp_weight = min(num_competitors / 5, 1.0) * 30
+
+    # وزن اتساق الأسعار: 30%
+    consistency_weight = price_consistency * 30
+
+    return round(match_weight + comp_weight + consistency_weight)
+
+
+def _price_consistency(prices):
+    """حساب اتساق الأسعار (0-1). كلما كانت الأسعار متقاربة = أعلى."""
+    if len(prices) < 2:
+        return 1.0
+    mean_price = sum(prices) / len(prices)
+    if mean_price == 0:
+        return 0.0
+    std_dev = (sum((p - mean_price) ** 2 for p in prices) / len(prices)) ** 0.5
+    cv = std_dev / mean_price  # coefficient of variation
+    return max(0, 1 - cv)
 
 
 def get_risk_color(risk):
@@ -304,141 +449,156 @@ def normalize_columns(df):
     """
     تطبيع أسماء الأعمدة لتتطابق مع الأسماء المتوقعة.
     """
-    # خريطة الأعمدة المحتملة
     column_mapping = {
-        # الاسم
         'name': ['name', 'اسم', 'اسم المنتج', 'product_name', 'Product Name', 'styles_productCard__name__pakbB'],
-        # السعر
-        'sell_price': ['sell_price', 'price', 'السعر', 'سعر', 'text-sm-2', 'Price'],
-        # الحجم
+        'sell_price': ['sell_price', 'price', 'السعر', 'سعر', 'text-sm-2', 'Price', 'سعر المنتج'],
         'size_ml': ['size_ml', 'size', 'الحجم', 'حجم', 'ml'],
-        # المعرف
         'id': ['id', 'رقم', 'رقم المنتج', 'product_id', 'ID'],
     }
-    
-    # إنشاء نسخة جديدة من الـ dataframe
+
     df_normalized = df.copy()
-    
-    # تطبيع أسماء الأعمدة
+
     for target_col, possible_names in column_mapping.items():
         for col in df.columns:
-            if col.lower() in [n.lower() for n in possible_names]:
+            if col.strip().lower() in [n.lower() for n in possible_names]:
                 df_normalized[target_col] = df[col]
                 break
-    
+
     return df_normalized
+
 
 def run_full_analysis(my_file, comp_files, threshold=65, progress_callback=None):
     """
     تشغيل التحليل الكامل للمنتجات.
-    
+
     المعاملات:
     - my_file: dict بـ {"name": str, "data": bytes} ملف المتجر
     - comp_files: list من dicts ملفات المنافسين
     - threshold: الحد الأدنى لنسبة التطابق (50-100)
-    
+
     الإرجاع:
     - dict: نتائج التحليل الكاملة مع DataFrames
     """
     import pandas as pd
     from io import BytesIO
-    
+
     # 1. تحميل ملف المتجر
     try:
-        my_data = pd.read_excel(BytesIO(my_file["data"])) if my_file["name"].endswith(".xlsx") else pd.read_csv(BytesIO(my_file["data"]))
+        if my_file["name"].endswith(".xlsx"):
+            my_data = pd.read_excel(BytesIO(my_file["data"]))
+        else:
+            my_data = pd.read_csv(BytesIO(my_file["data"]))
         my_data = normalize_columns(my_data)
         my_products = my_data.to_dict(orient="records")
     except Exception as e:
         return {"error": f"خطأ في تحميل ملف المتجر: {str(e)}", "stats": {}}
-    
+
     # 2. تحميل ملفات المنافسين
     all_comp_products = []
+    comp_names = []
     for comp_file in comp_files:
         try:
-            comp_data = pd.read_excel(BytesIO(comp_file["data"])) if comp_file["name"].endswith(".xlsx") else pd.read_csv(BytesIO(comp_file["data"]))
+            if comp_file["name"].endswith(".xlsx"):
+                comp_data = pd.read_excel(BytesIO(comp_file["data"]))
+            else:
+                comp_data = pd.read_csv(BytesIO(comp_file["data"]))
             comp_data = normalize_columns(comp_data)
             comp_products = comp_data.to_dict(orient="records")
             all_comp_products.extend(comp_products)
-        except Exception as e:
+            comp_names.append(comp_file["name"])
+        except Exception:
             continue
-    
+
     if not all_comp_products:
         return {"error": "لم يتم تحميل أي ملفات منافسين", "stats": {}}
-    
-    # 3. تشغيل المطابقة
-    # تصفية المنتجات الفارغة
-    my_products = [p for p in my_products if p.get('name') or p.get('sell_price')]
-    all_comp_products = [p for p in all_comp_products if p.get('name') or p.get('price')]
-    
+
+    # 3. تصفية المنتجات الفارغة
+    my_products = [p for p in my_products if _get_name(p)]
+    all_comp_products = [p for p in all_comp_products if _get_name(p)]
+
     if not my_products:
         return {"error": "لا توجد منتجات صحيحة في ملف المتجر", "stats": {}}
     if not all_comp_products:
         return {"error": "لا توجد منتجات صحيحة في ملفات المنافسين", "stats": {}}
-    
+
     if progress_callback:
-        progress_callback(40, f"⏳ جاري مطابقة {len(my_products)} منتج مع {len(all_comp_products)} منتج منافس...")
-    
+        progress_callback(30, f"⏳ جاري مطابقة {len(my_products)} منتج مع {len(all_comp_products)} منتج منافس...")
+
+    # 4. تشغيل المطابقة
     match_results = match_products(my_products, all_comp_products, threshold)
-    
+
     if progress_callback:
-        progress_callback(70, f"✅ تمت المطابقة! جاري تصنيف النتائج...")
-    
-    # 4. تحويل النتائج إلى DataFrames
+        progress_callback(70, "✅ تمت المطابقة! جاري تصنيف النتائج...")
+
+    # 5. تحويل النتائج إلى DataFrames
     df_raise = pd.DataFrame([
         {
-            "المنتج": m["my_product"].get("name", ""),
+            "المنتج": m.get("my_name", ""),
             "السعر": m["my_price"],
-            "سعر المنافس": m["comp_price"],
+            "أقل سعر منافس": m["comp_price"],
+            "السعر الموصى": m["recommended_price"],
             "الفرق": m["price_diff"],
             "النسبة %": m["diff_percent"],
+            "الثقة %": m["confidence"],
+            "عدد المنافسين": m["num_competitors"],
+            "التفسير": m.get("reasoning", ""),
             "الخطورة": {"high": "حرج", "medium": "متوسط", "low": "عادي"}.get(m["risk_level"], "عادي"),
-            "pid_my": m["my_product"].get("id", ""),
-            "pid_comp": m["comp_product"].get("id", ""),
+            "pid_my": m.get("my_id", ""),
+            "نسبة التطابق": m["match_score"],
         }
         for m in match_results["raise"]
     ])
-    
+
     df_lower = pd.DataFrame([
         {
-            "المنتج": m["my_product"].get("name", ""),
+            "المنتج": m.get("my_name", ""),
             "السعر": m["my_price"],
-            "سعر المنافس": m["comp_price"],
+            "أقل سعر منافس": m["comp_price"],
+            "السعر الموصى": m["recommended_price"],
             "الفرق": m["price_diff"],
             "النسبة %": m["diff_percent"],
+            "الثقة %": m["confidence"],
+            "عدد المنافسين": m["num_competitors"],
+            "التفسير": m.get("reasoning", ""),
             "الخطورة": {"high": "حرج", "medium": "متوسط", "low": "عادي"}.get(m["risk_level"], "عادي"),
-            "pid_my": m["my_product"].get("id", ""),
-            "pid_comp": m["comp_product"].get("id", ""),
+            "pid_my": m.get("my_id", ""),
+            "نسبة التطابق": m["match_score"],
         }
         for m in match_results["lower"]
     ])
-    
+
     df_approved = pd.DataFrame([
         {
-            "المنتج": m["my_product"].get("name", ""),
+            "المنتج": m.get("my_name", ""),
             "السعر": m["my_price"],
-            "سعر المنافس": m["comp_price"],
+            "أقل سعر منافس": m["comp_price"],
             "الفرق": m["price_diff"],
             "النسبة %": m["diff_percent"],
-            "pid_my": m["my_product"].get("id", ""),
-            "pid_comp": m["comp_product"].get("id", ""),
+            "الثقة %": m["confidence"],
+            "عدد المنافسين": m["num_competitors"],
+            "التفسير": m.get("reasoning", ""),
+            "pid_my": m.get("my_id", ""),
+            "نسبة التطابق": m["match_score"],
         }
         for m in match_results["ok"]
     ])
-    
+
     df_missing = pd.DataFrame([
         {
-            "المنتج": m["comp_product"].get("product_name", m["comp_product"].get("name", "")),
+            "المنتج": m.get("comp_name", ""),
             "النوع": get_type_label(m["comp_type"]),
             "الحجم": m["comp_size"],
-            "pid_comp": m["comp_product"].get("id", ""),
+            "السعر": m.get("comp_price", 0),
         }
         for m in match_results["missing"]
     ])
-    
-    # 5. دمج جميع النتائج
+
+    df_review = pd.DataFrame()  # placeholder
+
+    # 6. دمج جميع النتائج
     df_all = pd.concat([df_raise, df_lower, df_approved], ignore_index=True)
-    
-    # 6. إحصائيات
+
+    # 7. إحصائيات
     stats = {
         "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total": len(df_all),
@@ -446,17 +606,22 @@ def run_full_analysis(my_file, comp_files, threshold=65, progress_callback=None)
         "lower_count": len(df_lower),
         "approved_count": len(df_approved),
         "missing_count": len(df_missing),
-        "critical": len(df_all[df_all["الخطورة"] == "حرج"]) if not df_all.empty else 0,
-        "avg_diff": round(df_all["الفرق"].mean(), 2) if not df_all.empty else 0,
+        "review_count": 0,
+        "critical": len(df_all[df_all.get("الخطورة", pd.Series()) == "حرج"]) if not df_all.empty and "الخطورة" in df_all.columns else 0,
+        "avg_diff": round(df_all["الفرق"].mean(), 2) if not df_all.empty and "الفرق" in df_all.columns else 0,
         "competitors": len(comp_files),
+        "my_products_count": len(my_products),
+        "comp_products_count": len(all_comp_products),
+        "threshold": threshold,
     }
-    
+
     return {
         "stats": stats,
         "raise": df_raise,
         "lower": df_lower,
         "approved": df_approved,
         "missing": df_missing,
+        "review": df_review,
         "all": df_all,
     }
 
@@ -464,14 +629,6 @@ def run_full_analysis(my_file, comp_files, threshold=65, progress_callback=None)
 def gemini_verify(product_name, product_type, gemini_client=None):
     """
     التحقق من صحة تصنيف المنتج باستخدام Gemini AI.
-    
-    المعاملات:
-    - product_name: اسم المنتج
-    - product_type: النوع المصنف
-    - gemini_client: عميل Gemini API
-    
-    الإرجاع:
-    - dict: نتائج التحقق
     """
     return {
         "product_name": product_name,
@@ -485,62 +642,69 @@ def gemini_verify(product_name, product_type, gemini_client=None):
 def export_excel(match_results, filename="perfume_analysis.xlsx"):
     """
     تصدير نتائج المطابقة إلى ملف Excel.
-    
-    المعاملات:
-    - match_results: نتائج المطابقة
-    - filename: اسم الملف المراد حفظه
-    
-    الإرجاع:
-    - BytesIO: محتوى الملف في الذاكرة
     """
     import pandas as pd
     from io import BytesIO
-    
+
     output = BytesIO()
-    
+
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # ورقة المنتجات المرتفعة
         if match_results.get("raise"):
             df_raise = pd.DataFrame([
                 {
-                    "المنتج": m.get("my_product", {}).get("name", ""),
-                    "السعر": m.get("my_price", 0),
-                    "سعر المنافس": m.get("comp_price", 0),
+                    "المنتج": m.get("my_name", ""),
+                    "السعر الحالي": m.get("my_price", 0),
+                    "أقل سعر منافس": m.get("comp_price", 0),
+                    "السعر الموصى": m.get("recommended_price", 0),
                     "الفرق": m.get("price_diff", 0),
                     "النسبة %": m.get("diff_percent", 0),
-                    "التوصية": "خفض السعر",
+                    "الثقة %": m.get("confidence", 0),
+                    "التفسير": m.get("reasoning", ""),
                 }
                 for m in match_results["raise"]
             ])
-            df_raise.to_excel(writer, sheet_name="خفض السعر", index=False)
-        
-        # ورقة المنتجات المنخفضة
+            df_raise.to_excel(writer, sheet_name="رفع السعر", index=False)
+
         if match_results.get("lower"):
             df_lower = pd.DataFrame([
                 {
-                    "المنتج": m.get("my_product", {}).get("name", ""),
-                    "السعر": m.get("my_price", 0),
-                    "سعر المنافس": m.get("comp_price", 0),
+                    "المنتج": m.get("my_name", ""),
+                    "السعر الحالي": m.get("my_price", 0),
+                    "أقل سعر منافس": m.get("comp_price", 0),
+                    "السعر الموصى": m.get("recommended_price", 0),
                     "الفرق": m.get("price_diff", 0),
                     "النسبة %": m.get("diff_percent", 0),
-                    "التوصية": "رفع السعر",
+                    "الثقة %": m.get("confidence", 0),
+                    "التفسير": m.get("reasoning", ""),
                 }
                 for m in match_results["lower"]
             ])
-            df_lower.to_excel(writer, sheet_name="رفع السعر", index=False)
-        
-        # ورقة المنتجات المفقودة
+            df_lower.to_excel(writer, sheet_name="خفض السعر", index=False)
+
+        if match_results.get("ok"):
+            df_ok = pd.DataFrame([
+                {
+                    "المنتج": m.get("my_name", ""),
+                    "السعر": m.get("my_price", 0),
+                    "أقل سعر منافس": m.get("comp_price", 0),
+                    "التفسير": m.get("reasoning", ""),
+                }
+                for m in match_results["ok"]
+            ])
+            df_ok.to_excel(writer, sheet_name="موافق عليها", index=False)
+
         if match_results.get("missing"):
             df_missing = pd.DataFrame([
                 {
-                    "المنتج": m.get("comp_product", {}).get("product_name", ""),
+                    "المنتج": m.get("comp_name", ""),
                     "النوع": get_type_label(m.get("comp_type", "")),
                     "الحجم": m.get("comp_size", 0),
+                    "السعر": m.get("comp_price", 0),
                 }
                 for m in match_results["missing"]
             ])
             df_missing.to_excel(writer, sheet_name="منتجات مفقودة", index=False)
-    
+
     output.seek(0)
     return output
 
@@ -548,23 +712,15 @@ def export_excel(match_results, filename="perfume_analysis.xlsx"):
 def send_to_make(match_results, webhook_url=None):
     """
     إرسال نتائج المطابقة إلى Make.com webhook.
-    
-    المعاملات:
-    - match_results: نتائج المطابقة
-    - webhook_url: رابط الـ webhook
-    
-    الإرجاع:
-    - dict: حالة الإرسال
     """
     import pandas as pd
-    
+
     if not webhook_url:
         return {
             "success": False,
             "message": "لم يتم توفير رابط webhook"
         }
-    
-    # تحضير البيانات للإرسال
+
     payload = {
         "timestamp": pd.Timestamp.now().isoformat(),
         "raise_count": len(match_results.get("raise", [])),
@@ -573,21 +729,23 @@ def send_to_make(match_results, webhook_url=None):
         "summary": {
             "raise": [
                 {
-                    "name": m.get("my_product", {}).get("name", ""),
+                    "name": m.get("my_name", ""),
                     "diff_percent": m.get("diff_percent", 0),
+                    "recommended_price": m.get("recommended_price", 0),
                 }
                 for m in match_results.get("raise", [])[:5]
             ],
             "lower": [
                 {
-                    "name": m.get("my_product", {}).get("name", ""),
+                    "name": m.get("my_name", ""),
                     "diff_percent": m.get("diff_percent", 0),
+                    "recommended_price": m.get("recommended_price", 0),
                 }
                 for m in match_results.get("lower", [])[:5]
             ],
         }
     }
-    
+
     return {
         "success": True,
         "message": "تم تحضير البيانات للإرسال",
@@ -599,10 +757,10 @@ def send_to_make(match_results, webhook_url=None):
 
 class MatchingEngine:
     """محرك المطابقة الرئيسي."""
-    
+
     def __init__(self, threshold=65):
         self.threshold = threshold
-    
+
     def match(self, my_products, comp_products):
         """تشغيل المطابقة."""
         return match_products(my_products, comp_products, self.threshold)
@@ -610,23 +768,19 @@ class MatchingEngine:
 
 class ProductMatcher:
     """فئة مساعدة لمطابقة المنتجات."""
-    
+
     @staticmethod
     def classify(name):
-        """تصنيف المنتج."""
         return classify_product(name)
-    
+
     @staticmethod
     def extract_size(name):
-        """استخراج الحجم."""
         return extract_size(name)
-    
+
     @staticmethod
     def extract_brand(name):
-        """استخراج الماركة."""
         return extract_brand(name)
-    
+
     @staticmethod
     def normalize(name):
-        """تنظيف الاسم."""
         return normalize_name(name)
