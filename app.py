@@ -88,7 +88,7 @@ st.markdown("""
 
 # ── Webhook URLs ─────────────────────────────────────────────
 WEBHOOK_UPDATE_PRICES = "https://hook.eu2.make.com/99oljy0d6r3chwg6bdfsptcf6bk8htsd"
-WEBHOOK_NEW_PRODUCTS = "https://hook.eu2.make.com/k6w6kwvn5spfgbfuhjvj4pijt79tknlk"
+WEBHOOK_NEW_PRODUCTS = "https://hook.eu2.make.com/xvubj23dmpxu8qzilstd25cnumrwtdxm"
 
 # ── مفاتيح API الافتراضية ────────────────────────────────────
 DEFAULT_GEMINI_KEY = "AIzaSyAlTpWSkdyIKVavZy6MaaabSFBXBZbOmn8"
@@ -440,7 +440,13 @@ def send_new_products(products):
     payload = {"data": []}
     for p in products:
         name = p.get("المنتج", p.get("name", ""))
-        price = float(p.get("السعر", p.get("price", p.get("أقل سعر منافس", 0))))
+        price_raw = p.get("السعر", p.get("price", p.get("أقل سعر منافس", 0)))
+        try:
+            price = int(float(str(price_raw).replace(',','')))
+        except:
+            price = 0
+        if price <= 0:
+            price = 1  # سلة لا تقبل سعر 0
         # توليد SKU تلقائي إذا كان فارغاً
         sku = p.get("sku", p.get("رمز المنتج", ""))
         if not sku:
@@ -458,19 +464,24 @@ def send_new_products(products):
         desc = p.get("الوصف", p.get("description", ""))
         if not desc:
             desc = f"{name} - {p.get('النوع', p.get('type', ''))} - {p.get('الحجم', p.get('size', ''))}"
-        payload["data"].append({
+        # بناء البيانات بتنسيق يتوافق مع Salla API عبر Make.com
+        # الحقول المدعومة في blueprint: أسم المنتج, سعر المنتج, رمز المنتج sku, الوزن, سعر التكلفة, السعر المخفض, الوصف
+        # ملاحظة: categories و brand_id يحتاجان ID رقمي من سلة وليس اسم نصي
+        item = {
             "أسم المنتج": name,
             "سعر المنتج": price,
             "رمز المنتج sku": sku,
-            "الوزن": 0.1,
-            "سعر التكلفة": 0,
-            "السعر المخفض": 0,
+            "الوزن": 1,
             "الوصف": desc,
-            "التصنيف": category,
-            "الماركة": brand,
-            "الحجم": str(p.get("الحجم", p.get("size", ""))),
-            "النوع": p.get("النوع", p.get("type", ""))
-        })
+        }
+        # لا نرسل سعر التكلفة والسعر المخفض إذا كانا 0 لتجنب أخطاء سلة
+        cost = p.get("سعر التكلفة", p.get("cost_price", 0))
+        if cost and int(float(str(cost))) > 0:
+            item["سعر التكلفة"] = int(float(str(cost)))
+        sale = p.get("السعر المخفض", p.get("sale_price", 0))
+        if sale and int(float(str(sale))) > 0:
+            item["السعر المخفض"] = int(float(str(sale)))
+        payload["data"].append(item)
     return send_to_webhook(WEBHOOK_NEW_PRODUCTS, payload)
 
 def call_gemini(prompt, api_key=None):
