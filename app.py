@@ -358,15 +358,20 @@ def send_price_updates(products):
     return send_to_webhook(WEBHOOK_UPDATE_PRICES, payload)
 
 def send_new_products(products):
-    payload = {"products": [
-        {"name": p.get("المنتج", p.get("name", "")),
-         "price": float(p.get("السعر", p.get("price", p.get("أقل سعر منافس", 0)))),
-         "sku": p.get("sku", p.get("رمز المنتج", "")),
-         "category": p.get("التصنيف", p.get("category", "")),
-         "description": p.get("الوصف", p.get("description", "")),
-         "brand": p.get("الماركة", p.get("brand", "")),
-         "size": str(p.get("الحجم", p.get("size", ""))),
-         "type": p.get("النوع", p.get("type", ""))}
+    # تنسيق يتوافق مع Make.com blueprint:
+    # Iterator يستخدم {{1.data}} وSalla CreateProduct يستخدم أسماء عربية
+    payload = {"data": [
+        {"أسم المنتج": p.get("المنتج", p.get("name", "")),
+         "سعر المنتج": float(p.get("السعر", p.get("price", p.get("أقل سعر منافس", 0)))),
+         "رمز المنتج sku": p.get("sku", p.get("رمز المنتج", "")),
+         "الوزن": 0.1,
+         "سعر التكلفة": 0,
+         "السعر المخفض": 0,
+         "الوصف": p.get("الوصف", p.get("description", f"عطر {p.get('المنتج', p.get('name', ''))} - {p.get('النوع', p.get('type', ''))} - {p.get('الحجم', p.get('size', ''))}")),
+         "التصنيف": p.get("التصنيف", p.get("category", "")),
+         "الماركة": p.get("الماركة", p.get("brand", "")),
+         "الحجم": str(p.get("الحجم", p.get("size", ""))),
+         "النوع": p.get("النوع", p.get("type", ""))}
         for p in products
     ]}
     return send_to_webhook(WEBHOOK_NEW_PRODUCTS, payload)
