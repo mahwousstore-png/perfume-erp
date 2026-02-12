@@ -1,5 +1,5 @@
 """
-نظام التسعير الذكي للعطور v6.0
+نظام التسعير الذكي للعطور v7.0
 ═══════════════════════════════════
 15 قسم كامل | Gemini AI + OpenRouter | Make.com | Google Drive | Supabase
 """
@@ -15,7 +15,7 @@ from io import BytesIO
 
 # ── إعدادات الصفحة ─────────────────────────────────────────
 st.set_page_config(
-    page_title="نظام التسعير الذكي v6.0",
+    page_title="نظام التسعير الذكي v7.0",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -349,8 +349,10 @@ def send_price_updates(products):
     payload = {"products": [
         {"product_id": str(p.get("product_id", p.get("pid_my", p.get("id", "")))),
          "name": p.get("المنتج", p.get("name", "")),
-         "price": float(p.get("السعر_الجديد", p.get("recommended_price", p.get("سعر المنافس", p.get("سعر_المنافس", 0))))),
-         "sale_price": float(p.get("السعر_المخفض", p.get("sale_price", 0)))}
+         "price": float(p.get("السعر الموصى", p.get("recommended_price", p.get("أقل سعر منافس", p.get("سعر المنافس", 0)))))),
+         "sale_price": float(p.get("السعر_المخفض", p.get("sale_price", 0))),
+         "old_price": float(p.get("السعر", p.get("price", 0))),
+         "competitor_price": float(p.get("أقل سعر منافس", p.get("سعر المنافس", 0)))}
         for p in products
     ]}
     return send_to_webhook(WEBHOOK_UPDATE_PRICES, payload)
@@ -358,12 +360,12 @@ def send_price_updates(products):
 def send_new_products(products):
     payload = {"products": [
         {"name": p.get("المنتج", p.get("name", "")),
-         "price": float(p.get("السعر", p.get("price", 0))),
+         "price": float(p.get("السعر", p.get("price", p.get("أقل سعر منافس", 0)))),
          "sku": p.get("sku", p.get("رمز المنتج", "")),
          "category": p.get("التصنيف", p.get("category", "")),
          "description": p.get("الوصف", p.get("description", "")),
          "brand": p.get("الماركة", p.get("brand", "")),
-         "size": p.get("الحجم", p.get("size", "")),
+         "size": str(p.get("الحجم", p.get("size", ""))),
          "type": p.get("النوع", p.get("type", ""))}
         for p in products
     ]}
@@ -427,23 +429,36 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
     # عرض الجدول مع checkboxes
     selected = []
     for i, (_, row) in enumerate(df.iterrows()):
-        cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2])
+        cols = st.columns([0.3, 2.8, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9])
         with cols[0]:
             default_val = st.session_state[f"sel_{section_key}"][i] if i < len(st.session_state[f"sel_{section_key}"]) else False
             checked = st.checkbox("", value=default_val, key=f"{section_key}_{i}")
             if checked:
                 selected.append(row.to_dict())
         with cols[1]:
-            st.write(f"**{str(row.get('المنتج', ''))[:55]}**")
+            st.write(f"**{str(row.get('المنتج', ''))[:50]}**")
         with cols[2]:
             st.write(f"💰 {row.get('السعر', 0)}")
         with cols[3]:
-            st.write(f"🏪 {row.get('سعر المنافس', 0)}")
+            comp_price = row.get('أقل سعر منافس', row.get('سعر المنافس', 0))
+            st.write(f"🏪 {comp_price}")
         with cols[4]:
+            rec_price = row.get('السعر الموصى', '')
+            if rec_price:
+                st.write(f"🎯 {rec_price}")
+            else:
+                st.write("")
+        with cols[5]:
             diff = row.get('الفرق', 0)
             color = "red" if diff > 0 else "green"
             st.markdown(f'<span style="color:{color}">{row.get("النسبة %", 0)}%</span>', unsafe_allow_html=True)
-        with cols[5]:
+        with cols[6]:
+            confidence = row.get('الثقة %', '')
+            if confidence:
+                st.write(f"📊 {confidence}%")
+            else:
+                st.write("")
+        with cols[7]:
             risk = row.get('الخطورة', 'عادي')
             if risk == 'حرج':
                 st.markdown('🔴 حرج')
@@ -505,7 +520,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
 
 with st.sidebar:
     st.markdown("## 💎 نظام التسعير الذكي")
-    st.markdown("**الإصدار:** v6.0")
+    st.markdown("**الإصدار:** v7.0")
     st.markdown("---")
     
     # حالة الاتصالات
@@ -738,7 +753,7 @@ elif section == "📤 رفع الملفات":
 # ══════════════════════════════════════════════════════════════
 elif section == "🔴 رفع سعر":
     st.markdown("# 🔴 منتجات تحتاج رفع سعر")
-    st.markdown("> المنتجات التي سعرنا فيها أقل من المنافس بأكثر من 10%")
+    st.markdown("> المنتجات التي سعرنا فيها أقل من أقل منافس بأكثر من 5 ريال | استراتيجية: أقل بريال واحد")
     st.markdown("---")
     
     if st.session_state.results:
@@ -752,7 +767,7 @@ elif section == "🔴 رفع سعر":
 # ══════════════════════════════════════════════════════════════
 elif section == "🟡 خفض سعر":
     st.markdown("# 🟡 منتجات تحتاج خفض سعر")
-    st.markdown("> المنتجات التي سعرنا فيها أعلى من المنافس بأكثر من 5%")
+    st.markdown("> المنتجات التي سعرنا فيها أعلى من أقل منافس بأكثر من 5 ريال | استراتيجية: أقل بريال واحد")
     st.markdown("---")
     
     if st.session_state.results:
@@ -766,7 +781,7 @@ elif section == "🟡 خفض سعر":
 # ══════════════════════════════════════════════════════════════
 elif section == "🟢 موافق عليها":
     st.markdown("# 🟢 منتجات موافق عليها")
-    st.markdown("> المنتجات التي سعرها ضمن النطاق المقبول (±5%)")
+    st.markdown("> المنتجات التي سعرها ضمن النطاق المقبول (±5 ريال من أقل منافس)")
     st.markdown("---")
     
     if st.session_state.results:
@@ -880,7 +895,7 @@ elif section == "🔵 منتجات مفقودة":
 # ══════════════════════════════════════════════════════════════
 elif section == "⚠️ يحتاج مراجعة":
     st.markdown("# ⚠️ يحتاج مراجعة")
-    st.markdown("> المنتجات بنسبة مطابقة أقل من 85% أو فرق سعر كبير")
+    st.markdown("> المنتجات ذات الخطورة العالية أو المتوسطة التي تحتاج مراجعة يدوية")
     st.markdown("---")
     
     if st.session_state.results:
@@ -1528,7 +1543,7 @@ elif section == "⚙️ الإعدادات":
         st.markdown("---")
         st.markdown("### 📊 معلومات النظام")
         st.json({
-            "الإصدار": "v6.0",
+            "الإصدار": "v7.0",
             "قاعدة البيانات": "Supabase Cloud",
             "Gemini Key": "✅ موجود" if st.session_state.gemini_key else "❌ مفقود",
             "OpenRouter Key": "✅ موجود" if st.session_state.openrouter_key else "❌ مفقود",
@@ -1543,6 +1558,6 @@ elif section == "⚙️ الإعدادات":
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #888; padding: 10px;">
-    💎 نظام التسعير الذكي v6.0 | مهووس للعطور | 2026
+    💎 نظام التسعير الذكي v7.0 | مهووس للعطور | 2026
 </div>
 """, unsafe_allow_html=True)
