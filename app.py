@@ -366,29 +366,60 @@ init_session()
 # دوال التحقق من الاتصالات
 # ══════════════════════════════════════════════════════════════
 
-def verify_gemini_connection(api_key):
+def verify_gemini_connection(api_key, update_session=True):
+    """فحص اتصال Gemini وتحديث حالة Session تلقائياً."""
     if not api_key or len(api_key) < 10:
-        return {"connected": False, "message": "مفتاح API مفقود أو غير صالح"}
+        result = {"connected": False, "message": "مفتاح API مفقود أو غير صالح"}
+        if update_session:
+            st.session_state.gemini_connected = False
+        return result
+    
     for attempt in range(2):
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
-            response = requests.post(url, json={"contents": [{"parts": [{"text": "test"}]}]},
-                                     headers={"Content-Type": "application/json"}, timeout=20)
+            response = requests.post(
+                url,
+                json={"contents": [{"parts": [{"text": "test"}]}]},
+                headers={"Content-Type": "application/json"},
+                timeout=20
+            )
+            
             if response.status_code == 200:
-                return {"connected": True, "model": "gemini-2.0-flash", "message": "متصل ويعمل"}
+                result = {"connected": True, "model": "gemini-2.0-flash", "message": "متصل ويعمل"}
+                if update_session:
+                    st.session_state.gemini_connected = True
+                return result
+            
             else:
                 err_msg = "خطأ"
                 try:
                     err_msg = response.json().get("error", {}).get("message", f"HTTP {response.status_code}")
                 except:
                     err_msg = f"HTTP {response.status_code}"
-                return {"connected": False, "message": err_msg}
+                
+                result = {"connected": False, "message": err_msg}
+                if update_session:
+                    st.session_state.gemini_connected = False
+                return result
+        
         except requests.exceptions.Timeout:
             if attempt == 0:
                 continue  # retry once
-            return {"connected": False, "message": "انتهت مهلة الاتصال (timeout)"}
+            result = {"connected": False, "message": "انتهت مهلة الاتصال (timeout)"}
+            if update_session:
+                st.session_state.gemini_connected = False
+            return result
+        
         except Exception as e:
-            return {"connected": False, "message": str(e)}
+            result = {"connected": False, "message": str(e)}
+            if update_session:
+                st.session_state.gemini_connected = False
+            return result
+    
+    result = {"connected": False, "message": "فشل الاتصال"}
+    if update_session:
+        st.session_state.gemini_connected = False
+    return result
 
 def verify_openrouter_connection(api_key):
     try:
@@ -575,21 +606,74 @@ def send_new_products(products):
         payload["data"].append(item)
     return send_to_webhook(WEBHOOK_NEW_PRODUCTS, payload)
 
-def call_gemini(prompt, api_key=None):
+def call_gemini(prompt, api_key=None, max_retries=3):
+    """استدعاء Gemini مع معالجة أخطاء وإعادة محاولة تلقائية."""
+    import time
+    
     key = api_key or st.session_state.gemini_key
     if not key:
         return {"success": False, "error": "مفتاح Gemini غير موجود"}
-    try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
-        response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]},
-                                 headers={"Content-Type": "application/json"}, timeout=60)
-        if response.status_code == 200:
-            data = response.json()
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
-            return {"success": True, "text": text}
-        return {"success": False, "error": f"HTTP {response.status_code}"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
+    
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                url,
+                json={"contents": [{"parts": [{"text": prompt}]}]},
+                headers={"Content-Type": "application/json"},
+                timeout=60
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                text = data["candidates"][0]["content"]["parts"][0]["text"]
+                return {"success": True, "text": text}
+            
+            elif response.status_code == 429:  # Rate Limit
+                wait_time = 60 * (attempt + 1)  # 60, 120, 180 ثانية
+                if attempt < max_retries - 1:
+                    st.warning(f"⚠️ تجاوز الحد الأقصى للطلبات. انتظار {wait_time} ثانية...")
+                    time.sleep(wait_time)
+                    continue
+                return {"success": False, "error": "تجاوز الحد الأقصى للطلبات بعد عدة محاولات"}
+            
+            elif response.status_code == 401:  # Invalid API Key
+                return {"success": False, "error": "مفتاح API غير صحيح أو منتهي الصلاحية"}
+            
+            elif response.status_code == 400:  # Bad Request
+                error_msg = response.json().get("error", {}).get("message", "طلب غير صحيح")
+                return {"success": False, "error": f"خطأ في الطلب: {error_msg}"}
+            
+            else:
+                if attempt < max_retries - 1:
+                    st.warning(f"⚠️ خطأ HTTP {response.status_code}. محاولة {attempt + 1}/{max_retries}...")
+                    time.sleep(5)
+                    continue
+                return {"success": False, "error": f"HTTP {response.status_code}"}
+        
+        except requests.exceptions.Timeout:
+            if attempt < max_retries - 1:
+                st.warning(f"⚠️ انتهت المهلة. محاولة {attempt + 1}/{max_retries}...")
+                time.sleep(5)
+                continue
+            return {"success": False, "error": "انتهت مهلة الاتصال بعد عدة محاولات"}
+        
+        except requests.exceptions.ConnectionError:
+            if attempt < max_retries - 1:
+                st.warning(f"⚠️ خطأ في الاتصال. محاولة {attempt + 1}/{max_retries}...")
+                time.sleep(5)
+                continue
+            return {"success": False, "error": "فشل الاتصال بالخادم"}
+        
+        except Exception as e:
+            if attempt < max_retries - 1:
+                st.warning(f"⚠️ خطأ: {str(e)}. محاولة {attempt + 1}/{max_retries}...")
+                time.sleep(5)
+                continue
+            return {"success": False, "error": str(e)}
+    
+    return {"success": False, "error": "فشلت كل المحاولات"}
 
 def call_openrouter(prompt, api_key=None):
     key = api_key or st.session_state.openrouter_key
@@ -837,8 +921,7 @@ if section == "🏠 لوحة القيادة":
     
     if st.button("🔄 تحقق من جميع الاتصالات", type="primary"):
         with st.spinner("⏳ جاري التحقق..."):
-            gem = verify_gemini_connection(st.session_state.gemini_key)
-            st.session_state.gemini_connected = gem["connected"]
+            gem = verify_gemini_connection(st.session_state.gemini_key)  # يحدث Session تلقائياً
             
             ort = verify_openrouter_connection(st.session_state.openrouter_key)
             st.session_state.openrouter_connected = ort["connected"]
@@ -1682,13 +1765,11 @@ elif section == "⚙️ الإعدادات":
         
         if st.button("🔄 اختبار Gemini", key="test_gemini_settings"):
             with st.spinner("⏳ جاري الاختبار..."):
-                result = verify_gemini_connection(gemini_key)
+                result = verify_gemini_connection(gemini_key)  # يحدث Session تلقائياً
                 if result["connected"]:
                     st.success(f"✅ متصل! النموذج: {result['model']}")
-                    st.session_state.gemini_connected = True
                 else:
                     st.error(f"❌ {result['message']}")
-                    st.session_state.gemini_connected = False
         
         st.markdown("---")
         
