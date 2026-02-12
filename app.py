@@ -204,7 +204,7 @@ def get_all_records(limit=500):
     return pd.DataFrame()
 
 def load_latest_results():
-    """تحميل آخر نتائج تحليل من Supabase وإعادتها إلى session_state."""
+    """تحميل آخر نتائج تحليل من Supabase وإعادتها بهيكل كامل يشمل stats و all."""
     result = supabase_request("GET", "analysis_results", params={"select": "*", "order": "id.desc", "limit": "1"})
     if result and len(result) > 0:
         record = result[0]
@@ -218,8 +218,78 @@ def load_latest_results():
                     restored[key] = pd.DataFrame(results_json[key])
                 else:
                     restored[key] = pd.DataFrame()
+            
+            # بناء stats من البيانات المحفوظة
+            raise_count = len(restored.get("raise", pd.DataFrame()))
+            lower_count = len(restored.get("lower", pd.DataFrame()))
+            approved_count = len(restored.get("approved", pd.DataFrame()))
+            missing_count = len(restored.get("missing", pd.DataFrame()))
+            review_count = len(restored.get("review", pd.DataFrame()))
+            total = raise_count + lower_count + approved_count
+            
+            restored["stats"] = {
+                "total": total,
+                "raise_count": raise_count,
+                "lower_count": lower_count,
+                "approved_count": approved_count,
+                "missing_count": missing_count,
+                "review_count": review_count,
+                "critical": record.get("needs_review", 0) or 0,
+                "avg_diff": 0,
+                "competitors": 0,
+            }
+            
+            # بناء all من دمج جميع DataFrames
+            all_frames = []
+            for key in ["raise", "lower", "approved"]:
+                df = restored.get(key)
+                if df is not None and not df.empty:
+                    df = df.copy()
+                    df["التوصية"] = {"raise": "رفع سعر", "lower": "خفض سعر", "approved": "موافق"}.get(key, key)
+                    all_frames.append(df)
+            if all_frames:
+                restored["all"] = pd.concat(all_frames, ignore_index=True)
+            else:
+                restored["all"] = pd.DataFrame()
+            
             return restored
     return None
+
+def load_all_previous_results():
+    """تحميل جميع نتائج التحليلات السابقة من Supabase."""
+    results_list = supabase_request("GET", "analysis_results", params={"select": "*", "order": "id.desc", "limit": "50"})
+    if not results_list:
+        return []
+    
+    all_sessions = []
+    for record in results_list:
+        results_json = record.get("results_json")
+        if results_json:
+            if isinstance(results_json, str):
+                try:
+                    results_json = json.loads(results_json)
+                except Exception:
+                    continue
+            session_data = {
+                "id": record.get("id"),
+                "created_at": record.get("created_at", ""),
+                "store_filename": record.get("store_filename", ""),
+                "competitor_filename": record.get("competitor_filename", ""),
+                "total_products": record.get("total_products", 0),
+                "price_increase": record.get("price_increase", 0),
+                "price_decrease": record.get("price_decrease", 0),
+                "approved": record.get("approved", 0),
+                "missing": record.get("missing", 0),
+                "needs_review": record.get("needs_review", 0),
+            }
+            # تحميل DataFrames
+            for key in ["raise", "lower", "approved", "missing", "review"]:
+                if key in results_json:
+                    session_data[key] = pd.DataFrame(results_json[key])
+                else:
+                    session_data[key] = pd.DataFrame()
+            all_sessions.append(session_data)
+    return all_sessions
 
 def get_send_logs(limit=100):
     """جلب سجلات الإرسال من Supabase."""
@@ -280,6 +350,15 @@ def init_session():
     for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
+    
+    # تحميل آخر نتائج من Supabase تلقائياً عند فتح التطبيق
+    if st.session_state.results is None:
+        try:
+            loaded = load_latest_results()
+            if loaded:
+                st.session_state.results = loaded
+        except Exception:
+            pass  # فشل التحميل لا يمنع التطبيق من العمل
 
 init_session()
 
@@ -741,7 +820,16 @@ if section == "🏠 لوحة القيادة":
         if df_all is not None and not df_all.empty:
             st.dataframe(df_all.head(20), use_container_width=True)
     else:
-        st.info("📤 قم برفع الملفات وبدء المعالجة لعرض لوحة القيادة")
+        st.info("📤 لا توجد نتائج محفوظة. قم برفع الملفات وبدء المعالجة لعرض لوحة القيادة")
+        if st.button("🔄 تحميل آخر نتائج من قاعدة البيانات"):
+            with st.spinner("⏳ جاري تحميل البيانات السابقة..."):
+                loaded = load_latest_results()
+                if loaded:
+                    st.session_state.results = loaded
+                    st.success("✅ تم تحميل آخر نتائج بنجاح!")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ لا توجد نتائج سابقة في قاعدة البيانات")
     
     # حالة الاتصالات
     st.markdown("---")
