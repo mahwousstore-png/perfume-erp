@@ -312,8 +312,10 @@ def verify_openrouter_connection(api_key):
 
 def verify_webhook_connection(webhook_url, test_type="update"):
     try:
-        test_payload = {"products": [{"product_id": "CONN_TEST", "name": "اختبار اتصال", "price": 0, "sale_price": 0}]}
-        response = requests.post(webhook_url, json=test_payload, headers={"Content-Type": "application/json"}, timeout=15)
+        # لا نرسل بيانات اختبار وهمية لتجنب أخطاء 404 في سلة
+        # نتحقق فقط من أن الـ webhook يستجيب عبر GET request
+        response = requests.get(webhook_url, timeout=15)
+        # Make.com webhooks ترد 200 على GET مع رسالة "Accepted"
         if response.status_code == 200:
             return {"connected": True, "message": "متصل ويعمل", "status_code": 200}
         return {"connected": False, "message": f"HTTP {response.status_code}", "status_code": response.status_code}
