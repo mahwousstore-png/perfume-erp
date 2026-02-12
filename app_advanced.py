@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
 """
-نظام التسعير الذكي للعطور - الإصدار 5.0
+نظام التسعير الذكي للعطور - الإصدار 5.1
 تطبيق Streamlit متقدم مع:
-- Gemini AI متقدم
+- Gemini AI + OpenRouter AI (تحقق ديناميكي)
 - Google Drive integration
 - Make.com automation (تحديث أسعار + إضافة منتجات جديدة)
 - استديو مهووس لإنشاء محتوى
 - نظام موافقة يدوية للمنتجات
+- تحقق ديناميكي من جميع الاتصالات
 """
 
 import streamlit as st
@@ -16,11 +16,10 @@ import time
 import requests
 import json
 from io import BytesIO
-import asyncio
 
 # ── إعدادات الصفحة ──────────────────────────────────────────
 st.set_page_config(
-    page_title="نظام التسعير الذكي v5.0",
+    page_title="نظام التسعير الذكي v5.1",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -122,12 +121,34 @@ st.markdown("""
         color: #f44336;
         font-weight: bold;
     }
+    
+    .connection-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 5px;
+        text-align: center;
+    }
+    
+    .conn-ok {
+        border-color: #4caf50;
+        background-color: #f1f8e9;
+    }
+    
+    .conn-fail {
+        border-color: #f44336;
+        background-color: #ffebee;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ── Webhook URLs ─────────────────────────────────────────────
 WEBHOOK_UPDATE_PRICES = "https://hook.eu2.make.com/99oljy0d6r3chwg6bdfsptcf6bk8htsd"
 WEBHOOK_NEW_PRODUCTS = "https://hook.eu2.make.com/k6w6kwvn5spfgbfuhjvj4pijt79tknlk"
+
+# ── مفاتيح API الافتراضية ────────────────────────────────────
+DEFAULT_GEMINI_KEY = "AIzaSyAlTpWSkdyIKVavZy6MaaabSFBXBZbOmn8"
+DEFAULT_OPENROUTER_KEY = "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"
 
 # ── تهيئة الجلسة ─────────────────────────────────────────
 def init_session():
@@ -137,19 +158,25 @@ def init_session():
         "gemini_results": None,
         "my_file": None,
         "supplier_files": [],
-        "gemini_key": "",
+        "gemini_key": DEFAULT_GEMINI_KEY,
+        "openrouter_key": DEFAULT_OPENROUTER_KEY,
         "make_url": "",
         "drive_folder_id": "",
         "processing": False,
         "progress": 0,
         "backend_url": "http://localhost:8000",
+        # حالة الاتصالات (ديناميكية)
+        "gemini_connected": None,
+        "openrouter_connected": None,
+        "make_update_connected": None,
+        "make_new_connected": None,
         # متغيرات الموافقة اليدوية
-        "approved_updates": [],       # المنتجات الموافق على تحديث أسعارها
-        "approved_new": [],           # المنتجات الموافق على إضافتها
-        "sent_updates_log": [],       # سجل الإرسالات لتحديث الأسعار
-        "sent_new_log": [],           # سجل الإرسالات للمنتجات الجديدة
-        "update_send_status": None,   # حالة آخر إرسال تحديث
-        "new_send_status": None,      # حالة آخر إرسال منتجات جديدة
+        "approved_updates": [],
+        "approved_new": [],
+        "sent_updates_log": [],
+        "sent_new_log": [],
+        "update_send_status": None,
+        "new_send_status": None,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -157,7 +184,97 @@ def init_session():
 
 init_session()
 
-# ── دوال مساعدة ──────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════
+# دوال التحقق من الاتصالات
+# ══════════════════════════════════════════════════════════════
+
+def verify_gemini_connection(api_key):
+    """التحقق الديناميكي من اتصال Gemini AI."""
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+        response = requests.post(
+            url,
+            json={"contents": [{"parts": [{"text": "test"}]}]},
+            headers={"Content-Type": "application/json"},
+            timeout=10
+        )
+        if response.status_code == 200:
+            return {"connected": True, "model": "gemini-2.0-flash", "message": "متصل ويعمل"}
+        else:
+            error_data = response.json()
+            error_msg = error_data.get("error", {}).get("message", "خطأ غير معروف")
+            return {"connected": False, "message": error_msg}
+    except Exception as e:
+        return {"connected": False, "message": str(e)}
+
+
+def verify_openrouter_connection(api_key):
+    """التحقق الديناميكي من اتصال OpenRouter."""
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            json={
+                "model": "google/gemini-2.0-flash-001",
+                "messages": [{"role": "user", "content": "test"}],
+                "max_tokens": 5
+            },
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            },
+            timeout=15
+        )
+        if response.status_code == 200:
+            data = response.json()
+            model = data.get("model", "unknown")
+            return {"connected": True, "model": model, "message": "متصل ويعمل"}
+        else:
+            return {"connected": False, "message": f"HTTP {response.status_code}"}
+    except Exception as e:
+        return {"connected": False, "message": str(e)}
+
+
+def verify_webhook_connection(webhook_url, test_type="update"):
+    """التحقق الديناميكي من اتصال Make.com webhook."""
+    try:
+        if test_type == "update":
+            test_payload = {
+                "products": [{
+                    "product_id": "CONN_TEST",
+                    "name": "اختبار اتصال",
+                    "price": 0,
+                    "sale_price": 0,
+                }]
+            }
+        else:
+            test_payload = {
+                "products": [{
+                    "name": "اختبار اتصال",
+                    "price": 0,
+                    "sku": "CONN_TEST",
+                    "category": "اختبار",
+                }]
+            }
+        
+        response = requests.post(
+            webhook_url,
+            json=test_payload,
+            headers={"Content-Type": "application/json"},
+            timeout=15
+        )
+        
+        if response.status_code == 200:
+            return {"connected": True, "message": "متصل ويعمل", "status_code": 200}
+        else:
+            return {"connected": False, "message": f"HTTP {response.status_code}", "status_code": response.status_code}
+    except Exception as e:
+        return {"connected": False, "message": str(e)}
+
+
+# ══════════════════════════════════════════════════════════════
+# دوال مساعدة
+# ══════════════════════════════════════════════════════════════
+
 def call_backend(endpoint, method="POST", data=None, files=None):
     """استدعاء API الـ backend."""
     try:
@@ -199,23 +316,13 @@ def send_to_webhook(webhook_url, payload):
 
 
 def send_price_updates(products):
-    """
-    إرسال تحديثات الأسعار إلى Make.com → Salla.
-    
-    البيانات المرسلة:
-    {
-        "products": [
-            {"product_id": "...", "name": "...", "price": ..., "sale_price": ...},
-            ...
-        ]
-    }
-    """
+    """إرسال تحديثات الأسعار إلى Make.com → Salla."""
     payload = {
         "products": [
             {
                 "product_id": str(p.get("product_id", p.get("pid_my", p.get("id", "")))),
                 "name": p.get("المنتج", p.get("name", p.get("product_name", ""))),
-                "price": float(p.get("السعر_الجديد", p.get("recommended_price", p.get("سعر المنافس", 0)))),
+                "price": float(p.get("السعر_الجديد", p.get("recommended_price", p.get("سعر المنافس", p.get("سعر_المنافس", 0))))),
                 "sale_price": float(p.get("السعر_المخفض", p.get("sale_price", 0))),
             }
             for p in products
@@ -225,17 +332,7 @@ def send_price_updates(products):
 
 
 def send_new_products(products):
-    """
-    إرسال المنتجات الجديدة إلى Make.com → Salla.
-    
-    البيانات المرسلة:
-    {
-        "products": [
-            {"name": "...", "price": ..., "sku": "...", "category": "...", ...},
-            ...
-        ]
-    }
-    """
+    """إرسال المنتجات الجديدة إلى Make.com → Salla."""
     payload = {
         "products": [
             {
@@ -254,6 +351,61 @@ def send_new_products(products):
     return send_to_webhook(WEBHOOK_NEW_PRODUCTS, payload)
 
 
+def call_gemini(prompt, api_key=None):
+    """استدعاء Gemini AI مباشرة."""
+    key = api_key or st.session_state.gemini_key
+    if not key:
+        return {"success": False, "error": "مفتاح Gemini غير موجود"}
+    
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
+        response = requests.post(
+            url,
+            json={"contents": [{"parts": [{"text": prompt}]}]},
+            headers={"Content-Type": "application/json"},
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            text = data["candidates"][0]["content"]["parts"][0]["text"]
+            return {"success": True, "text": text}
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def call_openrouter(prompt, api_key=None):
+    """استدعاء OpenRouter AI مباشرة."""
+    key = api_key or st.session_state.openrouter_key
+    if not key:
+        return {"success": False, "error": "مفتاح OpenRouter غير موجود"}
+    
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            json={
+                "model": "google/gemini-2.0-flash-001",
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}"
+            },
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            text = data["choices"][0]["message"]["content"]
+            return {"success": True, "text": text}
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # ══════════════════════════════════════════════════════════════
 # الشريط الجانبي - الإعدادات والتنقل
 # ══════════════════════════════════════════════════════════════
@@ -262,26 +414,51 @@ with st.sidebar:
         "https://img.icons8.com/3d-fluency/94/diamond.png",
         width=60,
     )
-    st.title("💎 نظام التسعير v5.0")
+    st.title("💎 نظام التسعير v5.1")
     st.markdown("---")
     
     # ── الاتصالات ──
     st.subheader("🔌 الاتصالات والإعدادات")
     
-    # Gemini
+    # Gemini AI
     st.markdown("**🤖 Gemini AI**")
     gemini_key = st.text_input(
-        "API Key",
+        "Gemini API Key",
         value=st.session_state.gemini_key,
         type="password",
         key="gemini_input"
     )
     st.session_state.gemini_key = gemini_key
     
-    if gemini_key:
-        st.markdown('<p style="color: #28a745; font-weight: bold;">✅ متصل</p>', unsafe_allow_html=True)
-    else:
+    if st.session_state.gemini_connected is True:
+        st.markdown('<p style="color: #28a745; font-weight: bold;">✅ متصل ويعمل</p>', unsafe_allow_html=True)
+    elif st.session_state.gemini_connected is False:
         st.markdown('<p style="color: #dc3545; font-weight: bold;">❌ غير متصل</p>', unsafe_allow_html=True)
+    elif gemini_key:
+        st.markdown('<p style="color: #ff9800; font-weight: bold;">⏳ لم يتم التحقق بعد</p>', unsafe_allow_html=True)
+    else:
+        st.markdown('<p style="color: #dc3545; font-weight: bold;">❌ المفتاح مطلوب</p>', unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # OpenRouter AI
+    st.markdown("**🧠 OpenRouter AI**")
+    openrouter_key = st.text_input(
+        "OpenRouter API Key",
+        value=st.session_state.openrouter_key,
+        type="password",
+        key="openrouter_input"
+    )
+    st.session_state.openrouter_key = openrouter_key
+    
+    if st.session_state.openrouter_connected is True:
+        st.markdown('<p style="color: #28a745; font-weight: bold;">✅ متصل ويعمل</p>', unsafe_allow_html=True)
+    elif st.session_state.openrouter_connected is False:
+        st.markdown('<p style="color: #dc3545; font-weight: bold;">❌ غير متصل</p>', unsafe_allow_html=True)
+    elif openrouter_key:
+        st.markdown('<p style="color: #ff9800; font-weight: bold;">⏳ لم يتم التحقق بعد</p>', unsafe_allow_html=True)
+    else:
+        st.markdown('<p style="color: #dc3545; font-weight: bold;">❌ المفتاح مطلوب</p>', unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -302,15 +479,48 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Make.com - تحديث الأسعار
+    # Make.com - حالة الاتصال
     st.markdown("**⚡ Make.com - تحديث الأسعار**")
-    st.markdown(f'<p style="color: #28a745; font-weight: bold;">✅ متصل</p>', unsafe_allow_html=True)
+    if st.session_state.make_update_connected is True:
+        st.markdown('<p style="color: #28a745; font-weight: bold;">✅ متصل ويعمل</p>', unsafe_allow_html=True)
+    elif st.session_state.make_update_connected is False:
+        st.markdown('<p style="color: #dc3545; font-weight: bold;">❌ غير متصل</p>', unsafe_allow_html=True)
+    else:
+        st.markdown('<p style="color: #ff9800; font-weight: bold;">⏳ لم يتم التحقق بعد</p>', unsafe_allow_html=True)
     st.caption(f"Webhook: ...{WEBHOOK_UPDATE_PRICES[-20:]}")
     
-    # Make.com - إضافة منتجات
     st.markdown("**⚡ Make.com - إضافة منتجات**")
-    st.markdown(f'<p style="color: #28a745; font-weight: bold;">✅ متصل</p>', unsafe_allow_html=True)
+    if st.session_state.make_new_connected is True:
+        st.markdown('<p style="color: #28a745; font-weight: bold;">✅ متصل ويعمل</p>', unsafe_allow_html=True)
+    elif st.session_state.make_new_connected is False:
+        st.markdown('<p style="color: #dc3545; font-weight: bold;">❌ غير متصل</p>', unsafe_allow_html=True)
+    else:
+        st.markdown('<p style="color: #ff9800; font-weight: bold;">⏳ لم يتم التحقق بعد</p>', unsafe_allow_html=True)
     st.caption(f"Webhook: ...{WEBHOOK_NEW_PRODUCTS[-20:]}")
+    
+    st.markdown("---")
+    
+    # زر التحقق الشامل
+    if st.button("🔄 تحقق من جميع الاتصالات", use_container_width=True, type="primary"):
+        with st.spinner("⏳ جاري التحقق..."):
+            # Gemini
+            if st.session_state.gemini_key:
+                g_result = verify_gemini_connection(st.session_state.gemini_key)
+                st.session_state.gemini_connected = g_result["connected"]
+            
+            # OpenRouter
+            if st.session_state.openrouter_key:
+                o_result = verify_openrouter_connection(st.session_state.openrouter_key)
+                st.session_state.openrouter_connected = o_result["connected"]
+            
+            # Make.com webhooks
+            m1_result = verify_webhook_connection(WEBHOOK_UPDATE_PRICES, "update")
+            st.session_state.make_update_connected = m1_result["connected"]
+            
+            m2_result = verify_webhook_connection(WEBHOOK_NEW_PRODUCTS, "new")
+            st.session_state.make_new_connected = m2_result["connected"]
+            
+            st.rerun()
     
     st.markdown("---")
     
@@ -333,6 +543,7 @@ with st.sidebar:
             "🏠 لوحة القيادة",
             "📤 رفع الملفات",
             "🤖 تحليل Gemini",
+            "💬 محادثة AI",
             "📊 النتائج والمقارنات",
             "✅ الموافقات والإرسال",
             "📁 Google Drive",
@@ -343,7 +554,7 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.caption("الإصدار 5.0 | نظام التسعير الذكي")
+    st.caption("الإصدار 5.1 | نظام التسعير الذكي")
 
 # ══════════════════════════════════════════════════════════════
 # صفحة: لوحة القيادة
@@ -384,29 +595,91 @@ if page == "🏠 لوحة القيادة":
     else:
         st.info("📋 ابدأ بـ رفع الملفات أولاً")
     
-    # ── حالة الاتصالات ──
+    # ── حالة الاتصالات (ديناميكية) ──
     st.markdown("---")
     st.subheader("🔌 حالة الاتصالات")
     
-    conn_col1, conn_col2, conn_col3, conn_col4 = st.columns(4)
+    # زر التحقق الشامل
+    if st.button("🔄 تحقق من جميع الاتصالات الآن", use_container_width=True, type="primary", key="dashboard_verify"):
+        with st.spinner("⏳ جاري التحقق من جميع الاتصالات..."):
+            progress = st.progress(0)
+            status = st.empty()
+            
+            # 1. Gemini
+            status.info("🤖 جاري التحقق من Gemini AI...")
+            progress.progress(10)
+            if st.session_state.gemini_key:
+                g_result = verify_gemini_connection(st.session_state.gemini_key)
+                st.session_state.gemini_connected = g_result["connected"]
+            else:
+                st.session_state.gemini_connected = False
+            
+            # 2. OpenRouter
+            status.info("🧠 جاري التحقق من OpenRouter...")
+            progress.progress(30)
+            if st.session_state.openrouter_key:
+                o_result = verify_openrouter_connection(st.session_state.openrouter_key)
+                st.session_state.openrouter_connected = o_result["connected"]
+            else:
+                st.session_state.openrouter_connected = False
+            
+            # 3. Make.com - تحديث أسعار
+            status.info("⚡ جاري التحقق من Make.com (تحديث أسعار)...")
+            progress.progress(55)
+            m1_result = verify_webhook_connection(WEBHOOK_UPDATE_PRICES, "update")
+            st.session_state.make_update_connected = m1_result["connected"]
+            
+            # 4. Make.com - إضافة منتجات
+            status.info("⚡ جاري التحقق من Make.com (إضافة منتجات)...")
+            progress.progress(80)
+            m2_result = verify_webhook_connection(WEBHOOK_NEW_PRODUCTS, "new")
+            st.session_state.make_new_connected = m2_result["connected"]
+            
+            progress.progress(100)
+            status.success("✅ اكتمل التحقق من جميع الاتصالات!")
+            time.sleep(1)
+            st.rerun()
+    
+    # عرض حالة الاتصالات
+    conn_col1, conn_col2, conn_col3, conn_col4, conn_col5 = st.columns(5)
     
     with conn_col1:
-        if st.session_state.gemini_key:
-            st.success("🤖 Gemini AI: متصل")
+        if st.session_state.gemini_connected is True:
+            st.success("🤖 Gemini AI\n✅ متصل")
+        elif st.session_state.gemini_connected is False:
+            st.error("🤖 Gemini AI\n❌ غير متصل")
         else:
-            st.error("🤖 Gemini AI: غير متصل")
+            st.warning("🤖 Gemini AI\n⏳ لم يتحقق")
     
     with conn_col2:
-        if st.session_state.drive_folder_id:
-            st.success("📁 Google Drive: متصل")
+        if st.session_state.openrouter_connected is True:
+            st.success("🧠 OpenRouter\n✅ متصل")
+        elif st.session_state.openrouter_connected is False:
+            st.error("🧠 OpenRouter\n❌ غير متصل")
         else:
-            st.error("📁 Google Drive: غير متصل")
+            st.warning("🧠 OpenRouter\n⏳ لم يتحقق")
     
     with conn_col3:
-        st.success("⚡ Make - تحديث أسعار: متصل")
+        if st.session_state.drive_folder_id:
+            st.success("📁 Google Drive\n✅ متصل")
+        else:
+            st.error("📁 Google Drive\n❌ غير متصل")
     
     with conn_col4:
-        st.success("⚡ Make - إضافة منتجات: متصل")
+        if st.session_state.make_update_connected is True:
+            st.success("⚡ Make تحديث\n✅ متصل")
+        elif st.session_state.make_update_connected is False:
+            st.error("⚡ Make تحديث\n❌ غير متصل")
+        else:
+            st.warning("⚡ Make تحديث\n⏳ لم يتحقق")
+    
+    with conn_col5:
+        if st.session_state.make_new_connected is True:
+            st.success("⚡ Make إضافة\n✅ متصل")
+        elif st.session_state.make_new_connected is False:
+            st.error("⚡ Make إضافة\n❌ غير متصل")
+        else:
+            st.warning("⚡ Make إضافة\n⏳ لم يتحقق")
 
 # ══════════════════════════════════════════════════════════════
 # صفحة: رفع الملفات
@@ -458,16 +731,13 @@ elif page == "📤 رفع الملفات":
             status_text = st.empty()
             
             try:
-                # 1. تحميل الملفات
                 status_text.info("⏳ جاري تحميل الملفات...")
                 progress_bar.progress(20)
                 time.sleep(0.5)
                 
-                # 2. معالجة مع Gemini
                 status_text.info("🤖 جاري تحليل Gemini...")
                 progress_bar.progress(50)
                 
-                # استدعاء backend
                 result = call_backend("/api/analyze", data={
                     "gemini_enabled": bool(st.session_state.gemini_key),
                     "drive_enabled": bool(st.session_state.drive_folder_id),
@@ -501,10 +771,8 @@ elif page == "🤖 تحليل Gemini":
         st.markdown('<div class="gemini-box">', unsafe_allow_html=True)
         st.subheader("📊 نتائج التحليل")
         
-        # عرض النتائج
         results_df = pd.DataFrame(st.session_state.gemini_results)
         
-        # اختيار الأعمدة المهمة
         display_cols = [
             'product_name', 'current_price', 'cost', 
             'market_price', 'recommended_price', 'margin_percentage', 'confidence'
@@ -521,7 +789,6 @@ elif page == "🤖 تحليل Gemini":
         
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # تحميل النتائج
         st.markdown("---")
         
         output = BytesIO()
@@ -539,6 +806,73 @@ elif page == "🤖 تحليل Gemini":
         )
 
 # ══════════════════════════════════════════════════════════════
+# صفحة: محادثة AI (جديدة)
+# ══════════════════════════════════════════════════════════════
+elif page == "💬 محادثة AI":
+    st.markdown('<div class="tab-header"><h1>💬 محادثة مباشرة مع الذكاء الاصطناعي</h1></div>', unsafe_allow_html=True)
+    
+    # اختيار مزود AI
+    ai_provider = st.radio(
+        "اختر مزود الذكاء الاصطناعي:",
+        ["🤖 Gemini AI (Google)", "🧠 OpenRouter AI"],
+        horizontal=True
+    )
+    
+    st.markdown("---")
+    
+    # تهيئة سجل المحادثة
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    
+    # عرض سجل المحادثة
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "user":
+            st.markdown(f'**🧑 أنت:** {msg["content"]}')
+        else:
+            st.markdown(f'**🤖 AI:** {msg["content"]}')
+        st.markdown("---")
+    
+    # حقل الإدخال
+    user_input = st.text_area("اكتب رسالتك هنا:", placeholder="مثال: حلل لي أسعار العطور في السوق السعودي...", key="chat_input")
+    
+    col_send, col_clear = st.columns([3, 1])
+    
+    with col_send:
+        if st.button("📤 إرسال", use_container_width=True, type="primary"):
+            if user_input.strip():
+                # إضافة رسالة المستخدم
+                st.session_state.chat_history.append({"role": "user", "content": user_input})
+                
+                with st.spinner("⏳ جاري التفكير..."):
+                    if "Gemini" in ai_provider:
+                        if not st.session_state.gemini_key:
+                            st.error("❌ أدخل مفتاح Gemini أولاً")
+                        else:
+                            result = call_gemini(user_input)
+                            if result["success"]:
+                                st.session_state.chat_history.append({"role": "assistant", "content": result["text"]})
+                            else:
+                                st.error(f"❌ خطأ: {result['error']}")
+                    else:
+                        if not st.session_state.openrouter_key:
+                            st.error("❌ أدخل مفتاح OpenRouter أولاً")
+                        else:
+                            result = call_openrouter(user_input)
+                            if result["success"]:
+                                st.session_state.chat_history.append({"role": "assistant", "content": result["text"]})
+                            else:
+                                st.error(f"❌ خطأ: {result['error']}")
+                
+                st.rerun()
+            else:
+                st.warning("⚠️ اكتب رسالة أولاً")
+    
+    with col_clear:
+        if st.button("🗑️ مسح المحادثة", use_container_width=True):
+            st.session_state.chat_history = []
+            st.rerun()
+
+# ══════════════════════════════════════════════════════════════
 # صفحة: النتائج والمقارنات
 # ══════════════════════════════════════════════════════════════
 elif page == "📊 النتائج والمقارنات":
@@ -550,7 +884,6 @@ elif page == "📊 النتائج والمقارنات":
         results = st.session_state.results
         stats = results.get("stats", {})
         
-        # عرض الإحصائيات
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("إجمالي", stats.get("total", 0))
         c2.metric("🔺 رفع سعر", stats.get("raise_count", 0))
@@ -559,7 +892,6 @@ elif page == "📊 النتائج والمقارنات":
         
         st.markdown("---")
         
-        # عرض التبويبات
         tab1, tab2, tab3, tab4 = st.tabs(["🔺 رفع السعر", "🔻 خفض السعر", "✅ موافق", "🆕 مفقودة"])
         
         with tab1:
@@ -591,7 +923,7 @@ elif page == "📊 النتائج والمقارنات":
                 st.info("لا توجد منتجات مفقودة")
 
 # ══════════════════════════════════════════════════════════════
-# صفحة: الموافقات والإرسال (الصفحة الجديدة الرئيسية)
+# صفحة: الموافقات والإرسال
 # ══════════════════════════════════════════════════════════════
 elif page == "✅ الموافقات والإرسال":
     st.markdown('<div class="tab-header"><h1>✅ الموافقات والإرسال إلى سلة</h1></div>', unsafe_allow_html=True)
@@ -603,7 +935,6 @@ elif page == "✅ الموافقات والإرسال":
     </div>
     """, unsafe_allow_html=True)
     
-    # ── تبويبات الموافقة ──
     approval_tab1, approval_tab2, approval_tab3 = st.tabs([
         "🔄 تحديث الأسعار",
         "🆕 إضافة منتجات جديدة",
@@ -616,13 +947,11 @@ elif page == "✅ الموافقات والإرسال":
     with approval_tab1:
         st.subheader("🔄 المنتجات التي تحتاج تحديث أسعار")
         
-        # خيار 1: من نتائج المقارنة
         if st.session_state.results:
             results = st.session_state.results
             df_raise = results.get("raise")
             df_lower = results.get("lower")
             
-            # دمج المنتجات التي تحتاج تحديث
             update_products = []
             
             if df_raise is not None and not df_raise.empty:
@@ -652,30 +981,24 @@ elif page == "✅ الموافقات والإرسال":
             if update_products:
                 st.info(f"📊 تم العثور على **{len(update_products)}** منتج يحتاج تحديث سعر")
                 
-                # عرض الجدول مع checkboxes
                 df_updates = pd.DataFrame(update_products)
                 
-                # إضافة عمود الموافقة
                 st.markdown("### اختر المنتجات للموافقة:")
                 
-                # زر تحديد الكل / إلغاء الكل
                 col_sel1, col_sel2, col_sel3 = st.columns([1, 1, 3])
                 with col_sel1:
                     select_all_updates = st.button("✅ تحديد الكل", key="select_all_updates")
                 with col_sel2:
                     deselect_all_updates = st.button("❌ إلغاء الكل", key="deselect_all_updates")
                 
-                # تهيئة حالة التحديد
                 if "update_selections" not in st.session_state:
                     st.session_state.update_selections = [False] * len(update_products)
                 
-                # تحديث حالة التحديد
                 if select_all_updates:
                     st.session_state.update_selections = [True] * len(update_products)
                 if deselect_all_updates:
                     st.session_state.update_selections = [False] * len(update_products)
                 
-                # عرض كل منتج مع checkbox
                 selected_updates = []
                 for i, product in enumerate(update_products):
                     col_check, col_name, col_price, col_comp, col_diff, col_rec = st.columns([0.5, 3, 1.5, 1.5, 1.5, 1.5])
@@ -707,10 +1030,8 @@ elif page == "✅ الموافقات والإرسال":
                 
                 st.markdown("---")
                 
-                # عرض عدد المحدد
                 st.info(f"📌 تم تحديد **{len(selected_updates)}** من أصل **{len(update_products)}** منتج")
                 
-                # زر الموافقة والإرسال
                 col_btn1, col_btn2 = st.columns(2)
                 
                 with col_btn1:
@@ -719,7 +1040,6 @@ elif page == "✅ الموافقات والإرسال":
                                 disabled=len(selected_updates) == 0):
                         if selected_updates:
                             with st.spinner(f"⏳ جاري إرسال {len(selected_updates)} منتج إلى سلة عبر Make.com..."):
-                                # إرسال على دفعات (50 منتج لكل دفعة)
                                 batch_size = 50
                                 total_sent = 0
                                 total_failed = 0
@@ -733,7 +1053,6 @@ elif page == "✅ الموافقات والإرسال":
                                     else:
                                         total_failed += len(batch)
                                 
-                                # تسجيل الإرسال
                                 log_entry = {
                                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                     "type": "تحديث أسعار",
@@ -759,7 +1078,6 @@ elif page == "✅ الموافقات والإرسال":
                             st.warning("⚠️ اختر منتجات أولاً!")
                 
                 with col_btn2:
-                    # تحميل المنتجات المحددة كملف Excel
                     if selected_updates:
                         df_selected = pd.DataFrame(selected_updates)
                         output = BytesIO()
@@ -780,7 +1098,7 @@ elif page == "✅ الموافقات والإرسال":
         else:
             st.info("📋 ابدأ المعالجة أولاً من صفحة رفع الملفات")
         
-        # خيار 2: رفع ملف يدوي لتحديث الأسعار
+        # رفع ملف يدوي
         st.markdown("---")
         st.subheader("📤 أو ارفع ملف تحديث أسعار يدوياً")
         st.caption("الملف يجب أن يحتوي على أعمدة: product_id, name, price, sale_price")
@@ -833,7 +1151,6 @@ elif page == "✅ الموافقات والإرسال":
     with approval_tab2:
         st.subheader("🆕 المنتجات الجديدة التي تحتاج إضافة")
         
-        # من نتائج المقارنة - المنتجات المفقودة
         if st.session_state.results:
             results = st.session_state.results
             df_missing = results.get("missing")
@@ -841,17 +1158,14 @@ elif page == "✅ الموافقات والإرسال":
             if df_missing is not None and not df_missing.empty:
                 st.info(f"📊 تم العثور على **{len(df_missing)}** منتج جديد غير موجود في متجرك")
                 
-                # عرض الجدول مع checkboxes
                 st.markdown("### اختر المنتجات للإضافة:")
                 
-                # زر تحديد الكل / إلغاء الكل
                 col_ns1, col_ns2, col_ns3 = st.columns([1, 1, 3])
                 with col_ns1:
                     select_all_new = st.button("✅ تحديد الكل", key="select_all_new")
                 with col_ns2:
                     deselect_all_new = st.button("❌ إلغاء الكل", key="deselect_all_new")
                 
-                # تهيئة حالة التحديد
                 if "new_selections" not in st.session_state:
                     st.session_state.new_selections = [False] * len(df_missing)
                 
@@ -860,7 +1174,6 @@ elif page == "✅ الموافقات والإرسال":
                 if deselect_all_new:
                     st.session_state.new_selections = [False] * len(df_missing)
                 
-                # عرض كل منتج مع checkbox
                 selected_new = []
                 for i, (_, row) in enumerate(df_missing.iterrows()):
                     col_check, col_name, col_type, col_size = st.columns([0.5, 4, 1.5, 1.5])
@@ -886,7 +1199,6 @@ elif page == "✅ الموافقات والإرسال":
                 
                 st.info(f"📌 تم تحديد **{len(selected_new)}** من أصل **{len(df_missing)}** منتج")
                 
-                # زر الموافقة والإرسال
                 col_nbtn1, col_nbtn2 = st.columns(2)
                 
                 with col_nbtn1:
@@ -938,7 +1250,7 @@ elif page == "✅ الموافقات والإرسال":
         else:
             st.info("📋 ابدأ المعالجة أولاً من صفحة رفع الملفات")
         
-        # خيار 2: رفع ملف يدوي لإضافة منتجات
+        # رفع ملف يدوي
         st.markdown("---")
         st.subheader("📤 أو ارفع ملف منتجات جديدة يدوياً")
         st.caption("الملف يجب أن يحتوي على أعمدة: name, price, sku, category")
@@ -1011,7 +1323,6 @@ elif page == "✅ الموافقات والإرسال":
         else:
             st.info("📋 لا توجد إرسالات سابقة")
         
-        # زر مسح السجل
         if all_logs:
             if st.button("🗑️ مسح سجل الإرسالات", type="secondary"):
                 st.session_state.sent_updates_log = []
@@ -1064,67 +1375,55 @@ elif page == "⚡ Make.com":
     
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("""
+        status_update = "✅ مفعّل ويعمل" if st.session_state.make_update_connected else "⏳ لم يتم التحقق"
+        st.markdown(f"""
         **⚡ سيناريو تحديث الأسعار:**
-        - الحالة: ✅ مفعّل
+        - الحالة: {status_update}
         - النوع: Webhook → Iterator → Salla Update Product
         - التشغيل: فوري عند وصول البيانات
+        - Webhook: `...{WEBHOOK_UPDATE_PRICES[-25:]}`
         """)
     
     with col2:
-        st.markdown("""
+        status_new = "✅ مفعّل ويعمل" if st.session_state.make_new_connected else "⏳ لم يتم التحقق"
+        st.markdown(f"""
         **⚡ سيناريو إضافة المنتجات:**
-        - الحالة: ✅ مفعّل
+        - الحالة: {status_new}
         - النوع: Webhook → Iterator → Salla Create Product
         - التشغيل: فوري عند وصول البيانات
+        - Webhook: `...{WEBHOOK_NEW_PRODUCTS[-25:]}`
         """)
     
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # اختبار الاتصال
-    st.subheader("🧪 اختبار الاتصال")
+    # اختبار الاتصال الديناميكي
+    st.subheader("🧪 اختبار الاتصال الديناميكي")
     
     test_col1, test_col2 = st.columns(2)
     
     with test_col1:
         if st.button("🧪 اختبار webhook تحديث الأسعار", use_container_width=True):
-            with st.spinner("⏳ جاري الاختبار..."):
-                test_payload = {
-                    "products": [
-                        {
-                            "product_id": "TEST_001",
-                            "name": "منتج تجريبي - اختبار الاتصال",
-                            "price": 100,
-                            "sale_price": 0,
-                        }
-                    ]
-                }
-                result = send_to_webhook(WEBHOOK_UPDATE_PRICES, test_payload)
-                if result["success"]:
-                    st.success("✅ الاتصال يعمل بنجاح!")
+            with st.spinner("⏳ جاري الاختبار الحقيقي..."):
+                result = verify_webhook_connection(WEBHOOK_UPDATE_PRICES, "update")
+                if result["connected"]:
+                    st.session_state.make_update_connected = True
+                    st.success(f"✅ الاتصال يعمل بنجاح! (HTTP {result['status_code']})")
                 else:
-                    st.error(f"❌ فشل الاتصال: {result.get('error', '')}")
+                    st.session_state.make_update_connected = False
+                    st.error(f"❌ فشل الاتصال: {result['message']}")
     
     with test_col2:
         if st.button("🧪 اختبار webhook إضافة المنتجات", use_container_width=True):
-            with st.spinner("⏳ جاري الاختبار..."):
-                test_payload = {
-                    "products": [
-                        {
-                            "name": "منتج تجريبي - اختبار الاتصال",
-                            "price": 100,
-                            "sku": "TEST_SKU_001",
-                            "category": "اختبار",
-                        }
-                    ]
-                }
-                result = send_to_webhook(WEBHOOK_NEW_PRODUCTS, test_payload)
-                if result["success"]:
-                    st.success("✅ الاتصال يعمل بنجاح!")
+            with st.spinner("⏳ جاري الاختبار الحقيقي..."):
+                result = verify_webhook_connection(WEBHOOK_NEW_PRODUCTS, "new")
+                if result["connected"]:
+                    st.session_state.make_new_connected = True
+                    st.success(f"✅ الاتصال يعمل بنجاح! (HTTP {result['status_code']})")
                 else:
-                    st.error(f"❌ فشل الاتصال: {result.get('error', '')}")
+                    st.session_state.make_new_connected = False
+                    st.error(f"❌ فشل الاتصال: {result['message']}")
     
     st.markdown("---")
     
@@ -1150,7 +1449,7 @@ elif page == "🎬 استديو مهووس":
     st.markdown('<div class="tab-header"><h1>🎬 استديو مهووس - إنشاء محتوى</h1></div>', unsafe_allow_html=True)
     
     st.markdown('<div class="studio-box">', unsafe_allow_html=True)
-    st.subheader("📸 إنشاء منشورات وفيديوهات")
+    st.subheader("📸 إنشاء منشورات وفيديوهات بالذكاء الاصطناعي")
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown("---")
@@ -1161,25 +1460,77 @@ elif page == "🎬 استديو مهووس":
         ["📸 صورة منتج", "🎥 فيديو قصير", "📝 منشور نصي", "🎨 تصميم إعلاني"]
     )
     
+    # اختيار مزود AI
+    ai_for_studio = st.selectbox(
+        "مزود الذكاء الاصطناعي:",
+        ["Gemini AI", "OpenRouter AI"]
+    )
+    
     if content_type == "📸 صورة منتج":
-        st.subheader("📸 إنشاء صورة منتج")
+        st.subheader("📸 إنشاء وصف صورة منتج")
         
         product_name = st.text_input("اسم المنتج")
         product_description = st.text_area("وصف المنتج")
         
-        if st.button("🎨 إنشاء صورة", use_container_width=True, type="primary"):
-            st.info("⏳ جاري إنشاء الصورة...")
-            st.success("✅ تم إنشاء الصورة!")
+        if st.button("🎨 إنشاء وصف تسويقي", use_container_width=True, type="primary"):
+            if product_name:
+                prompt = f"""أنشئ وصفاً تسويقياً احترافياً لمنتج العطر التالي:
+                اسم المنتج: {product_name}
+                الوصف: {product_description}
+                
+                أريد:
+                1. عنوان جذاب
+                2. وصف تسويقي (3-4 أسطر)
+                3. هاشتاقات مناسبة
+                4. نص إعلاني قصير للسوشيال ميديا
+                """
+                
+                with st.spinner("⏳ جاري الإنشاء بالذكاء الاصطناعي..."):
+                    if ai_for_studio == "Gemini AI":
+                        result = call_gemini(prompt)
+                    else:
+                        result = call_openrouter(prompt)
+                    
+                    if result["success"]:
+                        st.markdown("### 📝 النتيجة:")
+                        st.markdown(result["text"])
+                    else:
+                        st.error(f"❌ خطأ: {result['error']}")
+            else:
+                st.warning("⚠️ أدخل اسم المنتج أولاً")
     
     elif content_type == "🎥 فيديو قصير":
-        st.subheader("🎥 إنشاء فيديو قصير")
+        st.subheader("🎥 إنشاء سيناريو فيديو قصير")
         
         video_concept = st.text_area("فكرة الفيديو")
         duration = st.slider("مدة الفيديو (ثواني)", 5, 30, 15)
         
-        if st.button("🎬 إنشاء فيديو", use_container_width=True, type="primary"):
-            st.info("⏳ جاري إنشاء الفيديو...")
-            st.success("✅ تم إنشاء الفيديو!")
+        if st.button("🎬 إنشاء سيناريو", use_container_width=True, type="primary"):
+            if video_concept:
+                prompt = f"""أنشئ سيناريو فيديو قصير (Reels/TikTok) لمتجر عطور:
+                الفكرة: {video_concept}
+                المدة: {duration} ثانية
+                
+                أريد:
+                1. سيناريو مفصل (ثانية بثانية)
+                2. النص المنطوق (voiceover)
+                3. الموسيقى المقترحة
+                4. نصائح للتصوير
+                """
+                
+                with st.spinner("⏳ جاري الإنشاء..."):
+                    if ai_for_studio == "Gemini AI":
+                        result = call_gemini(prompt)
+                    else:
+                        result = call_openrouter(prompt)
+                    
+                    if result["success"]:
+                        st.markdown("### 🎬 السيناريو:")
+                        st.markdown(result["text"])
+                    else:
+                        st.error(f"❌ خطأ: {result['error']}")
+            else:
+                st.warning("⚠️ أدخل فكرة الفيديو أولاً")
     
     elif content_type == "📝 منشور نصي":
         st.subheader("📝 إنشاء منشور نصي")
@@ -1188,15 +1539,62 @@ elif page == "🎬 استديو مهووس":
         platform = st.selectbox("المنصة", ["Instagram", "TikTok", "Facebook", "Twitter"])
         
         if st.button("✍️ إنشاء منشور", use_container_width=True, type="primary"):
-            st.info("⏳ جاري إنشاء المنشور...")
-            st.success("✅ تم إنشاء المنشور!")
+            if post_topic:
+                prompt = f"""أنشئ منشوراً احترافياً لمتجر عطور على منصة {platform}:
+                الموضوع: {post_topic}
+                
+                أريد:
+                1. نص المنشور (مناسب لـ {platform})
+                2. هاشتاقات مناسبة
+                3. وقت النشر المثالي
+                4. نصائح لزيادة التفاعل
+                """
+                
+                with st.spinner("⏳ جاري الإنشاء..."):
+                    if ai_for_studio == "Gemini AI":
+                        result = call_gemini(prompt)
+                    else:
+                        result = call_openrouter(prompt)
+                    
+                    if result["success"]:
+                        st.markdown("### 📝 المنشور:")
+                        st.markdown(result["text"])
+                    else:
+                        st.error(f"❌ خطأ: {result['error']}")
+            else:
+                st.warning("⚠️ أدخل موضوع المنشور أولاً")
     
     elif content_type == "🎨 تصميم إعلاني":
-        st.subheader("🎨 إنشاء تصميم إعلاني")
+        st.subheader("🎨 إنشاء نص تصميم إعلاني")
         
         ad_headline = st.text_input("عنوان الإعلان")
         ad_description = st.text_area("وصف الإعلان")
         
-        if st.button("🎨 إنشاء تصميم", use_container_width=True, type="primary"):
-            st.info("⏳ جاري إنشاء التصميم...")
-            st.success("✅ تم إنشاء التصميم!")
+        if st.button("🎨 إنشاء نص إعلاني", use_container_width=True, type="primary"):
+            if ad_headline:
+                prompt = f"""أنشئ نصاً إعلانياً احترافياً لمتجر عطور:
+                العنوان: {ad_headline}
+                الوصف: {ad_description}
+                
+                أريد:
+                1. عنوان رئيسي جذاب
+                2. عنوان فرعي
+                3. نص الإعلان (قصير ومؤثر)
+                4. دعوة للعمل (CTA)
+                5. ألوان مقترحة للتصميم
+                6. أفكار للتصميم البصري
+                """
+                
+                with st.spinner("⏳ جاري الإنشاء..."):
+                    if ai_for_studio == "Gemini AI":
+                        result = call_gemini(prompt)
+                    else:
+                        result = call_openrouter(prompt)
+                    
+                    if result["success"]:
+                        st.markdown("### 🎨 النص الإعلاني:")
+                        st.markdown(result["text"])
+                    else:
+                        st.error(f"❌ خطأ: {result['error']}")
+            else:
+                st.warning("⚠️ أدخل عنوان الإعلان أولاً")
