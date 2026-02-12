@@ -162,8 +162,14 @@ def _get_price(record):
 
 
 def _get_id(record):
-    """استخراج المعرف من سجل."""
-    return _get_field(record, "id", "رقم المنتج", "product_id") or 0
+    """استخراج المعرف من سجل وتحويله لعدد صحيح."""
+    val = _get_field(record, "id", "رقم المنتج", "product_id")
+    if val is None:
+        return 0
+    try:
+        return int(float(val))  # تحويل float مثل 565825080.0 إلى int 565825080
+    except (ValueError, TypeError):
+        return str(val)
 
 
 # ===== كشف الشواذ (IQR Method) =====

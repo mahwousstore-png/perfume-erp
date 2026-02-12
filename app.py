@@ -347,9 +347,83 @@ def send_to_webhook(webhook_url, payload):
     except Exception as e:
         return {"success": False, "error": str(e), "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
+def _safe_int_id(val):
+    """تحويل product_id إلى عدد صحيح نظيف (بدون .0)"""
+    if val is None or val == "" or val == 0:
+        return ""
+    try:
+        return str(int(float(val)))
+    except (ValueError, TypeError):
+        return str(val)
+
+# ── تحميل ماركات وتصنيفات سلة من الملفات ──────────────────────────────
+def _load_salla_brands():
+    """تحميل 521 ماركة من ملف سلة وبناء قائمة مطابقة (عربي + إنجليزي)"""
+    try:
+        df = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "brands.csv"))
+        brand_map = []  # [(full_name, search_terms)]
+        for b in df["اسم الماركة"].dropna().tolist():
+            b = str(b).strip()
+            terms = [b.lower()]  # الاسم الكامل
+            if "|" in b:
+                parts = b.split("|")
+                ar = parts[0].strip()
+                en = parts[1].strip() if len(parts) > 1 else ""
+                if ar: terms.append(ar.lower())
+                if en: terms.append(en.lower())
+            brand_map.append((b, terms))
+        # ترتيب بالأطول أولاً للمطابقة الأدق
+        brand_map.sort(key=lambda x: max(len(t) for t in x[1]), reverse=True)
+        return brand_map
+    except Exception:
+        return []
+
+def _load_salla_categories():
+    """تحميل 88 تصنيف من ملف سلة"""
+    try:
+        df = pd.read_csv(os.path.join(os.path.dirname(__file__), "data", "categories.csv"))
+        return df["التصنيفات"].dropna().tolist()
+    except Exception:
+        return []
+
+_SALLA_BRANDS = _load_salla_brands()  # تحميل مرة واحدة
+_SALLA_CATEGORIES = _load_salla_categories()
+
+def _extract_brand(name):
+    """استخراج الماركة من اسم المنتج باستخدام 521 ماركة من سلة"""
+    name_lower = name.lower()
+    for full_name, terms in _SALLA_BRANDS:
+        for term in terms:
+            if term in name_lower:
+                return full_name
+    return "عطور"
+
+def _extract_category(name, product_type=""):
+    """استخراج التصنيف من اسم المنتج باستخدام 88 تصنيف من سلة"""
+    combined = f"{name} {product_type}".lower()
+    # قواعد مخصصة بالأولوية
+    if "تستر" in combined:
+        return "عطور التستر"
+    if "طقم" in combined or "مجموع" in combined or "set" in combined:
+        return "مجموعات و هدايا"
+    if "شعر" in combined or "hair" in combined:
+        return "عطور الشعر"
+    if "جسم" in combined or "body" in combined:
+        return "عطور الجسم"
+    if "عينة" in combined or "sample" in combined or "ميني" in combined:
+        return "عطور عينات ميني"
+    if "بخور" in combined:
+        return "العود و البخور"
+    if "عود" in combined:
+        return "عود طبيعي"
+    if "معطر" in combined:
+        return "معطرات المنازل"
+    # افتراضي
+    return "العطور"
+
 def send_price_updates(products):
     payload = {"products": [
-        {"product_id": str(p.get("product_id", p.get("pid_my", p.get("id", "")))),
+        {"product_id": _safe_int_id(p.get("product_id", p.get("pid_my", p.get("id", "")))),
          "name": p.get("المنتج", p.get("name", "")),
          "price": float(p.get("السعر الموصى", p.get("recommended_price", p.get("أقل سعر منافس", p.get("سعر المنافس", 0))))),
          "sale_price": float(p.get("السعر_المخفض", p.get("sale_price", 0))),
@@ -362,20 +436,41 @@ def send_price_updates(products):
 def send_new_products(products):
     # تنسيق يتوافق مع Make.com blueprint:
     # Iterator يستخدم {{1.data}} وSalla CreateProduct يستخدم أسماء عربية
-    payload = {"data": [
-        {"أسم المنتج": p.get("المنتج", p.get("name", "")),
-         "سعر المنتج": float(p.get("السعر", p.get("price", p.get("أقل سعر منافس", 0)))),
-         "رمز المنتج sku": p.get("sku", p.get("رمز المنتج", "")),
-         "الوزن": 0.1,
-         "سعر التكلفة": 0,
-         "السعر المخفض": 0,
-         "الوصف": p.get("الوصف", p.get("description", f"عطر {p.get('المنتج', p.get('name', ''))} - {p.get('النوع', p.get('type', ''))} - {p.get('الحجم', p.get('size', ''))}")),
-         "التصنيف": p.get("التصنيف", p.get("category", "")),
-         "الماركة": p.get("الماركة", p.get("brand", "")),
-         "الحجم": str(p.get("الحجم", p.get("size", ""))),
-         "النوع": p.get("النوع", p.get("type", ""))}
-        for p in products
-    ]}
+    import hashlib, time
+    payload = {"data": []}
+    for p in products:
+        name = p.get("المنتج", p.get("name", ""))
+        price = float(p.get("السعر", p.get("price", p.get("أقل سعر منافس", 0))))
+        # توليد SKU تلقائي إذا كان فارغاً
+        sku = p.get("sku", p.get("رمز المنتج", ""))
+        if not sku:
+            sku = f"PERF-{hashlib.md5(name.encode()).hexdigest()[:8].upper()}"
+        # استخراج الماركة تلقائياً إذا كانت فارغة
+        brand = p.get("الماركة", p.get("brand", ""))
+        if not brand:
+            brand = _extract_brand(name)
+        # تصنيف افتراضي إذا كان فارغاً - يستخدم 88 تصنيف من سلة
+        category = p.get("التصنيف", p.get("category", ""))
+        if not category:
+            p_type = p.get("النوع", p.get("type", ""))
+            category = _extract_category(name, str(p_type))
+        # بناء الوصف
+        desc = p.get("الوصف", p.get("description", ""))
+        if not desc:
+            desc = f"{name} - {p.get('النوع', p.get('type', ''))} - {p.get('الحجم', p.get('size', ''))}"
+        payload["data"].append({
+            "أسم المنتج": name,
+            "سعر المنتج": price,
+            "رمز المنتج sku": sku,
+            "الوزن": 0.1,
+            "سعر التكلفة": 0,
+            "السعر المخفض": 0,
+            "الوصف": desc,
+            "التصنيف": category,
+            "الماركة": brand,
+            "الحجم": str(p.get("الحجم", p.get("size", ""))),
+            "النوع": p.get("النوع", p.get("type", ""))
+        })
     return send_to_webhook(WEBHOOK_NEW_PRODUCTS, payload)
 
 def call_gemini(prompt, api_key=None):
