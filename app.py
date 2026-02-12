@@ -1,5 +1,5 @@
 """
-نظام التسعير الذكي للعطور v7.3
+نظام التسعير الذكي للعطور v7.4
 ═══════════════════════════════════
 15 قسم كامل | Gemini AI + OpenRouter | Make.com | Google Drive | Supabase
 """
@@ -15,7 +15,7 @@ from io import BytesIO
 
 # ── إعدادات الصفحة ─────────────────────────────────────────
 st.set_page_config(
-    page_title="نظام التسعير الذكي v7.3",
+    page_title="نظام التسعير الذكي v7.4",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -724,7 +724,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
 
 with st.sidebar:
     st.markdown("## 💎 نظام التسعير الذكي")
-    st.markdown("**الإصدار:** v7.3")
+    st.markdown("**الإصدار:** v7.4")
     st.markdown("---")
     
     # حالة الاتصالات
@@ -1756,7 +1756,7 @@ elif section == "⚙️ الإعدادات":
         st.markdown("---")
         st.markdown("### 📊 معلومات النظام")
         st.json({
-            "الإصدار": "v7.3",
+            "الإصدار": "v7.4",
             "قاعدة البيانات": "Supabase Cloud",
             "Gemini Key": "✅ موجود" if st.session_state.gemini_key else "❌ مفقود",
             "OpenRouter Key": "✅ موجود" if st.session_state.openrouter_key else "❌ مفقود",
@@ -1771,6 +1771,6 @@ elif section == "⚙️ الإعدادات":
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #888; padding: 10px;">
-    💎 نظام التسعير الذكي v7.3 | مهووس للعطور | 2026
+    💎 نظام التسعير الذكي v7.4 | مهووس للعطور | 2026
 </div>
 """, unsafe_allow_html=True)
