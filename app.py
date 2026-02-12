@@ -360,7 +360,10 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
         st.info(f"📋 لا توجد منتجات في قسم {section_label}")
         return
     
-    st.info(f"📊 **{len(df)}** منتج في قسم {section_label}")
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border-radius: 12px; padding: 15px; margin: 10px 0; text-align: center;">
+        <h3 style="margin:0; color: #1565c0;">📊 عداد المنتجات: <span style="font-size: 1.8rem; color: #d32f2f;">{len(df)}</span> منتج في قسم {section_label}</h3>
+    </div>""", unsafe_allow_html=True)
     
     # أزرار تحديد الكل / إلغاء الكل
     col_s1, col_s2, col_s3 = st.columns([1, 1, 3])
@@ -405,7 +408,10 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                 st.markdown('🟢 عادي')
     
     st.markdown("---")
-    st.info(f"📌 تم تحديد **{len(selected)}** من أصل **{len(df)}** منتج")
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #fff8e1, #ffecb3); border-radius: 10px; padding: 12px; text-align: center;">
+        <b>📌 تم تحديد <span style="font-size: 1.5rem; color: #e65100;">{len(selected)}</span> من أصل <span style="font-size: 1.5rem; color: #1565c0;">{len(df)}</span> منتج</b>
+    </div>""", unsafe_allow_html=True)
     
     col_b1, col_b2 = st.columns(2)
     with col_b1:
@@ -615,26 +621,38 @@ elif section == "📤 رفع الملفات":
                           st.session_state.algorithm_settings.get("threshold", 65), 5)
     st.session_state.algorithm_settings["threshold"] = threshold
     
+    # عرض حالة الملفات المرفوعة
+    if st.session_state.my_file:
+        st.success(f"✅ ملف المتجر محمل: {st.session_state.my_file['name']}")
+    if st.session_state.supplier_files:
+        st.success(f"✅ {len(st.session_state.supplier_files)} ملف منافس محمل")
+    
     if st.button("🚀 بدء المعالجة", type="primary", use_container_width=True,
                  disabled=not (st.session_state.my_file and st.session_state.supplier_files)):
         from engine import run_full_analysis
         
         progress_bar = st.progress(0)
         status_text = st.empty()
+        counter_text = st.empty()
         
         status_text.text("⏳ جاري تحميل الملفات...")
+        counter_text.markdown(f"**📦 ملف المتجر:** {st.session_state.my_file['name']} | **🏪 ملفات المنافسين:** {len(st.session_state.supplier_files)} ملف")
         progress_bar.progress(10)
         
-        status_text.text("⏳ جاري المطابقة والتحليل...")
-        progress_bar.progress(30)
+        def progress_callback(percent, message):
+            progress_bar.progress(min(percent, 99))
+            status_text.text(message)
+        
+        progress_callback(20, "⏳ جاري المطابقة والتحليل...")
         
         results = run_full_analysis(
             st.session_state.my_file,
             st.session_state.supplier_files,
-            threshold=threshold
+            threshold=threshold,
+            progress_callback=progress_callback
         )
         
-        progress_bar.progress(80)
+        progress_bar.progress(90)
         
         if "error" in results and results.get("stats", {}) == {}:
             st.error(f"❌ خطأ: {results['error']}")
@@ -649,6 +667,17 @@ elif section == "📤 رفع الملفات":
             status_text.text("✅ اكتملت المعالجة!")
             
             stats = results.get("stats", {})
+            counter_text.markdown(f"""
+            ### 📊 عداد المنتجات
+            | الفئة | العدد |
+            |---|---|
+            | 📦 إجمالي المنتجات | **{stats.get('total', 0)}** |
+            | 🔴 تحتاج رفع | **{stats.get('raise_count', 0)}** |
+            | 🟡 تحتاج خفض | **{stats.get('lower_count', 0)}** |
+            | 🟢 موافق عليها | **{stats.get('approved_count', 0)}** |
+            | 🔵 مفقودة | **{stats.get('missing_count', 0)}** |
+            | 🏪 عدد المنافسين | **{stats.get('competitors', 0)}** |
+            """)
             st.markdown(f"""<div class="success-box">
                 <h2>🎉 اكتملت المعالجة بنجاح!</h2>
                 <p>📦 <b>{stats.get('total', 0)}</b> منتج | 
@@ -698,7 +727,10 @@ elif section == "🟢 موافق عليها":
     if st.session_state.results:
         df_approved = st.session_state.results.get("approved")
         if df_approved is not None and not df_approved.empty:
-            st.success(f"✅ **{len(df_approved)}** منتج بسعر مناسب")
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 12px; padding: 15px; margin: 10px 0; text-align: center;">
+                <h3 style="margin:0; color: #2e7d32;">✅ عداد المنتجات الموافق عليها: <span style="font-size: 1.8rem; color: #1b5e20;">{len(df_approved)}</span> منتج</h3>
+            </div>""", unsafe_allow_html=True)
             st.dataframe(df_approved, use_container_width=True)
             
             # تحميل Excel
@@ -725,7 +757,10 @@ elif section == "🔵 منتجات مفقودة":
     if st.session_state.results:
         df_missing = st.session_state.results.get("missing")
         if df_missing is not None and not df_missing.empty:
-            st.warning(f"⚠️ **{len(df_missing)}** منتج مفقود من متجرنا")
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border-radius: 12px; padding: 15px; margin: 10px 0; text-align: center;">
+                <h3 style="margin:0; color: #1565c0;">📊 عداد المنتجات المفقودة: <span style="font-size: 1.8rem; color: #d32f2f;">{len(df_missing)}</span> منتج</h3>
+            </div>""", unsafe_allow_html=True)
             
             # أزرار تحديد
             col_s1, col_s2, col_s3 = st.columns([1, 1, 3])
@@ -757,7 +792,10 @@ elif section == "🔵 منتجات مفقودة":
                     st.write(f"📏 {row.get('الحجم', '')}")
             
             st.markdown("---")
-            st.info(f"📌 تم تحديد **{len(selected_missing)}** من أصل **{len(df_missing)}** منتج")
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #fff8e1, #ffecb3); border-radius: 10px; padding: 12px; text-align: center;">
+                <b>📌 تم تحديد <span style="font-size: 1.5rem; color: #e65100;">{len(selected_missing)}</span> من أصل <span style="font-size: 1.5rem; color: #1565c0;">{len(df_missing)}</span> منتج</b>
+            </div>""", unsafe_allow_html=True)
             
             col_b1, col_b2 = st.columns(2)
             with col_b1:

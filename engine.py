@@ -328,7 +328,7 @@ def normalize_columns(df):
     
     return df_normalized
 
-def run_full_analysis(my_file, comp_files, threshold=65):
+def run_full_analysis(my_file, comp_files, threshold=65, progress_callback=None):
     """
     تشغيل التحليل الكامل للمنتجات.
     
@@ -375,7 +375,13 @@ def run_full_analysis(my_file, comp_files, threshold=65):
     if not all_comp_products:
         return {"error": "لا توجد منتجات صحيحة في ملفات المنافسين", "stats": {}}
     
+    if progress_callback:
+        progress_callback(40, f"⏳ جاري مطابقة {len(my_products)} منتج مع {len(all_comp_products)} منتج منافس...")
+    
     match_results = match_products(my_products, all_comp_products, threshold)
+    
+    if progress_callback:
+        progress_callback(70, f"✅ تمت المطابقة! جاري تصنيف النتائج...")
     
     # 4. تحويل النتائج إلى DataFrames
     df_raise = pd.DataFrame([
