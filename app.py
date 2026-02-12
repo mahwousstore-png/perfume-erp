@@ -288,16 +288,28 @@ init_session()
 # ══════════════════════════════════════════════════════════════
 
 def verify_gemini_connection(api_key):
-    try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
-        response = requests.post(url, json={"contents": [{"parts": [{"text": "test"}]}]},
-                                 headers={"Content-Type": "application/json"}, timeout=10)
-        if response.status_code == 200:
-            return {"connected": True, "model": "gemini-2.0-flash", "message": "متصل ويعمل"}
-        else:
-            return {"connected": False, "message": response.json().get("error", {}).get("message", "خطأ")}
-    except Exception as e:
-        return {"connected": False, "message": str(e)}
+    if not api_key or len(api_key) < 10:
+        return {"connected": False, "message": "مفتاح API مفقود أو غير صالح"}
+    for attempt in range(2):
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+            response = requests.post(url, json={"contents": [{"parts": [{"text": "test"}]}]},
+                                     headers={"Content-Type": "application/json"}, timeout=20)
+            if response.status_code == 200:
+                return {"connected": True, "model": "gemini-2.0-flash", "message": "متصل ويعمل"}
+            else:
+                err_msg = "خطأ"
+                try:
+                    err_msg = response.json().get("error", {}).get("message", f"HTTP {response.status_code}")
+                except:
+                    err_msg = f"HTTP {response.status_code}"
+                return {"connected": False, "message": err_msg}
+        except requests.exceptions.Timeout:
+            if attempt == 0:
+                continue  # retry once
+            return {"connected": False, "message": "انتهت مهلة الاتصال (timeout)"}
+        except Exception as e:
+            return {"connected": False, "message": str(e)}
 
 def verify_openrouter_connection(api_key):
     try:
