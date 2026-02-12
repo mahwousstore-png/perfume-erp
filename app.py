@@ -1899,3 +1899,19 @@ st.markdown("""
     💎 نظام التسعير الذكي v8.0 | مهووس للعطور | 2026
 </div>
 """, unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
+# الأقسام الجديدة v8.0
+# ═══════════════════════════════════════════════════════════════
+
+elif menu == "🤖 الأتمتة الذكية":
+    from modules import automation
+    automation.show_automation_page()
+
+elif menu == "🔔 التنبيهات":
+    from modules import alerts
+    alerts.show_alerts_page()
+
+elif menu == "🔍 منع التكرار":
+    from modules import deduplication
+    deduplication.show_deduplication_page()
