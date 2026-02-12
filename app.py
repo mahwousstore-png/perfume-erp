@@ -27,7 +27,7 @@ st.set_page_config(
     page_title="نظام التسعير الذكي v8.0",
     page_icon="💎",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="expanded"
 )
 
 # ── تهيئة الجلسة v8.0 ──────────────────────────────────────────
@@ -859,6 +859,9 @@ with st.sidebar:
         "⚡ Make أتمتة",
         "🔗 ربط الخوارزميات",
         "💾 قاعدة البيانات",
+        "🛒 المشتريات اليومية",
+        "🏪 إدارة الموردين",
+        "💰 مذكرة المصروفات",
         "⚙️ الإعدادات",
     ], key="main_section")
     
@@ -1768,7 +1771,28 @@ elif section == "💾 قاعدة البيانات":
             st.rerun()
 
 # ══════════════════════════════════════════════════════════════
-# 15. الإعدادات
+# المشتريات اليومية
+# ══════════════════════════════════════════════════════════════
+elif section == "🛒 المشتريات اليومية":
+    from modules.purchases import show_purchases_page
+    show_purchases_page()
+
+# ══════════════════════════════════════════════════════════════
+# إدارة الموردين
+# ══════════════════════════════════════════════════════════════
+elif section == "🏪 إدارة الموردين":
+    from modules.suppliers import show_suppliers_page
+    show_suppliers_page()
+
+# ══════════════════════════════════════════════════════════════
+# مذكرة المصروفات
+# ══════════════════════════════════════════════════════════════
+elif section == "💰 مذكرة المصروفات":
+    from modules.expenses import show_expenses_page
+    show_expenses_page()
+
+# ══════════════════════════════════════════════════════════════
+# الإعدادات
 # ══════════════════════════════════════════════════════════════
 elif section == "⚙️ الإعدادات":
     st.markdown("# ⚙️ الإعدادات")
@@ -1857,7 +1881,7 @@ elif section == "⚙️ الإعدادات":
         st.markdown("---")
         st.markdown("### 📊 معلومات النظام")
         st.json({
-            "الإصدار": "v7.4",
+            "الإصدار": "v8.0",
             "قاعدة البيانات": "Supabase Cloud",
             "Gemini Key": "✅ موجود" if st.session_state.gemini_key else "❌ مفقود",
             "OpenRouter Key": "✅ موجود" if st.session_state.openrouter_key else "❌ مفقود",
@@ -1872,6 +1896,6 @@ elif section == "⚙️ الإعدادات":
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #888; padding: 10px;">
-    💎 نظام التسعير الذكي v7.4 | مهووس للعطور | 2026
+    💎 نظام التسعير الذكي v8.0 | مهووس للعطور | 2026
 </div>
 """, unsafe_allow_html=True)
