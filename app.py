@@ -13,13 +13,27 @@ import os
 from datetime import datetime
 from io import BytesIO
 
+# ── استيراد الوحدات الجديدة v8.0 ──────────────────────────────
+try:
+    from modules.auth import init_session, show_login_page, show_logout_button, check_permission, log_action
+    from modules.styles import apply_custom_styles
+    V8_MODULES_AVAILABLE = True
+except ImportError:
+    V8_MODULES_AVAILABLE = False
+    print("⚠️ وحدات v8.0 غير متوفرة - التشغيل بالوضع v7.4")
+
 # ── إعدادات الصفحة ─────────────────────────────────────────
 st.set_page_config(
-    page_title="نظام التسعير الذكي v7.4",
+    page_title="نظام التسعير الذكي v8.0",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ── تهيئة الجلسة v8.0 ──────────────────────────────────────────
+if V8_MODULES_AVAILABLE:
+    init_session()
+    apply_custom_styles()
 
 # ── CSS مخصص ─────────────────────────────────────────────────
 st.markdown("""
