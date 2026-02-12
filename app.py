@@ -1,7 +1,7 @@
 """
 نظام التسعير الذكي للعطور v6.0
 ═══════════════════════════════════
-15 قسم كامل | Gemini AI + OpenRouter | Make.com | Google Drive | SQLite
+15 قسم كامل | Gemini AI + OpenRouter | Make.com | Google Drive | Supabase
 """
 
 import streamlit as st
@@ -9,7 +9,6 @@ import pandas as pd
 import requests
 import json
 import time
-import sqlite3
 import os
 from datetime import datetime
 from io import BytesIO
@@ -95,109 +94,155 @@ WEBHOOK_NEW_PRODUCTS = "https://hook.eu2.make.com/k6w6kwvn5spfgbfuhjvj4pijt79tkn
 DEFAULT_GEMINI_KEY = "AIzaSyAlTpWSkdyIKVavZy6MaaabSFBXBZbOmn8"
 DEFAULT_OPENROUTER_KEY = "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"
 
-# ── قاعدة البيانات ─────────────────────────────────────────
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pricing_data.db")
+# ── Supabase قاعدة البيانات السحابية ─────────────────────────
+SUPABASE_URL = "https://csivkasoqkivprldxqlc.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzaXZrYXNvcWtpdnBybGR4cWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDQ4NjMsImV4cCI6MjA4NjQyMDg2M30.jK2yZ-eyj3RtUVHjS5-mBr2I-OMnY_S5mefRrMEQ7sI"
+SUPABASE_HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
+}
 
-def init_database():
-    """تهيئة قاعدة البيانات SQLite."""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""CREATE TABLE IF NOT EXISTS analysis_results (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT,
-        product_name TEXT,
-        our_price REAL,
-        competitor_price REAL,
-        price_diff REAL,
-        diff_percent REAL,
-        recommendation TEXT,
-        risk_level TEXT,
-        product_id TEXT,
-        competitor_id TEXT,
-        status TEXT DEFAULT 'pending'
-    )""")
-    c.execute("""CREATE TABLE IF NOT EXISTS send_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT,
-        send_type TEXT,
-        total_products INTEGER,
-        sent_count INTEGER,
-        failed_count INTEGER,
-        webhook_used TEXT,
-        status TEXT
-    )""")
-    c.execute("""CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT
-    )""")
-    conn.commit()
-    conn.close()
-
-init_database()
+def supabase_request(method, table, data=None, params=None):
+    """طلب عام لـ Supabase REST API."""
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    if params:
+        url += "?" + "&".join([f"{k}={v}" for k, v in params.items()])
+    try:
+        if method == "GET":
+            r = requests.get(url, headers=SUPABASE_HEADERS, timeout=15)
+        elif method == "POST":
+            r = requests.post(url, headers=SUPABASE_HEADERS, json=data, timeout=15)
+        elif method == "DELETE":
+            r = requests.delete(url, headers=SUPABASE_HEADERS, timeout=15)
+        else:
+            return None
+        if r.status_code in [200, 201]:
+            return r.json() if r.text else []
+        else:
+            return None
+    except Exception:
+        return None
 
 def save_results_to_db(results):
-    """حفظ نتائج التحليل في قاعدة البيانات."""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    """حفظ نتائج التحليل في Supabase (هيكل JSONB)."""
+    import uuid
+    session_id = str(uuid.uuid4())[:8]
     
-    for category, rec_label in [("raise", "رفع سعر"), ("lower", "خفض سعر"), ("approved", "موافق")]:
-        df = results.get(category)
+    # حساب الإحصائيات
+    raise_df = results.get("raise")
+    lower_df = results.get("lower")
+    approved_df = results.get("approved")
+    missing_df = results.get("missing")
+    review_df = results.get("review")
+    
+    raise_count = len(raise_df) if raise_df is not None and not raise_df.empty else 0
+    lower_count = len(lower_df) if lower_df is not None and not lower_df.empty else 0
+    approved_count = len(approved_df) if approved_df is not None and not approved_df.empty else 0
+    missing_count = len(missing_df) if missing_df is not None and not missing_df.empty else 0
+    review_count = len(review_df) if review_df is not None and not review_df.empty else 0
+    total = raise_count + lower_count + approved_count
+    
+    # تحويل النتائج إلى JSON
+    results_json = {}
+    for key in ["raise", "lower", "approved", "missing", "review"]:
+        df = results.get(key)
         if df is not None and not df.empty:
-            for _, row in df.iterrows():
-                c.execute("""INSERT INTO analysis_results 
-                    (timestamp, product_name, our_price, competitor_price, price_diff, diff_percent, recommendation, risk_level, product_id, competitor_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (timestamp, row.get("المنتج", ""), row.get("السعر", 0), row.get("سعر المنافس", 0),
-                     row.get("الفرق", 0), row.get("النسبة %", 0), rec_label,
-                     row.get("الخطورة", "عادي"), row.get("pid_my", ""), row.get("pid_comp", "")))
-    conn.commit()
-    conn.close()
+            results_json[key] = df.to_dict(orient="records")
+    
+    data = {
+        "session_id": session_id,
+        "total_products": total,
+        "matched_products": total,
+        "price_increase": raise_count,
+        "price_decrease": lower_count,
+        "approved": approved_count,
+        "missing": missing_count,
+        "needs_review": review_count,
+        "results_json": json.dumps(results_json, ensure_ascii=False, default=str),
+        "store_filename": st.session_state.get("store_filename", ""),
+        "competitor_filename": st.session_state.get("competitor_filename", "")
+    }
+    supabase_request("POST", "analysis_results", data=data)
 
-def save_send_log(send_type, total, sent, failed, webhook):
-    """حفظ سجل الإرسال."""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""INSERT INTO send_log (timestamp, send_type, total_products, sent_count, failed_count, webhook_used, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), send_type, total, sent, failed, webhook,
-         "نجح" if failed == 0 else "جزئي"))
-    conn.commit()
-    conn.close()
+def save_send_log(send_type, total, sent, failed, webhook, products_data=None):
+    """حفظ سجل الإرسال في Supabase (هيكل JSONB)."""
+    data = {
+        "action_type": send_type,
+        "products_count": total,
+        "status": "نجح" if failed == 0 else "جزئي",
+        "webhook_response": f"sent:{sent}, failed:{failed}, webhook:{webhook[:50]}",
+        "products_json": json.dumps(products_data or [], ensure_ascii=False, default=str),
+        "session_id": st.session_state.get("current_session_id", "")
+    }
+    supabase_request("POST", "send_log", data=data)
 
 def get_db_stats():
-    """إحصائيات قاعدة البيانات."""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    stats = {}
-    c.execute("SELECT COUNT(*) FROM analysis_results")
-    stats["total_records"] = c.fetchone()[0]
-    c.execute("SELECT COUNT(*) FROM analysis_results WHERE recommendation='رفع سعر'")
-    stats["raise_count"] = c.fetchone()[0]
-    c.execute("SELECT COUNT(*) FROM analysis_results WHERE recommendation='خفض سعر'")
-    stats["lower_count"] = c.fetchone()[0]
-    c.execute("SELECT COUNT(*) FROM analysis_results WHERE recommendation='موافق'")
-    stats["approved_count"] = c.fetchone()[0]
-    c.execute("SELECT COUNT(*) FROM send_log")
-    stats["total_sends"] = c.fetchone()[0]
-    c.execute("SELECT COUNT(*) FROM send_log WHERE status='نجح'")
-    stats["successful_sends"] = c.fetchone()[0]
-    conn.close()
+    """إحصائيات قاعدة البيانات من Supabase."""
+    stats = {"total_records": 0, "raise_count": 0, "lower_count": 0, "approved_count": 0, "total_sends": 0, "successful_sends": 0}
+    try:
+        results = supabase_request("GET", "analysis_results", params={"select": "id,price_increase,price_decrease,approved,missing,needs_review", "order": "id.desc", "limit": "100"})
+        if results:
+            stats["total_records"] = len(results)
+            stats["raise_count"] = sum(r.get("price_increase", 0) or 0 for r in results)
+            stats["lower_count"] = sum(r.get("price_decrease", 0) or 0 for r in results)
+            stats["approved_count"] = sum(r.get("approved", 0) or 0 for r in results)
+        logs = supabase_request("GET", "send_log", params={"select": "id,status", "order": "id.desc", "limit": "100"})
+        if logs:
+            stats["total_sends"] = len(logs)
+            stats["successful_sends"] = sum(1 for l in logs if l.get("status") == "نجح")
+    except Exception:
+        pass
     return stats
 
 def get_all_records(limit=500):
-    """جلب جميع السجلات."""
-    conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql_query(f"SELECT * FROM analysis_results ORDER BY id DESC LIMIT {limit}", conn)
-    conn.close()
-    return df
+    """جلب جميع السجلات من Supabase."""
+    result = supabase_request("GET", "analysis_results", params={"select": "id,created_at,session_id,total_products,price_increase,price_decrease,approved,missing,needs_review,store_filename,competitor_filename", "order": "id.desc", "limit": str(limit)})
+    if result:
+        return pd.DataFrame(result)
+    return pd.DataFrame()
+
+def load_latest_results():
+    """تحميل آخر نتائج تحليل من Supabase وإعادتها إلى session_state."""
+    result = supabase_request("GET", "analysis_results", params={"select": "*", "order": "id.desc", "limit": "1"})
+    if result and len(result) > 0:
+        record = result[0]
+        results_json = record.get("results_json")
+        if results_json:
+            if isinstance(results_json, str):
+                results_json = json.loads(results_json)
+            restored = {}
+            for key in ["raise", "lower", "approved", "missing", "review"]:
+                if key in results_json:
+                    restored[key] = pd.DataFrame(results_json[key])
+                else:
+                    restored[key] = pd.DataFrame()
+            return restored
+    return None
 
 def get_send_logs(limit=100):
-    """جلب سجلات الإرسال."""
-    conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql_query(f"SELECT * FROM send_log ORDER BY id DESC LIMIT {limit}", conn)
-    conn.close()
-    return df
+    """جلب سجلات الإرسال من Supabase."""
+    result = supabase_request("GET", "send_log", params={"select": "*", "order": "id.desc", "limit": str(limit)})
+    if result:
+        return pd.DataFrame(result)
+    return pd.DataFrame()
+
+def save_setting(key, value):
+    """حفظ إعداد في Supabase."""
+    # حذف القديم أولاً
+    supabase_request("DELETE", "app_settings", params={"key": f"eq.{key}"})
+    supabase_request("POST", "app_settings", data={"key": key, "value": json.dumps(value, ensure_ascii=False, default=str)})
+
+def load_setting(key, default=None):
+    """تحميل إعداد من Supabase."""
+    result = supabase_request("GET", "app_settings", params={"select": "value", "key": f"eq.{key}", "limit": "1"})
+    if result and len(result) > 0:
+        try:
+            return json.loads(result[0]["value"])
+        except (json.JSONDecodeError, KeyError):
+            return result[0].get("value", default)
+    return default
 
 # ── تهيئة الجلسة ─────────────────────────────────────────
 def init_session():
@@ -1383,13 +1428,10 @@ elif section == "💾 قاعدة البيانات":
         st.warning("⚠️ **تحذير:** الحذف لا يمكن التراجع عنه!")
         
         if st.button("🗑️ حذف جميع السجلات القديمة (أكثر من 30 يوم)", type="secondary"):
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            c.execute("DELETE FROM analysis_results WHERE timestamp < datetime('now', '-30 days')")
-            deleted = c.rowcount
-            conn.commit()
-            conn.close()
-            st.success(f"✅ تم حذف {deleted} سجل قديم")
+            from datetime import timedelta
+            cutoff = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+            result = supabase_request("DELETE", "analysis_results", params={"timestamp": f"lt.{cutoff}"})
+            st.success("✅ تم حذف السجلات القديمة")
         
         if st.button("📊 إعادة حساب الإحصائيات"):
             st.rerun()
@@ -1487,11 +1529,12 @@ elif section == "⚙️ الإعدادات":
         st.markdown("### 📊 معلومات النظام")
         st.json({
             "الإصدار": "v6.0",
-            "قاعدة البيانات": DB_PATH,
+            "قاعدة البيانات": "Supabase Cloud",
             "Gemini Key": "✅ موجود" if st.session_state.gemini_key else "❌ مفقود",
             "OpenRouter Key": "✅ موجود" if st.session_state.openrouter_key else "❌ مفقود",
             "Webhook تحديث": WEBHOOK_UPDATE_PRICES[:50] + "...",
             "Webhook إضافة": WEBHOOK_NEW_PRODUCTS[:50] + "...",
+            "Supabase": SUPABASE_URL,
         })
 
 # ══════════════════════════════════════════════════════════════
