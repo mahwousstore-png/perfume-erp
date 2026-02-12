@@ -349,7 +349,7 @@ def send_price_updates(products):
     payload = {"products": [
         {"product_id": str(p.get("product_id", p.get("pid_my", p.get("id", "")))),
          "name": p.get("المنتج", p.get("name", "")),
-         "price": float(p.get("السعر الموصى", p.get("recommended_price", p.get("أقل سعر منافس", p.get("سعر المنافس", 0)))))),
+         "price": float(p.get("السعر الموصى", p.get("recommended_price", p.get("أقل سعر منافس", p.get("سعر المنافس", 0))))),
          "sale_price": float(p.get("السعر_المخفض", p.get("sale_price", 0))),
          "old_price": float(p.get("السعر", p.get("price", 0))),
          "competitor_price": float(p.get("أقل سعر منافس", p.get("سعر المنافس", 0)))}
