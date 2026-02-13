@@ -386,8 +386,12 @@ init_session()
 # دوال التحقق من الاتصالات
 # ══════════════════════════════════════════════════════════════
 
-def verify_gemini_connection(api_key, update_session=True):
+def verify_gemini_connection(api_key=None, update_session=True):
     """فحص اتصال Gemini وتحديث حالة Session تلقائياً."""
+    # استخدام المفتاح المدمج إذا لم يتم تمرير مفتاح
+    if api_key is None:
+        api_key = DEFAULT_GEMINI_KEY
+    
     if not api_key or len(api_key) < 10:
         result = {"connected": False, "message": "مفتاح API مفقود أو غير صالح"}
         if update_session:
@@ -629,6 +633,10 @@ def send_new_products(products):
 def call_gemini(prompt, api_key=None, max_retries=3):
     """استدعاء Gemini مع معالجة أخطاء وإعادة محاولة تلقائية."""
     import time
+    
+    # استخدام المفتاح المدمج إذا لم يتم تمرير مفتاح
+    if api_key is None:
+        api_key = DEFAULT_GEMINI_KEY
     
     key = api_key or st.session_state.gemini_key
     if not key:
@@ -944,7 +952,7 @@ if section == "🏠 لوحة القيادة":
     
     if st.button("🔄 تحقق من جميع الاتصالات", type="primary"):
         with st.spinner("⏳ جاري التحقق..."):
-            gem = verify_gemini_connection(st.session_state.gemini_key)  # يحدث Session تلقائياً
+            gem = verify_gemini_connection()  # يستخدم المفتاح المدمج
             
             ort = verify_openrouter_connection(st.session_state.openrouter_key)
             st.session_state.openrouter_connected = ort["connected"]
@@ -1714,17 +1722,37 @@ elif section == "🔗 ربط الخوارزميات":
 # 14. قاعدة البيانات
 # ══════════════════════════════════════════════════════════════
 elif section == "💾 قاعدة البيانات":
-    st.markdown("# 💾 قاعدة البيانات")
-    st.markdown("> عرض وإدارة جميع السجلات المحفوظة")
+    st.markdown("# 💾 قاعدة البيانات Supabase")
+    st.markdown("> عرض وإدارة جميع السجلات المحفوظة في السحابة")
     st.markdown("---")
     
-    # إحصائيات
+    # معلومات الاتصال
+    with st.expander("🔗 معلومات الاتصال بقاعدة البيانات"):
+        st.code(f"""
+Supabase URL: {SUPABASE_URL}
+Project ID: csivkasoqkivprldxqlc
+Region: AWS ap-southeast-1 (Singapore)
+Status: ✅ متصل
+الجداول:
+- analysis_results: نتائج التحليل
+- send_log: سجل الإرسالات
+- users: المستخدمين
+- suppliers: الموردين
+- purchases: المشتريات
+- expenses: المصروفات
+- audit_log: سجل التدقيق
+        """, language="text")
+        st.info("📌 يمكنك الوصول إلى لوحة تحكم Supabase من [supabase.com/dashboard](https://supabase.com/dashboard)")
+    
+    # إحصائيات محسّنة
     db_stats = get_db_stats()
-    c1, c2, c3, c4 = st.columns(4)
+    st.markdown("### 📊 إحصائيات قاعدة البيانات")
+    c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("📊 إجمالي السجلات", db_stats.get("total_records", 0))
     c2.metric("🔴 رفع سعر", db_stats.get("raise_count", 0))
     c3.metric("🟡 خفض سعر", db_stats.get("lower_count", 0))
     c4.metric("🟢 موافق", db_stats.get("approved_count", 0))
+    c5.metric("📤 إرسالات", db_stats.get("total_sends", 0))
     
     st.markdown("---")
     
@@ -1742,43 +1770,121 @@ elif section == "💾 قاعدة البيانات":
         
         records = get_all_records(filter_limit)
         if not records.empty:
-            if filter_rec != "الكل":
-                records = records[records["recommendation"] == filter_rec]
+            st.success(f"✅ تم تحميل **{len(records)}** سجل")
             
-            st.dataframe(records, use_container_width=True)
+            # عرض الجدول بتنسيق محسّن
+            st.dataframe(records, use_container_width=True, height=500)
             
-            # تحميل
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                records.to_excel(writer, sheet_name="سجلات", index=False)
-            output.seek(0)
-            st.download_button("📥 تحميل كـ Excel", data=output.getvalue(),
-                              file_name=f"db_records_{datetime.now():%Y%m%d}.xlsx",
-                              mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            # أزرار التحميل
+            col_d1, col_d2, col_d3 = st.columns(3)
+            with col_d1:
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    records.to_excel(writer, sheet_name="سجلات", index=False)
+                output.seek(0)
+                st.download_button("📅 تحميل Excel", data=output.getvalue(),
+                                  file_name=f"db_records_{datetime.now():%Y%m%d}.xlsx",
+                                  mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                  use_container_width=True)
+            with col_d2:
+                csv_data = records.to_csv(index=False).encode('utf-8-sig')
+                st.download_button("📄 تحميل CSV", data=csv_data,
+                                  file_name=f"db_records_{datetime.now():%Y%m%d}.csv",
+                                  mime="text/csv",
+                                  use_container_width=True)
+            with col_d3:
+                json_data = records.to_json(orient='records', force_ascii=False, indent=2)
+                st.download_button("📦 تحميل JSON", data=json_data,
+                                  file_name=f"db_records_{datetime.now():%Y%m%d}.json",
+                                  mime="application/json",
+                                  use_container_width=True)
         else:
             st.info("📋 لا توجد سجلات")
+            st.markdown("""
+            ### 💡 نصيحة
+            قم برفع ملفات المنافسين وبدء المعالجة لإنشاء سجلات جديدة.
+            """)
     
     with tab2:
         st.markdown("### 📤 سجل الإرسالات")
+        
+        # فلترة حسب الحالة
+        log_filter = st.selectbox("🔍 فلترة حسب الحالة", ["الكل", "نجح", "جزئي", "فشل"])
+        
         logs = get_send_logs()
         if not logs.empty:
-            st.dataframe(logs, use_container_width=True)
+            if log_filter != "الكل":
+                logs = logs[logs["status"] == log_filter]
+            
+            st.success(f"✅ تم تحميل **{len(logs)}** إرسالية")
+            st.dataframe(logs, use_container_width=True, height=400)
+            
+            # تحميل سجل الإرسالات
+            output_logs = BytesIO()
+            with pd.ExcelWriter(output_logs, engine='openpyxl') as writer:
+                logs.to_excel(writer, sheet_name="سجل الإرسالات", index=False)
+            output_logs.seek(0)
+            st.download_button("📅 تحميل سجل الإرسالات", data=output_logs.getvalue(),
+                              file_name=f"send_logs_{datetime.now():%Y%m%d}.xlsx",
+                              mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                              use_container_width=True)
         else:
             st.info("📋 لا توجد إرسالات")
     
     with tab3:
         st.markdown("### 🔧 إدارة قاعدة البيانات")
         
-        st.warning("⚠️ **تحذير:** الحذف لا يمكن التراجع عنه!")
+        st.warning("⚠️ **تحذير:** عمليات الحذف لا يمكن التراجع عنها!")
         
-        if st.button("🗑️ حذف جميع السجلات القديمة (أكثر من 30 يوم)", type="secondary"):
-            from datetime import timedelta
-            cutoff = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
-            result = supabase_request("DELETE", "analysis_results", params={"timestamp": f"lt.{cutoff}"})
-            st.success("✅ تم حذف السجلات القديمة")
+        col_m1, col_m2 = st.columns(2)
         
-        if st.button("📊 إعادة حساب الإحصائيات"):
-            st.rerun()
+        with col_m1:
+            st.markdown("#### 🗑️ حذف السجلات")
+            days_old = st.number_input("حذف السجلات الأقدم من (يوم)", 7, 365, 30)
+            if st.button(f"🗑️ حذف سجلات أقدم من {days_old} يوم", type="secondary"):
+                from datetime import timedelta
+                cutoff = (datetime.now() - timedelta(days=days_old)).strftime("%Y-%m-%d %H:%M:%S")
+                result = supabase_request("DELETE", "analysis_results", params={"created_at": f"lt.{cutoff}"})
+                if result:
+                    st.success(f"✅ تم حذف السجلات الأقدم من {days_old} يوم")
+                    st.balloons()
+                else:
+                    st.error("❌ فشل الحذف")
+        
+        with col_m2:
+            st.markdown("#### 🔄 صيانة")
+            if st.button("📊 إعادة حساب الإحصائيات"):
+                st.rerun()
+            
+            if st.button("📥 نسخ احتياطي كامل"):
+                with st.spinner("⏳ جاري إنشاء النسخة الاحتياطية..."):
+                    all_records = get_all_records(10000)
+                    if not all_records.empty:
+                        output = BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            all_records.to_excel(writer, sheet_name="جميع السجلات", index=False)
+                        output.seek(0)
+                        st.download_button("📅 تحميل النسخة الاحتياطية", 
+                                          data=output.getvalue(),
+                                          file_name=f"backup_full_{datetime.now():%Y%m%d_%H%M%S}.xlsx",
+                                          mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        st.success("✅ جاهز للتحميل!")
+                    else:
+                        st.warning("⚠️ لا توجد سجلات")
+        
+        st.markdown("---")
+        st.markdown("#### 🔍 فحص الاتصال")
+        if st.button("🔄 اختبار اتصال Supabase", key="test_supabase"):
+            with st.spinner("⏳ جاري الفحص..."):
+                try:
+                    test_result = supabase_request("GET", "analysis_results", params={"select": "id", "limit": "1"})
+                    if test_result is not None:
+                        st.success("✅ الاتصال بقاعدة البيانات ناجح!")
+                        st.balloons()
+                    else:
+                        st.error("❌ فشل الاتصال")
+                except Exception as e:
+                    st.error(f"❌ خطأ: {str(e)}")
 
 # ══════════════════════════════════════════════════════════════
 # المشتريات اليومية
@@ -1813,17 +1919,22 @@ elif section == "⚙️ الإعدادات":
     with tab1:
         st.markdown("### 🤖 إعدادات الذكاء الصناعي")
         
-        gemini_key = st.text_input("🔑 Gemini API Key", value=st.session_state.gemini_key, type="password")
-        if gemini_key != st.session_state.gemini_key:
-            st.session_state.gemini_key = gemini_key
+        # عرض حالة Gemini المدمج
+        st.info("🔑 **Gemini API مدمج مع البرنامج** - لا حاجة لإدخال مفتاح")
         
-        if st.button("🔄 اختبار Gemini", key="test_gemini_settings"):
+        if DEFAULT_GEMINI_KEY:
+            st.success(f"✅ مفتاح Gemini موجود وجاهز (يبدأ بـ {DEFAULT_GEMINI_KEY[:15]}...)")
+        else:
+            st.warning("⚠️ مفتاح Gemini غير موجود في Streamlit Secrets")
+        
+        if st.button("🔄 اختبار اتصال Gemini", key="test_gemini_settings"):
             with st.spinner("⏳ جاري الاختبار..."):
-                result = verify_gemini_connection(gemini_key)  # يحدث Session تلقائياً
+                result = verify_gemini_connection()  # يستخدم المفتاح المدمج
                 if result["connected"]:
-                    st.success(f"✅ متصل! النموذج: {result['model']}")
+                    st.success(f"✅ متصل بنجاح! النموذج: {result['model']}")
+                    st.balloons()
                 else:
-                    st.error(f"❌ {result['message']}")
+                    st.error(f"❌ فشل الاتصال: {result['message']}")
         
         st.markdown("---")
         
@@ -1891,13 +2002,14 @@ elif section == "⚙️ الإعدادات":
         st.markdown("---")
         st.markdown("### 📊 معلومات النظام")
         st.json({
-            "الإصدار": "v8.0",
+            "الإصدار": "v8.1 (محدّث)",
             "قاعدة البيانات": "Supabase Cloud",
-            "Gemini Key": "✅ موجود" if st.session_state.gemini_key else "❌ مفقود",
+            "Gemini API": "✅ مدمج" if DEFAULT_GEMINI_KEY else "❌ مفقود",
             "OpenRouter Key": "✅ موجود" if st.session_state.openrouter_key else "❌ مفقود",
+            "Google Drive": "✅ مربوط" if st.session_state.get("drive_folder_id") else "❌ غير مربوط",
             "Webhook تحديث": WEBHOOK_UPDATE_PRICES[:50] + "...",
             "Webhook إضافة": WEBHOOK_NEW_PRODUCTS[:50] + "...",
-            "Supabase": SUPABASE_URL,
+            "Supabase URL": SUPABASE_URL,
         })
 
 # ═══════════════════════════════════════════════════════════════
