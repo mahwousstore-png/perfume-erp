@@ -34,6 +34,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 MAKE_WEBHOOK_URL = os.getenv("MAKE_WEBHOOK_URL", "")
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
 
+# Fallback: إذا كان المفتاح فارغاً، استخدم المفتاح الاحتياطي
+if not GEMINI_API_KEY or GEMINI_API_KEY.strip() == "":
+    GEMINI_API_KEY = "AIzaSyBLgjwRh_t0gHqgN-V2NsDzdL5kro4lXVE"
+
 # تهيئة Gemini
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)

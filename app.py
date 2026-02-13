@@ -114,6 +114,10 @@ except:
     DEFAULT_GEMINI_KEY = ""
     DEFAULT_OPENROUTER_KEY = ""
 
+# Fallback: إذا كان المفتاح فارغاً، استخدم المفتاح الاحتياطي
+if not DEFAULT_GEMINI_KEY or DEFAULT_GEMINI_KEY.strip() == "":
+    DEFAULT_GEMINI_KEY = "AIzaSyBLgjwRh_t0gHqgN-V2NsDzdL5kro4lXVE"
+
 # ── Supabase قاعدة البيانات السحابية ─────────────────────────
 SUPABASE_URL = "https://csivkasoqkivprldxqlc.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzaXZrYXNvcWtpdnBybGR4cWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDQ4NjMsImV4cCI6MjA4NjQyMDg2M30.jK2yZ-eyj3RtUVHjS5-mBr2I-OMnY_S5mefRrMEQ7sI"
@@ -400,7 +404,7 @@ def verify_gemini_connection(api_key=None, update_session=True):
     
     for attempt in range(2):
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
             response = requests.post(
                 url,
                 json={"contents": [{"parts": [{"text": "test"}]}]},
@@ -409,7 +413,7 @@ def verify_gemini_connection(api_key=None, update_session=True):
             )
             
             if response.status_code == 200:
-                result = {"connected": True, "model": "gemini-2.0-flash", "message": "متصل ويعمل"}
+                result = {"connected": True, "model": "gemini-2.5-flash", "message": "متصل ويعمل"}
                 if update_session:
                     st.session_state.gemini_connected = True
                 return result
@@ -642,7 +646,7 @@ def call_gemini(prompt, api_key=None, max_retries=3):
     if not key:
         return {"success": False, "error": "مفتاح Gemini غير موجود"}
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
     
     for attempt in range(max_retries):
         try:
