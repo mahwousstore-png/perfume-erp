@@ -24,6 +24,10 @@ except:
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
     LUMA_API_KEY = "mahwous_oybcg"
 
+# Fallback: إذا كان المفتاح فارغاً، استخدم المفتاح الاحتياطي
+if not GEMINI_API_KEY or GEMINI_API_KEY.strip() == "":
+    GEMINI_API_KEY = "AIzaSyBLgjwRh_t0gHqgN-V2NsDzdL5kro4lXVE"
+
 # ══════════════════════════════════════════════════════════════
 # دوال Gemini Vision
 # ══════════════════════════════════════════════════════════════
