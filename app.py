@@ -865,6 +865,7 @@ with st.sidebar:
         "🔵 منتجات مفقودة",
         "⚠️ يحتاج مراجعة",
         "🤖 Gemini تحقق",
+        "🔍 تحقق مجمع AI",
         "💬 محادثة AI",
         "🎬 استديو مهووس",
         "📁 Google Drive",
@@ -1122,7 +1123,53 @@ elif section == "🟢 موافق عليها":
             <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 12px; padding: 15px; margin: 10px 0; text-align: center;">
                 <h3 style="margin:0; color: #2e7d32;">✅ عداد المنتجات الموافق عليها: <span style="font-size: 1.8rem; color: #1b5e20;">{len(df_approved)}</span> منتج</h3>
             </div>""", unsafe_allow_html=True)
-            st.dataframe(df_approved, use_container_width=True)
+            # إضافة عمود AI للتحقق
+            df_display = df_approved.copy()
+            
+            # عرض الجدول مع أزرار AI
+            for idx, row in df_display.iterrows():
+                cols = st.columns([0.7, 0.15, 0.15])
+                
+                with cols[0]:
+                    st.write(f"**{row.get('اسم المنتج', row.iloc[0])}**")
+                    st.caption(f"السعر: {row.get('السعر', row.iloc[1] if len(row) > 1 else 'N/A')} ريال")
+                
+                with cols[1]:
+                    if st.button("🤖 AI", key=f"ai_approved_{idx}", help="تحقق ذكي من المنتج"):
+                        st.session_state[f"ai_verify_{idx}"] = True
+                
+                with cols[2]:
+                    with st.expander("📊"):
+                        st.caption("تفاصيل إضافية")
+                        for col in df_display.columns:
+                            st.text(f"{col}: {row[col]}")
+                
+                # إذا تم الضغط على AI
+                if st.session_state.get(f"ai_verify_{idx}"):
+                    with st.spinner("⏳ جاري التحقق الذكي..."):
+                        from modules.ai_verification import smart_comparison
+                        
+                        product_name = row.get('اسم المنتج', row.iloc[0])
+                        product_price = float(row.get('السعر', row.iloc[1] if len(row) > 1 else 0))
+                        
+                        result = smart_comparison(product_name, product_price)
+                        
+                        if result["success"]:
+                            st.success("✅ تم التحقق بنجاح!")
+                            
+                            analysis = result["results"].get("analysis")
+                            if analysis:
+                                st.json(analysis)
+                        else:
+                            st.error(f"❌ خطأ: {result.get('error', 'غير معروف')}")
+                    
+                    st.session_state[f"ai_verify_{idx}"] = False
+                
+                st.markdown("---")
+            
+            # عرض الجدول الكامل أيضاً
+            with st.expander("📊 عرض الجدول الكامل"):
+                st.dataframe(df_approved, use_container_width=True)
             
             # تحميل Excel
             output = BytesIO()
@@ -1396,7 +1443,173 @@ elif section == "🤖 Gemini تحقق":
         st.info("📤 قم برفع الملفات وبدء المعالجة أولاً")
 
 # ══════════════════════════════════════════════════════════════
-# 9. محادثة AI
+# 9. التحقق المجمع AI
+# ══════════════════════════════════════════════════════════════
+elif section == "🔍 تحقق مجمع AI":
+    from modules.ai_verification import batch_verification
+    from datetime import datetime
+    import tempfile
+    import json
+    
+    st.markdown("# 🤖 التحقق المجمع بالذكاء الصناعي")
+    st.markdown("> تحقق ذكي من عدة منتجات دفعة واحدة")
+    st.markdown("---")
+    
+    # الخيارات
+    st.markdown("### ⚙️ خيارات التحقق")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        verification_type = st.selectbox(
+            "نوع التحقق",
+            ["البحث الإلكتروني فقط", "التحقق من ملف المتجر فقط", "تحقق شامل (الاثنين معاً)"],
+            help="اختر نوع التحقق المطلوب"
+        )
+    
+    with col2:
+        store_file = None
+        if "ملف المتجر" in verification_type or "شامل" in verification_type:
+            store_file = st.file_uploader(
+                "📄 ملف المتجر (CSV)",
+                type=["csv"],
+                help="ارفع ملف CSV الخاص بمتجرك للتحقق"
+            )
+    
+    st.markdown("---")
+    st.markdown("### 📦 اختيار المنتجات")
+    
+    if st.session_state.results:
+        df_approved = st.session_state.results.get("approved")
+        
+        if df_approved is not None and not df_approved.empty:
+            st.success(f"✅ {len(df_approved)} منتج متاح للتحقق")
+            
+            selection_method = st.radio(
+                "طريقة التحديد",
+                ["تحديد يدوي", "تحديد الكل", "تحديد حسب النطاق"],
+                horizontal=True
+            )
+            
+            selected_products = []
+            
+            if selection_method == "تحديد يدوي":
+                st.markdown("#### اختر المنتجات:")
+                for idx, row in df_approved.iterrows():
+                    product_name = row.get('اسم المنتج', row.iloc[0])
+                    product_price = row.get('السعر', row.iloc[1] if len(row) > 1 else 'N/A')
+                    
+                    if st.checkbox(f"{product_name} - {product_price} ريال", key=f"batch_select_{idx}"):
+                        selected_products.append({
+                            "name": product_name,
+                            "price": float(product_price) if product_price != 'N/A' else 0
+                        })
+            
+            elif selection_method == "تحديد الكل":
+                selected_products = [
+                    {
+                        "name": row.get('اسم المنتج', row.iloc[0]),
+                        "price": float(row.get('السعر', row.iloc[1] if len(row) > 1 else 0))
+                    }
+                    for _, row in df_approved.iterrows()
+                ]
+                st.info(f"📊 تم تحديد جميع المنتجات ({len(selected_products)} منتج)")
+            
+            else:
+                col_range1, col_range2 = st.columns(2)
+                with col_range1:
+                    start_idx = st.number_input("من", min_value=1, max_value=len(df_approved), value=1)
+                with col_range2:
+                    end_idx = st.number_input("إلى", min_value=1, max_value=len(df_approved), value=min(10, len(df_approved)))
+                
+                selected_products = [
+                    {
+                        "name": row.get('اسم المنتج', row.iloc[0]),
+                        "price": float(row.get('السعر', row.iloc[1] if len(row) > 1 else 0))
+                    }
+                    for idx, row in df_approved.iloc[start_idx-1:end_idx].iterrows()
+                ]
+                st.info(f"📊 تم تحديد {len(selected_products)} منتج من النطاق")
+            
+            st.markdown("---")
+            
+            if len(selected_products) > 0:
+                st.markdown(f"### 🚀 جاهز للتحقق من {len(selected_products)} منتج")
+                
+                if st.button("🤖 بدء التحقق المجمع", type="primary", use_container_width=True):
+                    store_file_path = None
+                    if store_file:
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+                            tmp.write(store_file.getvalue())
+                            store_file_path = tmp.name
+                    
+                    with st.spinner("⏳ جاري التحقق المجمع... قد يستغرق بعض الوقت"):
+                        result = batch_verification(selected_products, store_file_path)
+                        
+                        if result["success"]:
+                            st.success("✅ تم التحقق المجمع بنجاح!")
+                            
+                            summary = result.get("summary")
+                            if summary:
+                                st.markdown("### 📊 ملخص النتائج")
+                                col_s1, col_s2, col_s3 = st.columns(3)
+                                
+                                with col_s1:
+                                    st.metric("إجمالي المنتجات", summary.get("total_products", 0))
+                                with col_s2:
+                                    st.metric("منتجات تنافسية", summary.get("competitive_count", 0), delta="✅")
+                                with col_s3:
+                                    st.metric("تحتاج تعديل", summary.get("needs_adjustment", 0), delta="⚠️")
+                                
+                                if summary.get("recommendations"):
+                                    st.markdown("#### 💡 التوصيات:")
+                                    for rec in summary["recommendations"]:
+                                        st.info(f"• {rec}")
+                                
+                                if summary.get("summary"):
+                                    st.markdown("#### 📝 الملخص العام:")
+                                    st.write(summary["summary"])
+                            
+                            st.markdown("---")
+                            st.markdown("### 📋 النتائج التفصيلية")
+                            
+                            results_list = result.get("results", [])
+                            for i, res in enumerate(results_list, 1):
+                                if res.get("success"):
+                                    product_results = res["results"]
+                                    with st.expander(f"🔍 {i}. {product_results['product_name']}"):
+                                        if product_results.get("online_search"):
+                                            st.markdown("#### 🌐 البحث الإلكتروني:")
+                                            st.json(product_results["online_search"])
+                                        if product_results.get("store_verification"):
+                                            st.markdown("#### 🏪 التحقق من المتجر:")
+                                            st.json(product_results["store_verification"])
+                                        if product_results.get("analysis"):
+                                            st.markdown("#### 🎯 التحليل الذكي:")
+                                            st.json(product_results["analysis"])
+                                else:
+                                    st.error(f"❌ خطأ في المنتج {i}: {res.get('error', 'غير معروف')}")
+                            
+                            st.markdown("---")
+                            st.markdown("### 📥 تحميل النتائج")
+                            results_json = json.dumps(result, ensure_ascii=False, indent=2)
+                            st.download_button(
+                                "📄 تحميل النتائج (JSON)",
+                                data=results_json,
+                                file_name=f"batch_verification_{datetime.now():%Y%m%d_%H%M%S}.json",
+                                mime="application/json",
+                                use_container_width=True
+                            )
+                        else:
+                            st.error(f"❌ فشل التحقق المجمع: {result.get('error', 'غير معروف')}")
+            else:
+                st.warning("⚠️ لم يتم تحديد أي منتجات")
+        else:
+            st.info("📋 لا توجد منتجات موافق عليها")
+    else:
+        st.info("📤 قم برفع الملفات وبدء المعالجة أولاً")
+
+# ══════════════════════════════════════════════════════════════
+# 10. محادثة AI
 # ══════════════════════════════════════════════════════════════
 elif section == "💬 محادثة AI":
     st.markdown("# 💬 محادثة AI")

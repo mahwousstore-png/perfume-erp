@@ -99,6 +99,12 @@ def analyze_perfume_image(image_bytes):
                 text = text[:-3]
             text = text.strip()
             
+            # تنظيف النص من الأحرف غير المرغوبة
+            text = text.replace('\n', ' ').replace('\r', '')
+            # إصلاح الاقتباسات المفقودة
+            import re
+            text = re.sub(r'([{,]\s*)(\w+)\s*:', r'\1"\2":', text)
+            
             analysis = json.loads(text)
             return {"success": True, "analysis": analysis}
         else:
