@@ -378,6 +378,7 @@ def match_products(my_products, comp_products, threshold=65):
                     "comp_type": cp_type,
                     "comp_size": cp.get("size_ml", 0) or extract_size(cp_name),
                     "comp_price": _get_price(cp),
+                    "competitor_name": cp.get("_competitor_name", "غير محدد"),
                 })
 
     # ترتيب حسب الخطورة
@@ -510,6 +511,9 @@ def run_full_analysis(my_file, comp_files, threshold=65, progress_callback=None)
                 comp_data = pd.read_csv(BytesIO(comp_file["data"]))
             comp_data = normalize_columns(comp_data)
             comp_products = comp_data.to_dict(orient="records")
+            # إضافة اسم المنافس لكل منتج
+            for p in comp_products:
+                p["_competitor_name"] = comp_file["name"]
             all_comp_products.extend(comp_products)
             comp_names.append(comp_file["name"])
         except Exception:
@@ -595,6 +599,7 @@ def run_full_analysis(my_file, comp_files, threshold=65, progress_callback=None)
             "النوع": get_type_label(m["comp_type"]),
             "الحجم": m["comp_size"],
             "السعر": m.get("comp_price", 0),
+            "المنافس": m.get("competitor_name", "غير محدد"),
         }
         for m in match_results["missing"]
     ])

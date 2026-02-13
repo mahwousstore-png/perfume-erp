@@ -1157,18 +1157,23 @@ elif section == "🔵 منتجات مفقودة":
             
             selected_missing = []
             for i, (_, row) in enumerate(df_missing.iterrows()):
-                cols = st.columns([0.4, 3.5, 1.5, 1.5])
+                cols = st.columns([0.3, 2.5, 1.0, 0.8, 1.4])
                 with cols[0]:
                     default_val = st.session_state.sel_missing[i] if i < len(st.session_state.sel_missing) else False
                     checked = st.checkbox("", value=default_val, key=f"missing_{i}")
                     if checked:
                         selected_missing.append(row.to_dict())
                 with cols[1]:
-                    st.write(f"**{str(row.get('المنتج', ''))[:55]}**")
+                    st.write(f"**{str(row.get('المنتج', ''))[:45]}**")
                 with cols[2]:
                     st.write(f"📦 {row.get('النوع', '')}")
                 with cols[3]:
                     st.write(f"📏 {row.get('الحجم', '')}")
+                with cols[4]:
+                    competitor_name = str(row.get('المنافس', 'غير محدد'))
+                    # إزالة امتداد الملف وعرض الاسم فقط
+                    competitor_short = competitor_name.replace('.xlsx', '').replace('.csv', '')[:15]
+                    st.write(f"🏪 {competitor_short}")
             
             st.markdown("---")
             st.markdown(f"""
@@ -1200,10 +1205,15 @@ elif section == "🔵 منتجات مفقودة":
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     df_missing.to_excel(writer, sheet_name="مفقودة", index=False)
                 output.seek(0)
-                st.download_button("📥 تحميل كـ Excel", data=output.getvalue(),
+                st.download_button("📅 تحميل كـ Excel", data=output.getvalue(),
                                   file_name=f"missing_{datetime.now():%Y%m%d}.xlsx",
                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                   use_container_width=True)
+            
+            # عرض الجدول الكامل للمراجعة
+            st.markdown("---")
+            st.markdown("### 📊 جدول المنتجات المفقودة")
+            st.dataframe(df_missing, use_container_width=True, height=400)
         else:
             st.success("✅ لا توجد منتجات مفقودة - جميع المنتجات موجودة!")
     else:
