@@ -1,5 +1,5 @@
 """
-نظام التسعير الذكي للعطور v7.4
+نظام التسعير الذكي للعطور v8.1
 ═══════════════════════════════════
 15 قسم كامل | Gemini AI + OpenRouter | Make.com | Google Drive | Supabase
 """
@@ -24,7 +24,7 @@ except ImportError:
 
 # ── إعدادات الصفحة ─────────────────────────────────────────
 st.set_page_config(
-    page_title="نظام التسعير الذكي v8.0",
+    page_title="نظام التسعير الذكي v8.1",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -836,7 +836,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
 
 with st.sidebar:
     st.markdown("## 💎 نظام التسعير الذكي")
-    st.markdown("**الإصدار:** v7.4")
+    st.markdown("**الإصدار:** v8.1")
     st.markdown("---")
     
     # حالة الاتصالات
@@ -2034,6 +2034,6 @@ elif menu == "🔍 منع التكرار":
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #888; padding: 10px;">
-    💎 نظام التسعير الذكي v8.0 | مهووس للعطور | 2026
+    💎 نظام التسعير الذكي v8.1 | مهووس للعطور | 2026
 </div>
 """, unsafe_allow_html=True)
