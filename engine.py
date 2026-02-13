@@ -456,6 +456,15 @@ def normalize_columns(df):
     """
     تطبيع أسماء الأعمدة لتتطابق مع الأسماء المتوقعة.
     """
+    import pandas as pd
+    
+    # حذف السطور الفارغة بالكامل
+    df = df.dropna(how='all')
+    
+    # إذا كان الملف بدون headers (عمودين فقط: Unnamed)
+    if len(df.columns) == 2 and all('Unnamed' in str(col) or str(col).isdigit() or col in [0, 1] for col in df.columns):
+        df.columns = ['اسم المنتج', 'السعر']
+    
     column_mapping = {
         'name': ['name', 'اسم', 'اسم المنتج', 'product_name', 'Product Name', 'styles_productCard__name__pakbB'],
         'sell_price': ['sell_price', 'price', 'السعر', 'سعر', 'text-sm-2', 'Price', 'سعر المنتج'],

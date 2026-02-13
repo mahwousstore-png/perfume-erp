@@ -1453,8 +1453,14 @@ elif section == "💬 محادثة AI":
 # 10. استديو مهووس الذكي v9.0
 # ══════════════════════════════════════════════════════════════
 elif section == "🎬 استديو مهووس":
-    from modules.studio import show_studio_page
-    show_studio_page()
+    try:
+        from modules.studio import show_studio_page
+        show_studio_page()
+    except Exception as e:
+        st.error(f"❌ خطأ في تحميل استديو مهووس: {str(e)}")
+        st.code(f"تفاصيل الخطأ:\n{e}", language="python")
+        import traceback
+        st.code(traceback.format_exc(), language="python")
 
 # ══════════════════════════════════════════════════════════════
 # 11. Google Drive

@@ -704,8 +704,10 @@ def show_studio_page():
     st.markdown("---")
     
     # التحقق من المفاتيح
-    if not GEMINI_API_KEY:
-        st.error("❌ مفتاح Gemini API غير موجود! أضفه في Streamlit Secrets")
+    if not GEMINI_API_KEY or GEMINI_API_KEY.strip() == "":
+        st.error("❌ **مفتاح Gemini API غير موجود أو فارغ!**")
+        st.info("🔑 أضف `GEMINI_API_KEY` في Streamlit Cloud Secrets (الإعدادات > Secrets)")
+        st.code(f"القيمة الحالية: '{GEMINI_API_KEY}'", language="text")
         return
     
     if not LUMA_API_KEY:
