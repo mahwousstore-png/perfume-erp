@@ -1,5 +1,5 @@
 """
-نظام التسعير الذكي للعطور v8.1
+نظام التسعير الذكي للعطور v9.0
 ═══════════════════════════════════
 15 قسم كامل | Gemini AI + OpenRouter | Make.com | Google Drive | Supabase
 """
@@ -24,7 +24,7 @@ except ImportError:
 
 # ── إعدادات الصفحة ─────────────────────────────────────────
 st.set_page_config(
-    page_title="نظام التسعير الذكي v8.1",
+    page_title="نظام التسعير الذكي v9.0",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -836,7 +836,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
 
 with st.sidebar:
     st.markdown("## 💎 نظام التسعير الذكي")
-    st.markdown("**الإصدار:** v8.1")
+    st.markdown("**الإصدار:** v9.0")
     st.markdown("---")
     
     # حالة الاتصالات
@@ -1450,91 +1450,11 @@ elif section == "💬 محادثة AI":
         st.rerun()
 
 # ══════════════════════════════════════════════════════════════
-# 10. استديو مهووس
+# 10. استديو مهووس الذكي v9.0
 # ══════════════════════════════════════════════════════════════
 elif section == "🎬 استديو مهووس":
-    st.markdown("# 🎬 استديو مهووس")
-    st.markdown("> إنشاء محتوى تسويقي احترافي للمنتجات")
-    st.markdown("---")
-    
-    content_type = st.selectbox("📝 نوع المحتوى", [
-        "📄 وصف تسويقي للمنتج",
-        "🎬 سيناريو فيديو قصير (8 ثوانٍ)",
-        "📱 منشور سوشيال ميديا",
-        "📢 نص إعلاني",
-        "🏷️ عنوان SEO + وسوم",
-        "📧 رسالة واتساب تسويقية",
-        "📸 وصف صورة منتج",
-    ])
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        product_name = st.text_input("🏷️ اسم المنتج", placeholder="مثال: عطر ديور سوفاج او دو برفيوم 100مل")
-        product_price = st.number_input("💰 السعر (ريال)", min_value=0, value=0)
-    with col2:
-        product_brand = st.text_input("🏢 الماركة", placeholder="مثال: Dior")
-        target_platform = st.selectbox("📱 المنصة المستهدفة", [
-            "عام", "واتساب", "حراج", "تيليجرام", "سناب شات", "انستقرام", "تويتر"
-        ])
-    
-    product_desc = st.text_area("📝 وصف إضافي (اختياري)", placeholder="أضف أي تفاصيل إضافية...")
-    
-    ai_provider = st.radio("🤖 المزود", ["Gemini", "OpenRouter"], horizontal=True, key="studio_ai")
-    
-    if st.button("🚀 إنشاء المحتوى", type="primary", use_container_width=True):
-        if not product_name:
-            st.error("❌ أدخل اسم المنتج")
-        else:
-            with st.spinner("⏳ جاري إنشاء المحتوى..."):
-                prompts = {
-                    "📄 وصف تسويقي للمنتج": f"""أنشئ وصفاً تسويقياً احترافياً لهذا العطر:
-الاسم: {product_name}
-الماركة: {product_brand}
-السعر: {product_price} ريال
-{f'تفاصيل: {product_desc}' if product_desc else ''}
-
-الوصف يجب أن يكون:
-- جذاب ومقنع
-- يصف الرائحة والمكونات
-- يذكر المناسبات المناسبة
-- باللغة العربية الفصحى
-- 150-200 كلمة""",
-                    "🎬 سيناريو فيديو قصير (8 ثوانٍ)": f"""أنشئ سيناريو فيديو قصير (8 ثوانٍ) لعطر:
-الاسم: {product_name} | الماركة: {product_brand} | السعر: {product_price} ريال
-يشمل: المشهد، النص المكتوب، الموسيقى المقترحة، التأثيرات""",
-                    "📱 منشور سوشيال ميديا": f"""أنشئ منشور سوشيال ميديا لـ {target_platform}:
-المنتج: {product_name} | الماركة: {product_brand} | السعر: {product_price} ريال
-يشمل: النص + الهاشتاقات + الإيموجي المناسب""",
-                    "📢 نص إعلاني": f"""أنشئ نص إعلاني قصير وجذاب:
-المنتج: {product_name} | السعر: {product_price} ريال
-يشمل: عنوان جذاب + نص مقنع + دعوة للشراء""",
-                    "🏷️ عنوان SEO + وسوم": f"""أنشئ عنوان SEO محسّن ووسوم لهذا المنتج:
-{product_name} | {product_brand}
-يشمل: عنوان SEO + وصف ميتا + 10 وسوم""",
-                    "📧 رسالة واتساب تسويقية": f"""أنشئ رسالة واتساب تسويقية:
-المنتج: {product_name} | السعر: {product_price} ريال
-قصيرة وجذابة مع إيموجي""",
-                    "📸 وصف صورة منتج": f"""أنشئ وصفاً لصورة منتج لاستخدامه في التصوير:
-المنتج: {product_name} | الماركة: {product_brand}
-يشمل: الخلفية المقترحة، الإضاءة، الزاوية، العناصر المساعدة"""
-                }
-                
-                prompt = prompts.get(content_type, prompts["📄 وصف تسويقي للمنتج"])
-                
-                if ai_provider == "Gemini":
-                    result = call_gemini(prompt)
-                else:
-                    result = call_openrouter(prompt)
-                
-                if result["success"]:
-                    st.markdown("### 📝 المحتوى المُنشأ")
-                    st.markdown(result["text"])
-                    
-                    # زر نسخ
-                    st.code(result["text"], language=None)
-                    st.success("✅ تم إنشاء المحتوى بنجاح! يمكنك نسخه من الأعلى")
-                else:
-                    st.error(f"❌ {result['error']}")
+    from modules.studio import show_studio_page
+    show_studio_page()
 
 # ══════════════════════════════════════════════════════════════
 # 11. Google Drive
@@ -2002,7 +1922,7 @@ elif section == "⚙️ الإعدادات":
         st.markdown("---")
         st.markdown("### 📊 معلومات النظام")
         st.json({
-            "الإصدار": "v8.1 (محدّث)",
+            "الإصدار": "v9.0 - استديو مهووس الذكي",
             "قاعدة البيانات": "Supabase Cloud",
             "Gemini API": "✅ مدمج" if DEFAULT_GEMINI_KEY else "❌ مفقود",
             "OpenRouter Key": "✅ موجود" if st.session_state.openrouter_key else "❌ مفقود",
@@ -2034,6 +1954,6 @@ elif menu == "🔍 منع التكرار":
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #888; padding: 10px;">
-    💎 نظام التسعير الذكي v8.1 | مهووس للعطور | 2026
+    💎 نظام التسعير الذكي v9.0 | مهووس للعطور | 2026
 </div>
 """, unsafe_allow_html=True)
