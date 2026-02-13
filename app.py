@@ -1216,23 +1216,48 @@ elif section == "🔵 منتجات مفقودة":
             
             selected_missing = []
             for i, (_, row) in enumerate(df_missing.iterrows()):
-                cols = st.columns([0.3, 2.5, 1.0, 0.8, 1.4])
+                cols = st.columns([0.3, 2.0, 1.0, 0.8, 1.2, 0.5])
                 with cols[0]:
                     default_val = st.session_state.sel_missing[i] if i < len(st.session_state.sel_missing) else False
-                    checked = st.checkbox("", value=default_val, key=f"missing_{i}")
+                    checked = st.checkbox("تحديد", value=default_val, key=f"missing_{i}", label_visibility="collapsed")
                     if checked:
                         selected_missing.append(row.to_dict())
                 with cols[1]:
-                    st.write(f"**{str(row.get('المنتج', ''))[:45]}**")
+                    st.write(f"**{str(row.get('المنتج', ''))[:40]}**")
                 with cols[2]:
                     st.write(f"📦 {row.get('النوع', '')}")
                 with cols[3]:
                     st.write(f"📏 {row.get('الحجم', '')}")
                 with cols[4]:
                     competitor_name = str(row.get('المنافس', 'غير محدد'))
-                    # إزالة امتداد الملف وعرض الاسم فقط
                     competitor_short = competitor_name.replace('.xlsx', '').replace('.csv', '')[:15]
                     st.write(f"🏪 {competitor_short}")
+                with cols[5]:
+                    if st.button("🤖", key=f"ai_missing_{i}", help="تحقق بالذكاء الصناعي"):
+                        product_name = str(row.get('المنتج', ''))
+                        with st.spinner("🔍 جاري التحقق..."):
+                            from modules.ai_verification import smart_comparison
+                            result = smart_comparison(
+                                product_name=product_name,
+                                competitor_price=row.get('السعر', 0),
+                                store_file_path="/home/ubuntu/upload/alkhabeershop("
+                            )
+                            
+                            if result["success"]:
+                                data = result["data"]
+                                st.markdown(f"""
+                                <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0;">
+                                    <h4 style="margin:0; color: #2e7d32;">✅ نتائج التحقق</h4>
+                                    <p><b>🏪 المنتج:</b> {data.get('product_name', '')}</p>
+                                    <p><b>💰 سعر المنافس:</b> {data.get('competitor_price', '')} ر.س</p>
+                                    <p><b>🏪 في متجرنا:</b> {'✅ موجود' if data.get('in_our_store') else '❌ غير موجود'}</p>
+                                    {f"<p><b>💵 سعرنا:</b> {data.get('our_price', '')} ر.س</p>" if data.get('in_our_store') else ''}
+                                    {f"<p><b>📈 الفرق:</b> {data.get('price_difference', '')} ر.س</p>" if data.get('in_our_store') else ''}
+                                    <p><b>🎯 التوصية:</b> {data.get('recommendation', '')}</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            else:
+                                st.error(f"❌ {result.get('error', 'خطأ غير معروف')}")
             
             st.markdown("---")
             st.markdown(f"""
@@ -1269,6 +1294,52 @@ elif section == "🔵 منتجات مفقودة":
                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                   use_container_width=True)
             
+            # زر التحقق المجمع
+            st.markdown("---")
+            if st.button("🤖 تحقق مجمع للمنتجات المحددة", type="secondary", use_container_width=True,
+                       disabled=len(selected_missing) == 0, key="batch_verify_missing"):
+                with st.spinner(f"🔍 جاري التحقق من {len(selected_missing)} منتج..."):
+                    from modules.ai_verification import batch_verification
+                    
+                    products_data = []
+                    for item in selected_missing:
+                        products_data.append({
+                            "name": str(item.get('المنتج', '')),
+                            "competitor_price": item.get('السعر', 0)
+                        })
+                    
+                    result = batch_verification(
+                        products=products_data,
+                        store_file_path="/home/ubuntu/upload/alkhabeershop(",
+                        verification_type="comprehensive"
+                    )
+                    
+                    if result["success"]:
+                        data = result["data"]
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #e1f5fe, #b3e5fc); border-radius: 12px; padding: 20px; margin: 15px 0;">
+                            <h3 style="margin:0; color: #01579b;">📊 ملخص التحقق المجمع</h3>
+                            <p><b>📦 إجمالي المنتجات:</b> {data.get('total_products', 0)}</p>
+                            <p><b>✅ موجود في متجرنا:</b> {data.get('found_in_store', 0)}</p>
+                            <p><b>❌ غير موجود:</b> {data.get('not_found', 0)}</p>
+                            <p><b>🎯 التوصيات:</b> {data.get('recommendations', '')}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        with st.expander("📝 عرض التفاصيل الكاملة"):
+                            for item in data.get('details', []):
+                                st.markdown(f"""
+                                <div style="background: #f5f5f5; border-left: 4px solid #2196f3; padding: 10px; margin: 5px 0;">
+                                    <p><b>🏪 {item.get('product_name', '')}</b></p>
+                                    <p>💰 سعر المنافس: {item.get('competitor_price', '')} ر.س</p>
+                                    <p>🏪 في متجرنا: {'✅ موجود' if item.get('in_our_store') else '❌ غير موجود'}</p>
+                                    {f"<p>💵 سعرنا: {item.get('our_price', '')} ر.س</p>" if item.get('in_our_store') else ''}
+                                    <p>🎯 التوصية: {item.get('recommendation', '')}</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                    else:
+                        st.error(f"❌ {result.get('error', 'خطأ غير معروف')}")
+            
             # عرض الجدول الكامل للمراجعة
             st.markdown("---")
             st.markdown("### 📊 جدول المنتجات المفقودة")
@@ -1277,6 +1348,23 @@ elif section == "🔵 منتجات مفقودة":
             st.success("✅ لا توجد منتجات مفقودة - جميع المنتجات موجودة!")
     else:
         st.info("📤 قم برفع الملفات وبدء المعالجة أولاً")
+    
+    with st.expander("🤖 معلومات عن التحقق الذكي"):
+        st.markdown("""
+        ### 🎯 ماذا يفعل التحقق الذكي？
+        
+        **للمنتج الواحد:**
+        - 🔍 البحث في ملف المتجر الكامل
+        - ✅ التحقق من الوجود
+        - 💰 مقارنة الأسعار
+        - 🎯 توصيات ذكية
+        
+        **للتحقق المجمع:**
+        - 📦 تحليل جميع المنتجات المحددة
+        - 📊 ملخص شامل
+        - 📝 تقرير تفصيلي
+        - 🎯 توصيات عامة
+        """)
 
 # ══════════════════════════════════════════════════════════════
 # 7. يحتاج مراجعة

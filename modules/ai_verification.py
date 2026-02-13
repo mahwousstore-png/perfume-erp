@@ -119,24 +119,124 @@ def verify_in_store_file(product_name: str, store_file_path: str) -> Dict:
         # قراءة ملف المتجر
         df = pd.read_csv(store_file_path, encoding='utf-8-sig')
         
-        # البحث الذكي باستخدام Gemini
+        # البحث الذكي باستخدام Gemini في كل المتجر
         products_list = df.iloc[:, 0].tolist()  # أول عمود = أسماء المنتجات
+        prices_list = df.iloc[:, 1].tolist() if len(df.columns) > 1 else []  # ثاني عمود = الأسعار
         
-        prompt = f"""ابحث عن المنتج التالي في القائمة:
+        # إنشاء قائمة كاملة (اسم + سعر)
+        full_list = []
+        for i, product in enumerate(products_list):
+            price = prices_list[i] if i < len(prices_list) else "غير متوفر"
+            full_list.append(f"{i+1}. {product} - {price} ر.س")
+        
+        # تقسيم القائمة إلى أجزاء (كل جزء 500 منتج)
+        chunk_size = 500
+        all_results = []
+        
+        for chunk_start in range(0, len(full_list), chunk_size):
+            chunk_end = min(chunk_start + chunk_size, len(full_list))
+            chunk = full_list[chunk_start:chunk_end]
+            
+            prompt = f"""ابحث عن المنتج التالي في القائمة:
 المنتج المطلوب: {product_name}
 
-قائمة المنتجات في المتجر:
-{chr(10).join([f"{i+1}. {p}" for i, p in enumerate(products_list[:100])])}
+قائمة المنتجات في المتجر (من {chunk_start+1} إلى {chunk_end}):
+{chr(10).join(chunk)}
 
 المطلوب:
-1. هل المنتج موجود في القائمة؟
-2. إذا كان موجوداً، ما هو الاسم الدقيق؟
+1. هل المنتج موجود في هذا الجزء من القائمة؟
+2. إذا كان موجوداً، ما هو الاسم الدقيق والسعر؟
 3. ما مدى التطابق (%)؟
 
 أعد النتيجة بصيغة JSON:
 {{
   "found": true/false,
   "exact_name": "الاسم الدقيق في المتجر",
+  "price": "السعر",
+  "match_percentage": نسبة التطابق,
+  "row_number": رقم الصف,
+  "notes": "ملاحظات"
+}}"""
+            
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+            
+            response = requests.post(
+                url,
+                json={"contents": [{"parts": [{"text": prompt}]}]},
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                text = result["candidates"][0]["content"]["parts"][0]["text"]
+                
+                # تنظيف JSON
+                text = text.strip()
+                if text.startswith("```json"):
+                    text = text[7:]
+                if text.startswith("```"):
+                    text = text[3:]
+                if text.endswith("```"):
+                    text = text[:-3]
+                text = text.strip()
+                
+                data = json.loads(text)
+                
+                # إذا وجدنا المنتج، نعيد النتيجة فوراً
+                if data.get("found", False):
+                    return {"success": True, "data": data}
+                
+                all_results.append(data)
+        
+        # إذا لم نجد المنتج في أي جزء
+        return {"success": True, "data": {"found": False, "notes": "المنتج غير موجود في ملف المتجر"}}
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+# ══════════════════════════════════════════════════════════════
+# 2b. نسخة مبسطة للبحث السريع
+# ══════════════════════════════════════════════════════════════
+
+def verify_in_store_file_simple(product_name: str, store_file_path: str) -> Dict:
+    """
+    التحقق من وجود المنتج في ملف المتجر (نسخة مبسطة)
+    """
+    try:
+        # قراءة ملف المتجر
+        df = pd.read_csv(store_file_path, encoding='utf-8-sig')
+        
+        # البحث الذكي باستخدام Gemini
+        products_list = df.iloc[:, 0].tolist()  # أول عمود = أسماء المنتجات
+        prices_list = df.iloc[:, 1].tolist() if len(df.columns) > 1 else []
+        
+        # أخذ عينة من 200 منتج فقط للسرعة
+        sample_size = min(200, len(products_list))
+        sample_products = products_list[:sample_size]
+        sample_prices = prices_list[:sample_size] if prices_list else []
+        
+        full_list = []
+        for i, product in enumerate(sample_products):
+            price = sample_prices[i] if i < len(sample_prices) else "غير متوفر"
+            full_list.append(f"{i+1}. {product} - {price} ر.س")
+        
+        prompt = f"""ابحث عن المنتج التالي في القائمة:
+المنتج المطلوب: {product_name}
+
+قائمة المنتجات في المتجر (عينة من {sample_size} منتج):
+{chr(10).join(full_list)}
+
+المطلوب:
+1. هل المنتج موجود في القائمة؟
+2. إذا كان موجوداً، ما هو الاسم الدقيق والسعر؟
+3. ما مدى التطابق (%)؟
+
+أعد النتيجة بصيغة JSON:
+{{
+  "found": true/false,
+  "exact_name": "الاسم الدقيق في المتجر",
+  "price": "السعر",
   "match_percentage": نسبة التطابق,
   "row_number": رقم الصف,
   "notes": "ملاحظات"
