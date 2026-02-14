@@ -13,6 +13,7 @@ import numpy as np
 from rapidfuzz import fuzz
 from extract_concentration import extract_concentration, concentrations_match
 from semantic_matcher import semantic_verify_match
+from ai_verification import verify_match_with_ai
 
 
 # ===== قوانين التصنيف =====
@@ -421,21 +422,28 @@ def match_products(my_products, comp_products, threshold=60):
                 "size": best_match["comp_size"],
             }
             
-            # التحقق بالتحليل الدلالي
-            ai_result = semantic_verify_match(
+            # التحقق بالتحليل الدلالي أولاً
+            semantic_result = semantic_verify_match(
                 my_product_data,
                 comp_product_data,
                 best_match["match_score"]
             )
             
-            if ai_result.get("success"):
-                ai_verified = ai_result.get("match", False)
-                ai_confidence = ai_result.get("confidence", 0)
-                ai_reasoning = ai_result.get("reasoning", "")
-                
-                # إذا رفض الذكاء الصناعي المطابقة (ثقة < 85%)، نتجاهلها
-                if not ai_verified or ai_confidence < 85:
-                    continue  # تجاهل هذه المطابقة
+            # ثم التحقق بالذكاء الصناعي (Gemini AI)
+            ai_result = verify_match_with_ai(
+                my_product_data,
+                comp_product_data,
+                semantic_result
+            )
+            
+            ai_verified = ai_result.get("verified", False)
+            ai_confidence = ai_result.get("confidence", 0)
+            ai_reasoning = ai_result.get("reasoning", "")
+            ai_status = ai_result.get("status", "")
+            
+            # إذا رفض الذكاء الصناعي المطابقة، نتجاهلها
+            if not ai_verified:
+                continue  # تجاهل هذه المطابقة
         else:
             # مطابقة ممتازة (95%+) → قبول مباشر
             ai_verified = True
@@ -484,6 +492,7 @@ def match_products(my_products, comp_products, threshold=60):
             "ai_verified": ai_verified,
             "ai_confidence": ai_confidence,
             "ai_reasoning": ai_reasoning,
+            "ai_status": ai_status if 'ai_status' in locals() else "✅ مؤكد",
             # تفاصيل المنتجات
             "my_brand": extract_brand(my_name),
             "my_concentration": extract_concentration(my_name),
@@ -802,6 +811,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
             "النسبة %": m["diff_percent"],
             "الثقة %": m["confidence"],
             "ثقة AI %": m.get("ai_confidence", 0),
+            "حالة التحقق": m.get("ai_status", "✅ مؤكد"),
             "تفسير AI": m.get("ai_reasoning", ""),
             "عدد المنافسين": m["num_competitors"],
             "التفسير": m.get("reasoning", ""),
@@ -830,6 +840,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
             "النسبة %": m["diff_percent"],
             "الثقة %": m["confidence"],
             "ثقة AI %": m.get("ai_confidence", 0),
+            "حالة التحقق": m.get("ai_status", "✅ مؤكد"),
             "تفسير AI": m.get("ai_reasoning", ""),
             "عدد المنافسين": m["num_competitors"],
             "التفسير": m.get("reasoning", ""),
