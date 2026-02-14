@@ -1,5 +1,6 @@
 """
-نظام التسعير الذكي للعطور v11.2
+app.py
+نظام التسعير الذكي للعطور v12.0
 ═══════════════════════════════════
 15 قسم كامل | Gemini AI + OpenRouter | Make.com | Google Drive | Supabase
 """
@@ -24,7 +25,7 @@ except ImportError:
 
 # ── إعدادات الصفحة ─────────────────────────────────────────
 st.set_page_config(
-    page_title="نظام التسعير الذكي v11.2",
+    page_title="نظام التسعير الذكي v12.0",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded"

@@ -233,15 +233,16 @@ def detect_outliers(prices):
 
 def match_products(my_products, comp_products, threshold=60):
     """
-    مطابقة محسّنة مع early termination و pre-filtering (v12.0).
-    
-    التحسينات:
-    1. تجميع المنافسين حسب النوع والحجم (index)
-    2. إيقاف المقارنة عند أول تطابق قوي (95%+)
-    3. معالجة دفعات بدلاً من حلقات متداخلة
+    مطابقة المنتجات مع تطبيق القوانين الصارمة.
+
+    القوانين:
+    1. تطابق النوع: retail=retail, tester=tester
+    2. تطابق الحجم: 100ml=100ml فقط
+    3. فيتو العينات: طرد تلقائي
+    4. استراتيجية "أقل بريال": السعر الموصى = أقل منافس - 1
+    5. كشف الشواذ: تجاهل الأسعار الشاذة
+    6. درجة الثقة: بناءً على جودة المطابقة وعدد المنافسين
     """
-    from collections import defaultdict
-    
     results = {
         "raise": [],
         "lower": [],
@@ -249,108 +250,62 @@ def match_products(my_products, comp_products, threshold=60):
         "missing": [],
         "review": [],
     }
-    
-    # ===== Pre-filtering: تجميع المنافسين حسب النوع والحجم =====
-    comp_index = defaultdict(list)  # {(type, size): [products]}
-    
-    for idx, cp in enumerate(comp_products):
-        cp_name = _get_name(cp)
-        if not cp_name:
-            continue
-        
-        cp_type = classify_product(cp_name)
-        if cp_type == "rejected":
-            continue
-        
-        cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
-        cp_price = _get_price(cp)
-        
-        if cp_price <= 0:
-            continue
-        
-        # تجميع حسب النوع والحجم (مع تقريب الحجم لأقرب 5ml)
-        size_bucket = round(cp_size / 5) * 5 if cp_size > 0 else 0
-        key = (cp_type, size_bucket)
-        
-        comp_index[key].append({
-            "index": idx,
-            "product": cp,
-            "name": cp_name,
-            "type": cp_type,
-            "size": cp_size,
-            "price": cp_price,
-            "normalized": normalize_name(cp_name),
-        })
-    
-    # ===== المطابقة مع early termination =====
+
     matched_comp_indices = set()
-    
+
     for my_p in my_products:
         my_name = _get_name(my_p)
         if not my_name:
             continue
 
         my_type = classify_product(my_name)
-        if my_type == "rejected":
-            continue
-        
         my_size = my_p.get("size_ml", 0) or extract_size(my_name)
         my_price = _get_price(my_p)
         my_norm = normalize_name(my_name)
         my_id = _get_id(my_p)
-        
-        # البحث في المجموعات المناسبة فقط
-        size_bucket = round(my_size / 5) * 5 if my_size > 0 else 0
-        candidates = []
-        
-        # البحث في نفس المجموعة
-        key = (my_type, size_bucket)
-        if key in comp_index:
-            candidates.extend(comp_index[key])
-        
-        # البحث في المجموعات المجاورة (±5ml)
-        for delta in [-5, 5]:
-            adj_key = (my_type, size_bucket + delta)
-            if adj_key in comp_index:
-                candidates.extend(comp_index[adj_key])
-        
-        # البحث في نفس النوع بدون حجم محدد
-        no_size_key = (my_type, 0)
-        if no_size_key in comp_index:
-            candidates.extend(comp_index[no_size_key])
-        
-        if not candidates:
+
+        if my_type == "rejected":
             continue
-        
-        # ===== Early termination: إيقاف عند أول تطابق قوي =====
+
+        # جمع كل المطابقات المحتملة (ليس فقط الأفضل)
         all_matches = []
-        best_score = 0
-        
-        for cand in candidates:
-            # تطابق الحجم الدقيق
-            if my_size > 0 and cand["size"] > 0:
-                if abs(my_size - cand["size"]) > 1:
+
+        for idx, cp in enumerate(comp_products):
+            cp_name = _get_name(cp)
+            if not cp_name:
+                continue
+
+            cp_type = classify_product(cp_name)
+            cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
+            cp_price = _get_price(cp)
+
+            # قانون 1: تطابق النوع
+            if my_type != cp_type:
+                continue
+
+            # قانون 2: تطابق الحجم
+            if my_size > 0 and cp_size > 0:
+                if abs(my_size - cp_size) > 1:
                     continue
-            
+
+            # قانون 3: فيتو العينات
+            if cp_type == "rejected":
+                continue
+
             # حساب التشابه
-            score = fuzz.token_sort_ratio(my_norm, cand["normalized"])
-            
-            if score >= threshold:
+            cp_norm = normalize_name(cp_name)
+            score = fuzz.token_sort_ratio(my_norm, cp_norm)
+
+            if score >= threshold and cp_price > 0:
                 all_matches.append({
-                    "comp_product": cand["product"],
-                    "comp_index": cand["index"],
-                    "comp_name": cand["name"],
-                    "comp_price": cand["price"],
+                    "comp_product": cp,
+                    "comp_index": idx,
+                    "comp_name": cp_name,
+                    "comp_price": cp_price,
                     "match_score": score,
-                    "comp_type": cand["type"],
-                    "comp_size": cand["size"],
+                    "comp_type": cp_type,
+                    "comp_size": cp_size,
                 })
-                
-                best_score = max(best_score, score)
-                
-                # Early termination: إذا وجدنا تطابق ممتاز (95%+) → توقف
-                if score >= 95:
-                    break
 
         if not all_matches:
             continue
@@ -444,80 +399,57 @@ def match_products(my_products, comp_products, threshold=60):
             result_entry["reasoning"] = f"سعرنا ({my_price} ر.س) أقل من أقل منافس ({min_comp_price} ر.س) بـ {abs(price_diff):.0f} ر.س. الموصى: {recommended_price:.0f} ر.س"
             results["raise"].append(result_entry)
 
-    # ===== كشف المنتجات المفقودة (محسّن) =====
+    # كشف المنتجات المفقودة - مع تحقق ذكي محسّن
+    # نستخدم threshold أقل (45) للتحقق من المنتجات المفقودة
     missing_threshold = 45
     
-    # تجميع منتجاتنا للبحث السريع
-    my_index = defaultdict(list)
-    for my_p in my_products:
-        my_name = _get_name(my_p)
-        if not my_name:
-            continue
-        my_type = classify_product(my_name)
-        if my_type == "rejected":
-            continue
-        my_size = my_p.get("size_ml", 0) or extract_size(my_name)
-        size_bucket = round(my_size / 5) * 5 if my_size > 0 else 0
-        key = (my_type, size_bucket)
-        my_index[key].append({
-            "name": my_name,
-            "normalized": normalize_name(my_name),
-            "type": my_type,
-            "size": my_size,
-        })
-    
     for idx, cp in enumerate(comp_products):
-        if idx in matched_comp_indices:
-            continue
-        
-        cp_name = _get_name(cp)
-        if not cp_name:
-            continue
-        
-        cp_type = classify_product(cp_name)
-        if cp_type == "rejected":
-            continue
-        
-        cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
-        cp_norm = normalize_name(cp_name)
-        
-        # البحث في المجموعات المناسبة
-        size_bucket = round(cp_size / 5) * 5 if cp_size > 0 else 0
-        candidates = []
-        
-        key = (cp_type, size_bucket)
-        if key in my_index:
-            candidates.extend(my_index[key])
-        
-        for delta in [-5, 5]:
-            adj_key = (cp_type, size_bucket + delta)
-            if adj_key in my_index:
-                candidates.extend(my_index[adj_key])
-        
-        no_size_key = (cp_type, 0)
-        if no_size_key in my_index:
-            candidates.extend(my_index[no_size_key])
-        
-        found_similar = False
-        for cand in candidates:
-            if cand["size"] > 0 and cp_size > 0:
-                if abs(cand["size"] - cp_size) > 1:
-                    continue
+        if idx not in matched_comp_indices:
+            cp_name = _get_name(cp)
+            if not cp_name:
+                continue
+            cp_type = classify_product(cp_name)
+            if cp_type == "rejected":
+                continue
+                
+            # تحقق ذكي: هل المنتج موجود فعلاً بنسبة تشابه أقل؟
+            cp_norm = normalize_name(cp_name)
+            cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
             
-            score = fuzz.token_sort_ratio(cand["normalized"], cp_norm)
-            if score >= missing_threshold:
-                found_similar = True
-                break
-        
-        if not found_similar:
-            results["missing"].append({
-                "comp_product": cp,
-                "comp_name": cp_name,
-                "comp_type": cp_type,
-                "comp_size": cp_size,
-                "comp_price": _get_price(cp),
-                "competitor_name": cp.get("_competitor_name", "غير محدد"),
-            })
+            found_similar = False
+            for my_p in my_products:
+                my_name = _get_name(my_p)
+                if not my_name:
+                    continue
+                    
+                my_type = classify_product(my_name)
+                my_size = my_p.get("size_ml", 0) or extract_size(my_name)
+                
+                # تطابق النوع والحجم
+                if my_type != cp_type:
+                    continue
+                if my_size > 0 and cp_size > 0:
+                    if abs(my_size - cp_size) > 1:
+                        continue
+                
+                # حساب التشابه بنسبة أقل
+                my_norm = normalize_name(my_name)
+                score = fuzz.token_sort_ratio(my_norm, cp_norm)
+                
+                if score >= missing_threshold:
+                    found_similar = True
+                    break
+            
+            # فقط إذا لم نجد أي تشابه → مفقود
+            if not found_similar:
+                results["missing"].append({
+                    "comp_product": cp,
+                    "comp_name": cp_name,
+                    "comp_type": cp_type,
+                    "comp_size": cp_size,
+                    "comp_price": _get_price(cp),
+                    "competitor_name": cp.get("_competitor_name", "غير محدد"),
+                })
 
     # ترتيب حسب الخطورة
     for key in ["raise", "lower"]:
@@ -638,19 +570,10 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
 
     # 1. تحميل ملف المتجر
     try:
-        if isinstance(my_file, str):
-            # مسار ملف
-            if my_file.endswith(".xlsx"):
-                my_data = pd.read_excel(my_file)
-            else:
-                my_data = pd.read_csv(my_file, encoding='utf-8-sig')
+        if my_file["name"].endswith(".xlsx"):
+            my_data = pd.read_excel(BytesIO(my_file["data"]))
         else:
-            # dict مع data
-            if my_file["name"].endswith(".xlsx"):
-                my_data = pd.read_excel(BytesIO(my_file["data"]))
-            else:
-                my_data = pd.read_csv(BytesIO(my_file["data"]), encoding='utf-8-sig')
-        
+            my_data = pd.read_csv(BytesIO(my_file["data"]))
         my_data = normalize_columns(my_data)
         my_products = my_data.to_dict(orient="records")
     except Exception as e:
@@ -661,31 +584,18 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     comp_names = []
     for comp_file in comp_files:
         try:
-            if isinstance(comp_file, str):
-                # مسار ملف
-                if comp_file.endswith(".xlsx"):
-                    comp_data = pd.read_excel(comp_file)
-                else:
-                    comp_data = pd.read_csv(comp_file, encoding='utf-8-sig')
-                comp_name = comp_file.split('/')[-1]
+            if comp_file["name"].endswith(".xlsx"):
+                comp_data = pd.read_excel(BytesIO(comp_file["data"]))
             else:
-                # dict مع data
-                if comp_file["name"].endswith(".xlsx"):
-                    comp_data = pd.read_excel(BytesIO(comp_file["data"]))
-                else:
-                    comp_data = pd.read_csv(BytesIO(comp_file["data"]), encoding='utf-8-sig')
-                comp_name = comp_file["name"]
-            
+                comp_data = pd.read_csv(BytesIO(comp_file["data"]))
             comp_data = normalize_columns(comp_data)
             comp_products = comp_data.to_dict(orient="records")
-            
+            # إضافة اسم المنافس لكل منتج
             for p in comp_products:
-                p["_competitor_name"] = comp_name
-            
+                p["_competitor_name"] = comp_file["name"]
             all_comp_products.extend(comp_products)
-            comp_names.append(comp_name)
-        except Exception as e:
-            print(f"⚠️ خطأ في تحميل ملف منافس: {e}")
+            comp_names.append(comp_file["name"])
+        except Exception:
             continue
 
     if not all_comp_products:
