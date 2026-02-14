@@ -1240,7 +1240,7 @@ elif section == "🔵 منتجات مفقودة":
                             result = smart_comparison(
                                 product_name=product_name,
                                 competitor_price=row.get('السعر', 0),
-                                store_file_path="/home/ubuntu/upload/alkhabeershop("
+                                store_file_path=None  # سيتم استخدام الملف المرفوع
                             )
                             
                             if result["success"]:
@@ -1310,7 +1310,7 @@ elif section == "🔵 منتجات مفقودة":
                     
                     result = batch_verification(
                         products=products_data,
-                        store_file_path="/home/ubuntu/upload/alkhabeershop(",
+                        store_file_path=None,  # سيتم استخدام الملف المرفوع
                         verification_type="comprehensive"
                     )
                     
