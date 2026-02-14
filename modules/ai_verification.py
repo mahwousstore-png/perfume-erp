@@ -388,10 +388,16 @@ def smart_comparison(
                 results["store_verification"] = store_result["data"]
         
         # 3. التحليل الذكي
+        price_info = ""
+        if competitor_price:
+            price_info += f"سعر المنافس: {competitor_price} ريال\n"
+        if our_price:
+            price_info += f"سعرنا: {our_price} ريال\n"
+        
         analysis_prompt = f"""حلل نتائج المقارنة التالية:
 
 المنتج: {product_name}
-سعرنا: {our_price} ريال
+{price_info}
 
 نتائج البحث الإلكتروني:
 {json.dumps(results["online_search"], ensure_ascii=False, indent=2) if results["online_search"] else "غير متوفر"}
