@@ -1065,12 +1065,38 @@ elif section == "📤 رفع الملفات":
         def update_progress(percent, message=""):
             progress_bar.progress(min(percent, 99))
             elapsed = time.time() - start_time
-            remaining = max(0, estimated_time - elapsed)
+            
+            # تحويل الوقت إلى دقائق وثواني
+            elapsed_min = int(elapsed // 60)
+            elapsed_sec = int(elapsed % 60)
+            
+            # استخراج الوقت المتبقي من الرسالة (إذا موجود)
+            remaining_text = ""
+            if "متبقي:" in message:
+                import re
+                match = re.search(r'متبقي: ~(\d+)ث', message)
+                if match:
+                    remaining_sec = int(match.group(1))
+                    remaining_min = int(remaining_sec // 60)
+                    remaining_sec = int(remaining_sec % 60)
+                    if remaining_min > 0:
+                        remaining_text = f"<b>⏳ الوقت المتبقي:</b> ~{remaining_min}د {remaining_sec}ث"
+                    else:
+                        remaining_text = f"<b>⏳ الوقت المتبقي:</b> ~{remaining_sec}ث"
             
             status_text.markdown(f"### {message}")
+            
+            # عرض محسّن
+            if elapsed_min > 0:
+                elapsed_display = f"{elapsed_min}د {elapsed_sec}ث"
+            else:
+                elapsed_display = f"{elapsed_sec}ث"
+            
             time_text.markdown(f"""
-            <div style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border-radius: 10px; padding: 15px; margin: 10px 0;">
-                <p style="margin:0;"><b>⏱️ الوقت المنقضي:</b> {elapsed:.1f}ث | <b>⏳ الوقت المتبقي:</b> ~{remaining:.0f}ث | <b>📊 التقدم:</b> {percent}%</p>
+            <div style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border-radius: 10px; padding: 20px; margin: 10px 0; font-size: 18px;">
+                <p style="margin:0; margin-bottom: 10px;"><b>⏱️ الوقت المنقضي:</b> {elapsed_display}</p>
+                {f'<p style="margin:0; margin-bottom: 10px;">{remaining_text}</p>' if remaining_text else ''}
+                <p style="margin:0;"><b>📊 التقدم:</b> {percent}%</p>
             </div>
             """, unsafe_allow_html=True)
         

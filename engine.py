@@ -234,7 +234,7 @@ def detect_outliers(prices):
 
 # ===== المطابقة الذكية =====
 
-def match_products(my_products, comp_products, threshold=60):
+def match_products(my_products, comp_products, threshold=60, progress_callback=None):
     """
     مطابقة محسّنة مع early termination و pre-filtering (v12.0).
     
@@ -287,8 +287,12 @@ def match_products(my_products, comp_products, threshold=60):
     
     # ===== المطابقة مع early termination =====
     matched_comp_indices = set()
+    import time
+    start_time = time.time()
+    total_products = len(my_products)
+    processed = 0
     
-    for my_p in my_products:
+    for idx, my_p in enumerate(my_products):
         my_name = _get_name(my_p)
         if not my_name:
             continue
@@ -526,6 +530,16 @@ def match_products(my_products, comp_products, threshold=60):
             result_entry["recommendation"] = "increase"
             result_entry["reasoning"] = f"سعرنا ({my_price} ر.س) أقل من أقل منافس ({min_comp_price} ر.س) بـ {abs(price_diff):.0f} ر.س. الموصى: {recommended_price:.0f} ر.س"
             results["raise"].append(result_entry)
+        
+        # تحديث progress كل منتج
+        processed += 1
+        if progress_callback and processed % 10 == 0:  # تحديث كل 10 منتجات
+            elapsed = time.time() - start_time
+            percent = int(30 + (processed / total_products) * 40)  # 30-70%
+            avg_time_per_product = elapsed / processed
+            remaining_products = total_products - processed
+            estimated_remaining = avg_time_per_product * remaining_products
+            progress_callback(percent, f"⏳ جاري المطابقة: {processed}/{total_products} منتج ({percent}%) | ⏱️ متبقي: ~{estimated_remaining:.0f}ث")
 
     # ===== كشف المنتجات المفقودة (محسّن) =====
     missing_threshold = 45
@@ -787,7 +801,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
         progress_callback(30, f"⏳ جاري مطابقة {len(my_products)} منتج مع {len(all_comp_products)} منتج منافس...")
 
     # 4. تشغيل المطابقة
-    match_results = match_products(my_products, all_comp_products, threshold)
+    match_results = match_products(my_products, all_comp_products, threshold, progress_callback=progress_callback)
 
     if progress_callback:
         progress_callback(70, "✅ تمت المطابقة! جاري تصنيف النتائج...")
