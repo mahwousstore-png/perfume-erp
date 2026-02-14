@@ -364,19 +364,54 @@ def match_products(my_products, comp_products, threshold=65):
             result_entry["reasoning"] = f"سعرنا ({my_price} ر.س) أقل من أقل منافس ({min_comp_price} ر.س) بـ {abs(price_diff):.0f} ر.س. الموصى: {recommended_price:.0f} ر.س"
             results["raise"].append(result_entry)
 
-    # كشف المنتجات المفقودة
+    # كشف المنتجات المفقودة - مع تحقق ذكي محسّن
+    # نستخدم threshold أقل (50) للتحقق من المنتجات المفقودة
+    missing_threshold = 50
+    
     for idx, cp in enumerate(comp_products):
         if idx not in matched_comp_indices:
             cp_name = _get_name(cp)
             if not cp_name:
                 continue
             cp_type = classify_product(cp_name)
-            if cp_type != "rejected":
+            if cp_type == "rejected":
+                continue
+                
+            # تحقق ذكي: هل المنتج موجود فعلاً بنسبة تشابه أقل؟
+            cp_norm = normalize_name(cp_name)
+            cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
+            
+            found_similar = False
+            for my_p in my_products:
+                my_name = _get_name(my_p)
+                if not my_name:
+                    continue
+                    
+                my_type = classify_product(my_name)
+                my_size = my_p.get("size_ml", 0) or extract_size(my_name)
+                
+                # تطابق النوع والحجم
+                if my_type != cp_type:
+                    continue
+                if my_size > 0 and cp_size > 0:
+                    if abs(my_size - cp_size) > 1:
+                        continue
+                
+                # حساب التشابه بنسبة أقل
+                my_norm = normalize_name(my_name)
+                score = fuzz.token_sort_ratio(my_norm, cp_norm)
+                
+                if score >= missing_threshold:
+                    found_similar = True
+                    break
+            
+            # فقط إذا لم نجد أي تشابه → مفقود
+            if not found_similar:
                 results["missing"].append({
                     "comp_product": cp,
                     "comp_name": cp_name,
                     "comp_type": cp_type,
-                    "comp_size": cp.get("size_ml", 0) or extract_size(cp_name),
+                    "comp_size": cp_size,
                     "comp_price": _get_price(cp),
                     "competitor_name": cp.get("_competitor_name", "غير محدد"),
                 })
