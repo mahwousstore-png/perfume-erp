@@ -426,12 +426,26 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
                 "size": best_match["comp_size"],
             }
             
+            # عرض مباشر لعمل AI
+            if progress_callback:
+                progress_callback(
+                    30 + int((idx / total_products) * 40),
+                    f"🤖 AI يتحقق من: {my_name[:50]}... 🔍"
+                )
+            
             # التحقق بالتحليل الدلالي أولاً
             semantic_result = semantic_verify_match(
                 my_product_data,
                 comp_product_data,
                 best_match["match_score"]
             )
+            
+            # عرض مباشر: التحقق بالذكاء الصناعي
+            if progress_callback:
+                progress_callback(
+                    30 + int((idx / total_products) * 40),
+                    f"🧠 Gemini AI يحلل: {comp_brand} vs {my_brand} 🔬"
+                )
             
             # ثم التحقق بالذكاء الصناعي (Gemini AI)
             ai_result = verify_match_with_ai(

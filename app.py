@@ -887,6 +887,7 @@ with st.sidebar:
         "🟢 موافق عليها",
         "🔵 منتجات مفقودة",
         "⚠️ يحتاج مراجعة",
+        "🔍 تفاصيل المطابقة",
         "🤖 Gemini تحقق",
         "🔍 تحقق مجمع AI",
         "💬 محادثة AI",
@@ -1119,6 +1120,7 @@ elif section == "📤 رفع الملفات":
             st.error(f"❌ خطأ: {results['error']}")
         else:
             st.session_state.results = results
+            st.session_state.analysis_result = results  # حفظ لصفحة تفاصيل المطابقة
             
             # حفظ في قاعدة البيانات
             save_results_to_db(results)
@@ -1477,6 +1479,10 @@ elif section == "🔵 منتجات مفقودة":
 # ══════════════════════════════════════════════════════════════
 # 7. يحتاج مراجعة
 # ══════════════════════════════════════════════════════════════
+elif section == "🔍 تفاصيل المطابقة":
+    from match_details_page import render_match_details_page
+    render_match_details_page()
+
 elif section == "⚠️ يحتاج مراجعة":
     st.markdown("# ⚠️ يحتاج مراجعة")
     st.markdown("> المنتجات ذات الخطورة العالية أو المتوسطة التي تحتاج مراجعة يدوية")
