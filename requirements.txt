@@ -18,5 +18,6 @@ httpx>=0.25.0
 
 # استديو مهووس الذكي v9.0
 google-genai>=0.2.0
+google-ai-generativelanguage>=0.6.0
 Pillow>=10.0.0
 lumaai>=0.1.0
