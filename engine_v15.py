@@ -20,7 +20,7 @@ import pandas as pd
 from io import BytesIO
 from typing import List, Dict, Any, Optional, Callable
 from collections import defaultdict
-from fuzzywuzzy import fuzz
+from rapidfuzz import fuzz
 import time
 
 # استيراد الوحدات الموجودة
