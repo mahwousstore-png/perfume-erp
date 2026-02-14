@@ -11,6 +11,7 @@ engine.py - محرك المطابقة والتصنيف الذكي v7.0
 import re
 import numpy as np
 from rapidfuzz import fuzz
+from extract_concentration import extract_concentration, concentrations_match
 
 
 # ===== قوانين التصنيف =====
@@ -322,17 +323,32 @@ def match_products(my_products, comp_products, threshold=60):
         if not candidates:
             continue
         
-        # ===== Early termination: إيقاف عند أول تطابق قوي =====
+        # ===== البحث عن جميع المطابقات (بدون early termination) =====
         all_matches = []
         best_score = 0
         
+        # استخراج العلامة التجارية والتركيز
+        my_brand = extract_brand(my_name)
+        my_conc = extract_concentration(my_name)
+        
         for cand in candidates:
-            # تطابق الحجم الدقيق
+            # 1. تطابق الحجم المرن (±5ml)
             if my_size > 0 and cand["size"] > 0:
-                if abs(my_size - cand["size"]) > 1:
+                if abs(my_size - cand["size"]) > 5:
                     continue
             
-            # حساب التشابه
+            # 2. التحقق من العلامة التجارية (إذا متوفرة)
+            cand_brand = extract_brand(cand["name"])
+            if my_brand and cand_brand:
+                if my_brand.lower() != cand_brand.lower():
+                    continue  # علامة تجارية مختلفة → تجاهل
+            
+            # 3. التحقق من التركيز (إذا متوفر)
+            cand_conc = extract_concentration(cand["name"])
+            if not concentrations_match(my_conc, cand_conc):
+                continue  # تركيز غير متطابق → تجاهل
+            
+            # 4. حساب التشابه
             score = fuzz.token_sort_ratio(my_norm, cand["normalized"])
             
             if score >= threshold:
@@ -348,8 +364,8 @@ def match_products(my_products, comp_products, threshold=60):
                 
                 best_score = max(best_score, score)
                 
-                # Early termination: إذا وجدنا تطابق ممتاز (95%+) → توقف
-                if score >= 95:
+                # Early termination محسّن: إيقاف عند 98%+ (تطابق شبه تام)
+                if score >= 98:
                     break
 
         if not all_matches:
