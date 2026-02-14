@@ -348,13 +348,19 @@ def verify_in_store_file_simple(product_name: str, store_file_path: str) -> Dict
 # 3. المقارنة الذكية الشاملة
 # ══════════════════════════════════════════════════════════════
 
-def smart_comparison(product_name: str, our_price: float, store_file_path: Optional[str] = None) -> Dict:
+def smart_comparison(
+    product_name: str, 
+    competitor_price: float = None,
+    our_price: float = None, 
+    store_file_path: Optional[str] = None
+) -> Dict:
     """
     مقارنة ذكية شاملة للمنتج
     
     Args:
         product_name: اسم المنتج
-        our_price: سعرنا الحالي
+        competitor_price: سعر المنافس (اختياري)
+        our_price: سعرنا الحالي (اختياري)
         store_file_path: مسار ملف المتجر (اختياري)
     
     Returns:
@@ -363,6 +369,7 @@ def smart_comparison(product_name: str, our_price: float, store_file_path: Optio
     try:
         results = {
             "product_name": product_name,
+            "competitor_price": competitor_price,
             "our_price": our_price,
             "online_search": None,
             "store_verification": None,

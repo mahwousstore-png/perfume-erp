@@ -799,6 +799,9 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                      use_container_width=True, type="primary",
                      disabled=len(selected) == 0, key=f"send_{section_key}"):
             with st.spinner(f"⏳ جاري إرسال {len(selected)} منتج..."):
+                # استيراد نظام قاعدة البيانات
+                from database import log_operation, mark_product_modified, is_product_modified
+                
                 batch_size = 50
                 total_sent = 0
                 total_failed = 0
@@ -807,6 +810,20 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                     result = send_func(batch)
                     if result["success"]:
                         total_sent += len(batch)
+                        # تسجيل كل منتج في قاعدة البيانات
+                        for product in batch:
+                            product_name = product.get('المنتج', '')
+                            if not is_product_modified(product_name):
+                                log_operation(
+                                    operation_type="price_update",
+                                    product_name=product_name,
+                                    old_price=product.get('سعر المنافس', 0),
+                                    new_price=product.get('سعرنا', 0),
+                                    status="success",
+                                    details={"section": section_label, "webhook": webhook_label},
+                                    user_action="approved_and_sent"
+                                )
+                                mark_product_modified(product_name, "price_update")
                     else:
                         total_failed += len(batch)
                 
@@ -859,6 +876,7 @@ with st.sidebar:
     section = st.radio("📂 الأقسام", [
         "🏠 لوحة القيادة",
         "📤 رفع الملفات",
+        "📊 سجل العمليات",
         "🔴 رفع سعر",
         "🟡 خفض سعر",
         "🟢 موافق عليها",
@@ -1270,7 +1288,25 @@ elif section == "🔵 منتجات مفقودة":
                 if st.button("✅ موافقة وإضافة إلى سلة", type="primary", use_container_width=True,
                              disabled=len(selected_missing) == 0, key="send_missing"):
                     with st.spinner(f"⏳ جاري إرسال {len(selected_missing)} منتج..."):
+                        # استيراد نظام قاعدة البيانات
+                        from database import log_operation, mark_product_added, is_product_added
+                        
                         result = send_new_products(selected_missing)
+                        
+                        # تسجيل المنتجات في قاعدة البيانات
+                        if result.get("success"):
+                            for product in selected_missing:
+                                product_name = product.get('المنتج', '')
+                                if not is_product_added(product_name):
+                                    log_operation(
+                                        operation_type="product_add",
+                                        product_name=product_name,
+                                        new_price=product.get('السعر', 0),
+                                        status="success",
+                                        details={"source": "missing_products"},
+                                        user_action="approved_and_added"
+                                    )
+                                    mark_product_added(product_name, "missing_products")
                         save_send_log("إضافة منتجات", len(selected_missing),
                                      len(selected_missing) if result["success"] else 0,
                                      0 if result["success"] else len(selected_missing),
