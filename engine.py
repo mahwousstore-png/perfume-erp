@@ -115,23 +115,58 @@ def extract_brand(name):
 
 
 def normalize_name(name):
-    """تنظيف اسم المنتج للمقارنة."""
+    """تنظيف اسم المنتج للمقارنة - مع تطبيع ذكي محسّن."""
     name = name.lower().strip()
+    
+    # تحويل الأرقام العربية إلى إنجليزية
+    arabic_to_english = {
+        '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+        '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
+    }
+    for ar, en in arabic_to_english.items():
+        name = name.replace(ar, en)
+    
+    # تطبيع الكلمات الشائعة (عربي → إنجليزي)
+    word_replacements = {
+        'او دو بارفان': 'edp',
+        'أو دو بارفان': 'edp',
+        'او دي بارفان': 'edp',
+        'او دو برفيوم': 'edp',
+        'أو دو برفيوم': 'edp',
+        'او دي بارفيوم': 'edp',
+        'أو دو بارفيوم': 'edp',
+        'او دو تواليت': 'edt',
+        'أو دو تواليت': 'edt',
+        'او دي تواليت': 'edt',
+        'او دو كولون': 'edc',
+        'نمبر': 'no',
+        'فايف': '5',
+        'مل': 'ml',
+        'ملي': 'ml',
+        'سوفاج': 'sauvage',
+        'ديور': 'dior',
+        'شانيل': 'chanel',
+        'غوتشي': 'gucci',
+        'فرزاتشي': 'versace',
+    }
+    for ar, en in word_replacements.items():
+        name = name.replace(ar, en)
+    
     # إزالة الحجم
     name = re.sub(r"\d+(?:\.\d+)?\s*ml", "", name, flags=re.I)
     name = re.sub(r"\d+(?:\.\d+)?\s*مل", "", name, flags=re.I)
+    
     # إزالة كلمات التصنيف
     remove_words = [
         "edp", "edt", "eau de parfum", "eau de toilette",
         "parfum", "cologne", "for men", "for women",
         "pour homme", "pour femme", "unisex",
         "spray", "natural spray",
-        "او دو برفيوم", "أو دو برفيوم", "او دي بارفيوم",
-        "أو دو بارفيوم", "او دي تواليت", "أو دو تواليت",
         "او دو", "أو دو", "ماء عطر", "عطر",
     ]
     for w in remove_words:
         name = name.replace(w, "")
+    
     # إزالة الرموز الزائدة
     name = re.sub(r"[^\w\s]", " ", name)
     name = re.sub(r"\s+", " ", name).strip()
@@ -196,7 +231,7 @@ def detect_outliers(prices):
 
 # ===== المطابقة الذكية =====
 
-def match_products(my_products, comp_products, threshold=65):
+def match_products(my_products, comp_products, threshold=60):
     """
     مطابقة المنتجات مع تطبيق القوانين الصارمة.
 
@@ -365,8 +400,8 @@ def match_products(my_products, comp_products, threshold=65):
             results["raise"].append(result_entry)
 
     # كشف المنتجات المفقودة - مع تحقق ذكي محسّن
-    # نستخدم threshold أقل (50) للتحقق من المنتجات المفقودة
-    missing_threshold = 50
+    # نستخدم threshold أقل (45) للتحقق من المنتجات المفقودة
+    missing_threshold = 45
     
     for idx, cp in enumerate(comp_products):
         if idx not in matched_comp_indices:
@@ -518,7 +553,7 @@ def normalize_columns(df):
     return df_normalized
 
 
-def run_full_analysis(my_file, comp_files, threshold=65, progress_callback=None):
+def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None):
     """
     تشغيل التحليل الكامل للمنتجات.
 
@@ -813,7 +848,7 @@ def send_to_make(match_results, webhook_url=None):
 class MatchingEngine:
     """محرك المطابقة الرئيسي."""
 
-    def __init__(self, threshold=65):
+    def __init__(self, threshold=60):
         self.threshold = threshold
 
     def match(self, my_products, comp_products):
