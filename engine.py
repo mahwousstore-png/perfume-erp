@@ -12,6 +12,7 @@ import re
 import numpy as np
 from rapidfuzz import fuzz
 from extract_concentration import extract_concentration, concentrations_match
+from semantic_matcher import semantic_verify_match
 
 
 # ===== قوانين التصنيف =====
@@ -392,6 +393,54 @@ def match_products(my_products, comp_products, threshold=60):
 
         # أفضل مطابقة (أعلى نسبة تشابه)
         best_match = max(valid_matches, key=lambda m: m["match_score"])
+        
+        # ===== التحقق بالذكاء الصناعي (AI Verification) =====
+        # إذا كانت المطابقة النصية < 95%، نتحقق بالذكاء الصناعي
+        ai_verified = False
+        ai_confidence = 0
+        ai_reasoning = ""
+        
+        if best_match["match_score"] < 95:
+            # بناء بيانات المنتجات للذكاء الصناعي
+            my_brand = extract_brand(my_name)
+            my_conc = extract_concentration(my_name)
+            comp_brand = extract_brand(best_match["comp_name"])
+            comp_conc = extract_concentration(best_match["comp_name"])
+            
+            my_product_data = {
+                "name": my_name,
+                "brand": my_brand,
+                "concentration": my_conc,
+                "size": my_size,
+            }
+            
+            comp_product_data = {
+                "name": best_match["comp_name"],
+                "brand": comp_brand,
+                "concentration": comp_conc,
+                "size": best_match["comp_size"],
+            }
+            
+            # التحقق بالتحليل الدلالي
+            ai_result = semantic_verify_match(
+                my_product_data,
+                comp_product_data,
+                best_match["match_score"]
+            )
+            
+            if ai_result.get("success"):
+                ai_verified = ai_result.get("match", False)
+                ai_confidence = ai_result.get("confidence", 0)
+                ai_reasoning = ai_result.get("reasoning", "")
+                
+                # إذا رفض الذكاء الصناعي المطابقة (ثقة < 85%)، نتجاهلها
+                if not ai_verified or ai_confidence < 85:
+                    continue  # تجاهل هذه المطابقة
+        else:
+            # مطابقة ممتازة (95%+) → قبول مباشر
+            ai_verified = True
+            ai_confidence = best_match["match_score"]
+            ai_reasoning = "مطابقة نصية ممتازة"
 
         # السعر الموصى = أقل منافس - 1 ريال
         recommended_price = min_comp_price - 1
@@ -431,6 +480,15 @@ def match_products(my_products, comp_products, threshold=60):
             "num_competitors": len(valid_matches),
             "outliers_removed": len(outlier_indices),
             "my_id": my_id,
+            # معلومات الذكاء الصناعي
+            "ai_verified": ai_verified,
+            "ai_confidence": ai_confidence,
+            "ai_reasoning": ai_reasoning,
+            # تفاصيل المنتجات
+            "my_brand": extract_brand(my_name),
+            "my_concentration": extract_concentration(my_name),
+            "comp_brand": extract_brand(best_match["comp_name"]),
+            "comp_concentration": extract_concentration(best_match["comp_name"]),
         }
 
         # تحديد مستوى الخطورة
@@ -729,13 +787,21 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     df_raise = pd.DataFrame([
         {
             "المنتج": m.get("my_name", ""),
+            "ماركتنا": m.get("my_brand", ""),
+            "تركيزنا": m.get("my_concentration", ""),
+            "حجمنا": m.get("my_size", 0),
             "اسم المنافس": m.get("comp_name", ""),
+            "ماركة المنافس": m.get("comp_brand", ""),
+            "تركيز المنافس": m.get("comp_concentration", ""),
+            "حجم المنافس": m.get("comp_size", 0),
             "السعر": m["my_price"],
             "أقل سعر منافس": m["comp_price"],
             "السعر الموصى": m["recommended_price"],
             "الفرق": m["price_diff"],
             "النسبة %": m["diff_percent"],
             "الثقة %": m["confidence"],
+            "ثقة AI %": m.get("ai_confidence", 0),
+            "تفسير AI": m.get("ai_reasoning", ""),
             "عدد المنافسين": m["num_competitors"],
             "التفسير": m.get("reasoning", ""),
             "الخطورة": {"high": "حرج", "medium": "متوسط", "low": "عادي"}.get(m["risk_level"], "عادي"),
@@ -748,13 +814,21 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     df_lower = pd.DataFrame([
         {
             "المنتج": m.get("my_name", ""),
+            "ماركتنا": m.get("my_brand", ""),
+            "تركيزنا": m.get("my_concentration", ""),
+            "حجمنا": m.get("my_size", 0),
             "اسم المنافس": m.get("comp_name", ""),
+            "ماركة المنافس": m.get("comp_brand", ""),
+            "تركيز المنافس": m.get("comp_concentration", ""),
+            "حجم المنافس": m.get("comp_size", 0),
             "السعر": m["my_price"],
             "أقل سعر منافس": m["comp_price"],
             "السعر الموصى": m["recommended_price"],
             "الفرق": m["price_diff"],
             "النسبة %": m["diff_percent"],
             "الثقة %": m["confidence"],
+            "ثقة AI %": m.get("ai_confidence", 0),
+            "تفسير AI": m.get("ai_reasoning", ""),
             "عدد المنافسين": m["num_competitors"],
             "التفسير": m.get("reasoning", ""),
             "الخطورة": {"high": "حرج", "medium": "متوسط", "low": "عادي"}.get(m["risk_level"], "عادي"),
