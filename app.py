@@ -1267,16 +1267,32 @@ elif section == "🔵 منتجات مفقودة":
                             )
                             
                             if result["success"]:
-                                data = result["data"]
+                                data = result["results"]
+                                analysis = data.get('analysis', {})
+                                
+                                # حساب الفرق
+                                price_diff = ""
+                                if data.get('our_price') and data.get('competitor_price'):
+                                    diff = data['our_price'] - data['competitor_price']
+                                    price_diff = f"{diff:.2f}"
+                                
+                                # عرض النتائج
                                 st.markdown(f"""
                                 <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0;">
-                                    <h4 style="margin:0; color: #2e7d32;">✅ نتائج التحقق</h4>
+                                    <h4 style="margin:0; color: #2e7d32;">✅ نتائج التحقق الذكي</h4>
                                     <p><b>🏪 المنتج:</b> {data.get('product_name', '')}</p>
-                                    <p><b>💰 سعر المنافس:</b> {data.get('competitor_price', '')} ر.س</p>
-                                    <p><b>🏪 في متجرنا:</b> {'✅ موجود' if data.get('in_our_store') else '❌ غير موجود'}</p>
-                                    {f"<p><b>💵 سعرنا:</b> {data.get('our_price', '')} ر.س</p>" if data.get('in_our_store') else ''}
-                                    {f"<p><b>📈 الفرق:</b> {data.get('price_difference', '')} ر.س</p>" if data.get('in_our_store') else ''}
-                                    <p><b>🎯 التوصية:</b> {data.get('recommendation', '')}</p>
+                                    <p><b>💰 سعر المنافس:</b> {data.get('competitor_price', 0):.2f} ر.س</p>
+                                    <p><b>🏪 في متجرنا:</b> {'✅ موجود' if analysis.get('in_our_store') else '❌ غير موجود'}</p>
+                                    {f"<p><b>💵 سعرنا:</b> {data.get('our_price', 0):.2f} ر.س</p>" if data.get('our_price') else ''}
+                                    {f"<p><b>📈 الفرق:</b> {price_diff} ر.س</p>" if price_diff else ''}
+                                    <p><b>📉 حالة السعر:</b> {analysis.get('price_status', 'غير محدد')}</p>
+                                    <p><b>💹 الربحية:</b> {analysis.get('profitability', 'غير محدد')}</p>
+                                    <p><b>🎯 التوصيات:</b></p>
+                                    <ul>
+                                    {''.join([f"<li>{rec}</li>" for rec in analysis.get('recommendations', [])])}
+                                    </ul>
+                                    {f"<p><b>💵 السعر المقترح:</b> {analysis.get('suggested_price', 0):.2f} ر.س</p>" if analysis.get('suggested_price') else ''}
+                                    {f"<p><b>📝 ملاحظات:</b> {analysis.get('notes', '')}</p>" if analysis.get('notes') else ''}
                                 </div>
                                 """, unsafe_allow_html=True)
                             else:
