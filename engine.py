@@ -786,6 +786,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     # 5. تحويل النتائج إلى DataFrames
     df_raise = pd.DataFrame([
         {
+            "المقارنة": f"{m.get('my_name', '')} 🆚 {m.get('comp_name', '')}",
             "المنتج": m.get("my_name", ""),
             "ماركتنا": m.get("my_brand", ""),
             "تركيزنا": m.get("my_concentration", ""),
@@ -813,6 +814,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
 
     df_lower = pd.DataFrame([
         {
+            "المقارنة": f"{m.get('my_name', '')} 🆚 {m.get('comp_name', '')}",
             "المنتج": m.get("my_name", ""),
             "ماركتنا": m.get("my_brand", ""),
             "تركيزنا": m.get("my_concentration", ""),
@@ -840,6 +842,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
 
     df_approved = pd.DataFrame([
         {
+            "المقارنة": f"{m.get('my_name', '')} 🆚 {m.get('comp_name', '')}",
             "المنتج": m.get("my_name", ""),
             "اسم المنافس": m.get("comp_name", ""),
             "السعر": m["my_price"],
