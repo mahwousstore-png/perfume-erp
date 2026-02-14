@@ -1000,6 +1000,10 @@ if section == "🏠 لوحة القيادة":
 # ══════════════════════════════════════════════════════════════
 # 2. رفع الملفات ومعالجتها
 # ══════════════════════════════════════════════════════════════
+elif section == "📊 سجل العمليات":
+    from operations_log_section import show_operations_log
+    show_operations_log()
+
 elif section == "📤 رفع الملفات":
     st.markdown("# 📤 رفع الملفات ومعالجتها")
     st.markdown("---")
