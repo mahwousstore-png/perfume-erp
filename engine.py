@@ -713,6 +713,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     df_raise = pd.DataFrame([
         {
             "المنتج": m.get("my_name", ""),
+            "اسم المنافس": m.get("comp_name", ""),
             "السعر": m["my_price"],
             "أقل سعر منافس": m["comp_price"],
             "السعر الموصى": m["recommended_price"],
@@ -731,6 +732,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     df_lower = pd.DataFrame([
         {
             "المنتج": m.get("my_name", ""),
+            "اسم المنافس": m.get("comp_name", ""),
             "السعر": m["my_price"],
             "أقل سعر منافس": m["comp_price"],
             "السعر الموصى": m["recommended_price"],
@@ -749,6 +751,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     df_approved = pd.DataFrame([
         {
             "المنتج": m.get("my_name", ""),
+            "اسم المنافس": m.get("comp_name", ""),
             "السعر": m["my_price"],
             "أقل سعر منافس": m["comp_price"],
             "الفرق": m["price_diff"],

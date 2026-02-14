@@ -750,14 +750,18 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
     # عرض الجدول مع checkboxes
     selected = []
     for i, (_, row) in enumerate(df.iterrows()):
-        cols = st.columns([0.3, 2.8, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9])
+        cols = st.columns([0.2, 2.0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8])
         with cols[0]:
             default_val = st.session_state[f"sel_{section_key}"][i] if i < len(st.session_state[f"sel_{section_key}"]) else False
             checked = st.checkbox("", value=default_val, key=f"{section_key}_{i}")
             if checked:
                 selected.append(row.to_dict())
         with cols[1]:
-            st.write(f"**{str(row.get('المنتج', ''))[:50]}**")
+            product_name = str(row.get('المنتج', ''))[:40]
+            comp_name = str(row.get('اسم المنافس', ''))[:40]
+            st.write(f"**{product_name}**")
+            if comp_name:
+                st.caption(f"🏪 المنافس: {comp_name}")
         with cols[2]:
             st.write(f"💰 {row.get('السعر', 0)}")
         with cols[3]:
