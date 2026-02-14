@@ -1,8 +1,8 @@
 """
 app.py
-نظام التسعير الذكي للعطور v14.2
+نظام التسعير الذكي للعطور v15.0
 ═══════════════════════════════════
-15 قسم كامل | Gemini AI + OpenRouter | Make.com | Google Drive | Supabase
+15 قسم كامل | نظام تصنيف ذكي متعدد المستويات | Gemini AI + OpenRouter | Make.com | Google Drive | Supabase
 """
 
 import streamlit as st
@@ -25,7 +25,7 @@ except ImportError:
 
 # ── إعدادات الصفحة ─────────────────────────────────────────
 st.set_page_config(
-    page_title="نظام التسعير الذكي v14.2",
+    page_title="نظام التسعير الذكي v15.0",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -1051,7 +1051,7 @@ elif section == "📤 رفع الملفات":
     
     if st.button("🚀 بدء المعالجة", type="primary", use_container_width=True,
                  disabled=not (st.session_state.my_file and st.session_state.supplier_files)):
-        from engine import run_full_analysis
+        from engine_v15 import run_full_analysis  # v15: نظام التصنيف الذكي متعدد المستويات
         import time
         
         # عناصر العرض
