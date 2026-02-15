@@ -1,11 +1,12 @@
 """
-نظام التحقق الذكي بالذكاء الصناعي v3.0
+نظام التحقق الذكي بالذكاء الصناعي v5.0
 ==========================================
 يوفر قدرات متقدمة للتحقق والمقارنة والبحث عن المنتجات
+- نظام مفاتيح متعددة مع تبديل تلقائي (Gemini + OpenRouter)
+- توصيات تسعير حقيقية متخصصة لكل قسم
 - مطابقة ذكية بين المنتجات (عربي/إنجليزي)
 - تحقق مجمع (Batch) لتسريع العمل
-- تحليل أسعار وتوصيات تسعير
-- كشف أخطاء المطابقة
+- أزرار قرار: تعديل / تأجيل / إزالة
 """
 
 import os
@@ -18,28 +19,129 @@ from typing import Dict, List, Optional, Tuple
 import streamlit as st
 
 # ══════════════════════════════════════════════════════════════
-# إعدادات API
+# نظام المفاتيح المتعددة مع تبديل تلقائي
 # ══════════════════════════════════════════════════════════════
 
-# قراءة GEMINI_API_KEY من Streamlit Secrets
-try:
-    if hasattr(st, 'secrets') and "GEMINI_API_KEY" in st.secrets:
-        GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-    else:
-        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-except Exception as e:
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+class MultiKeyManager:
+    """مدير المفاتيح المتعددة - يبدّل تلقائياً عند الفشل"""
+    
+    def __init__(self):
+        self.gemini_keys = []
+        self.openrouter_keys = []
+        self.current_gemini_idx = 0
+        self.current_openrouter_idx = 0
+        self.failed_keys = {}  # key -> timestamp of failure
+        self.call_counts = {}  # key -> number of calls
+        self.total_calls = 0
+        self.total_failures = 0
+        self.provider_used = "none"  # آخر مزود تم استخدامه
+        self._load_keys()
+    
+    def _load_keys(self):
+        """تحميل المفاتيح من Streamlit Secrets أو متغيرات البيئة"""
+        # تحميل مفاتيح Gemini
+        gemini_sources = [
+            "GEMINI_API_KEY", "GEMINI_API_KEY_1", "GEMINI_API_KEY_2", 
+            "GEMINI_API_KEY_3", "GEMINI_API_KEY_4", "GEMINI_API_KEY_5"
+        ]
+        
+        for key_name in gemini_sources:
+            key_val = self._get_secret(key_name)
+            if key_val and key_val.strip() and key_val not in self.gemini_keys:
+                self.gemini_keys.append(key_val.strip())
+        
+        # تحميل مفاتيح OpenRouter
+        openrouter_sources = [
+            "OPENROUTER_API_KEY", "OPENROUTER_API_KEY_1", "OPENROUTER_API_KEY_2"
+        ]
+        
+        for key_name in openrouter_sources:
+            key_val = self._get_secret(key_name)
+            if key_val and key_val.strip() and key_val not in self.openrouter_keys:
+                self.openrouter_keys.append(key_val.strip())
+    
+    def _get_secret(self, name: str) -> str:
+        """قراءة سر من Streamlit Secrets أو متغيرات البيئة"""
+        try:
+            if hasattr(st, 'secrets') and name in st.secrets:
+                return st.secrets[name]
+        except:
+            pass
+        return os.getenv(name, "")
+    
+    def _is_key_failed(self, key: str) -> bool:
+        """هل المفتاح فاشل مؤخراً (خلال 5 دقائق)"""
+        if key in self.failed_keys:
+            if time.time() - self.failed_keys[key] < 300:  # 5 دقائق
+                return True
+            else:
+                del self.failed_keys[key]  # انتهت فترة الحظر
+        return False
+    
+    def mark_failed(self, key: str):
+        """تسجيل فشل مفتاح"""
+        self.failed_keys[key] = time.time()
+        self.total_failures += 1
+    
+    def mark_success(self, key: str):
+        """تسجيل نجاح مفتاح"""
+        self.call_counts[key] = self.call_counts.get(key, 0) + 1
+        self.total_calls += 1
+        if key in self.failed_keys:
+            del self.failed_keys[key]
+    
+    def get_next_gemini_key(self) -> Optional[str]:
+        """الحصول على مفتاح Gemini التالي المتاح"""
+        if not self.gemini_keys:
+            return None
+        
+        for _ in range(len(self.gemini_keys)):
+            key = self.gemini_keys[self.current_gemini_idx % len(self.gemini_keys)]
+            self.current_gemini_idx += 1
+            if not self._is_key_failed(key):
+                return key
+        
+        # كل المفاتيح فاشلة - أعد أول واحد كمحاولة أخيرة
+        return self.gemini_keys[0]
+    
+    def get_next_openrouter_key(self) -> Optional[str]:
+        """الحصول على مفتاح OpenRouter التالي المتاح"""
+        if not self.openrouter_keys:
+            return None
+        
+        for _ in range(len(self.openrouter_keys)):
+            key = self.openrouter_keys[self.current_openrouter_idx % len(self.openrouter_keys)]
+            self.current_openrouter_idx += 1
+            if not self._is_key_failed(key):
+                return key
+        
+        return self.openrouter_keys[0]
+    
+    def get_status(self) -> Dict:
+        """حالة المفاتيح"""
+        active_gemini = sum(1 for k in self.gemini_keys if not self._is_key_failed(k))
+        active_openrouter = sum(1 for k in self.openrouter_keys if not self._is_key_failed(k))
+        return {
+            "gemini_total": len(self.gemini_keys),
+            "gemini_active": active_gemini,
+            "openrouter_total": len(self.openrouter_keys),
+            "openrouter_active": active_openrouter,
+            "total_calls": self.total_calls,
+            "total_failures": self.total_failures,
+            "provider_used": self.provider_used,
+        }
 
-# Fallback: إذا كان المفتاح فارغاً، استخدم المفتاح الاحتياطي
-if not GEMINI_API_KEY or GEMINI_API_KEY.strip() == "":
-    GEMINI_API_KEY = ""
+
+# إنشاء مدير المفاتيح العالمي
+key_manager = MultiKeyManager()
+
 
 # ══════════════════════════════════════════════════════════════
 # أدوات مساعدة
 # ══════════════════════════════════════════════════════════════
 
 def _clean_json_response(text: str) -> str:
-    """تنظيف استجابة JSON من Gemini"""
+    """تنظيف استجابة JSON من AI"""
     text = text.strip()
     if text.startswith("```json"):
         text = text[7:]
@@ -51,49 +153,159 @@ def _clean_json_response(text: str) -> str:
 
 
 def _call_gemini(prompt: str, temperature: float = 0.1, max_tokens: int = 1024, timeout: int = 30) -> Optional[str]:
-    """استدعاء Gemini API مع إعادة المحاولة"""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+    """استدعاء Gemini API مع تبديل تلقائي للمفاتيح"""
     
-    for attempt in range(3):
-        try:
-            response = requests.post(
-                url,
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {
+    # محاولة مع كل مفاتيح Gemini المتاحة
+    tried_keys = set()
+    for _ in range(len(key_manager.gemini_keys) + 1):
+        api_key = key_manager.get_next_gemini_key()
+        if not api_key or api_key in tried_keys:
+            break
+        tried_keys.add(api_key)
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+        
+        for attempt in range(2):
+            try:
+                response = requests.post(
+                    url,
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "temperature": temperature,
+                            "maxOutputTokens": max_tokens,
+                        }
+                    },
+                    headers={"Content-Type": "application/json"},
+                    timeout=timeout
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    candidates = result.get("candidates", [])
+                    if candidates and candidates[0].get("content", {}).get("parts"):
+                        key_manager.mark_success(api_key)
+                        key_manager.provider_used = "gemini"
+                        return candidates[0]["content"]["parts"][0]["text"].strip()
+                    return None
+                elif response.status_code == 429:
+                    # Rate limit - جرب المفتاح التالي
+                    key_manager.mark_failed(api_key)
+                    break  # اخرج من حلقة المحاولات وجرب مفتاح آخر
+                elif response.status_code == 400:
+                    try:
+                        err = response.json().get("error", {}).get("message", "")
+                        if "leaked" in err.lower() or "invalid" in err.lower() or "API_KEY" in err:
+                            key_manager.mark_failed(api_key)
+                            break
+                    except:
+                        pass
+                    key_manager.mark_failed(api_key)
+                    break
+                else:
+                    key_manager.mark_failed(api_key)
+                    break
+            except requests.exceptions.Timeout:
+                if attempt == 0:
+                    continue
+                key_manager.mark_failed(api_key)
+                break
+            except Exception:
+                key_manager.mark_failed(api_key)
+                break
+    
+    # Fallback: استخدام OpenRouter
+    return _call_openrouter(prompt, temperature, max_tokens, timeout)
+
+
+def _call_openrouter(prompt: str, temperature: float = 0.1, max_tokens: int = 1024, timeout: int = 30) -> Optional[str]:
+    """استدعاء OpenRouter API كبديل"""
+    
+    tried_keys = set()
+    for _ in range(len(key_manager.openrouter_keys) + 1):
+        api_key = key_manager.get_next_openrouter_key()
+        if not api_key or api_key in tried_keys:
+            break
+        tried_keys.add(api_key)
+        
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        
+        for attempt in range(2):
+            try:
+                response = requests.post(
+                    url,
+                    json={
+                        "model": "google/gemini-2.0-flash-001",
+                        "messages": [{"role": "user", "content": prompt}],
                         "temperature": temperature,
-                        "maxOutputTokens": max_tokens,
-                    }
-                },
-                headers={"Content-Type": "application/json"},
-                timeout=timeout
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                candidates = result.get("candidates", [])
-                if candidates and candidates[0].get("content", {}).get("parts"):
-                    return candidates[0]["content"]["parts"][0]["text"].strip()
-                return None
-            elif response.status_code == 429:
-                # Rate limit - انتظر وأعد المحاولة
-                wait_time = min(5 * (attempt + 1), 30)
-                time.sleep(wait_time)
-                continue
-            else:
-                return None
-        except requests.exceptions.Timeout:
-            if attempt < 2:
-                time.sleep(2)
-                continue
-            return None
-        except Exception:
-            return None
+                        "max_tokens": max_tokens,
+                    },
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    timeout=timeout
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    choices = result.get("choices", [])
+                    if choices and choices[0].get("message", {}).get("content"):
+                        key_manager.mark_success(api_key)
+                        key_manager.provider_used = "openrouter"
+                        return choices[0]["message"]["content"].strip()
+                    return None
+                elif response.status_code == 429:
+                    key_manager.mark_failed(api_key)
+                    break
+                else:
+                    if attempt == 0:
+                        time.sleep(1)
+                        continue
+                    key_manager.mark_failed(api_key)
+                    break
+            except requests.exceptions.Timeout:
+                if attempt == 0:
+                    continue
+                key_manager.mark_failed(api_key)
+                break
+            except Exception:
+                key_manager.mark_failed(api_key)
+                break
+    
     return None
 
 
+def get_ai_status() -> Dict:
+    """حالة AI الشاملة"""
+    status = key_manager.get_status()
+    status["available"] = (status["gemini_active"] > 0 or status["openrouter_active"] > 0)
+    return status
+
+
+def verify_ai_connection() -> Dict:
+    """فحص اتصال AI فعلي"""
+    result = _call_gemini("أجب بكلمة: مرحبا", temperature=0.1, max_tokens=10, timeout=15)
+    status = key_manager.get_status()
+    
+    if result:
+        return {
+            "connected": True,
+            "provider": key_manager.provider_used,
+            "message": f"متصل عبر {key_manager.provider_used}",
+            **status
+        }
+    else:
+        return {
+            "connected": False,
+            "provider": "none",
+            "message": "جميع المفاتيح فاشلة",
+            **status
+        }
+
+
 # ══════════════════════════════════════════════════════════════
-# نظام خبير العطور المحسّن v3.0
+# نظام خبير العطور المحسّن v5.0
 # ══════════════════════════════════════════════════════════════
 
 MATCH_SYSTEM_PROMPT = """أنت خبير مطابقة عطور محترف. مهمتك تحديد هل منتجان هما نفس المنتج أم لا.
@@ -119,27 +331,13 @@ MATCH_SYSTEM_PROMPT = """أنت خبير مطابقة عطور محترف. مه�
    - الأرقام العربية = الأرقام اللاتينية (١٠٠ = 100)
 """
 
-ANALYSIS_SYSTEM_PROMPT = """أنت محلل أسعار عطور محترف في السوق السعودي والخليجي.
-
-## قواعد التسعير:
-- إذا سعر المنافس أقل بأكثر من 5%: نوصي بخفض السعر
-- إذا سعرنا أقل من المنافس بأكثر من 10%: نوصي برفع السعر
-- إذا الفرق أقل من 5%: السعر مناسب (تثبيت)
-- الربحية: ممتاز (هامش >30%)، جيد (15-30%)، ضعيف (<15%)
-"""
-
 
 # ══════════════════════════════════════════════════════════════
-# 1. المطابقة الذكية بين منتجين (محسّنة)
+# 1. المطابقة الذكية بين منتجين
 # ══════════════════════════════════════════════════════════════
 
 def verify_match_with_gemini(product1: str, product2: str) -> bool:
-    """
-    التحقق من تطابق منتجين باستخدام Gemini AI
-    
-    Returns:
-        bool: True إذا كان المنتجان متطابقان
-    """
+    """التحقق من تطابق منتجين باستخدام AI"""
     prompt = f"""{MATCH_SYSTEM_PROMPT}
 
 ## المهمة:
@@ -159,12 +357,7 @@ def verify_match_with_gemini(product1: str, product2: str) -> bool:
 
 
 def verify_match_detailed(product1: str, product2: str) -> Dict:
-    """
-    تحقق مفصّل من تطابق منتجين مع شرح السبب
-    
-    Returns:
-        Dict: {"match": bool, "confidence": int, "reason": str, "details": dict}
-    """
+    """تحقق مفصّل من تطابق منتجين مع شرح السبب"""
     prompt = f"""{MATCH_SYSTEM_PROMPT}
 
 ## المهمة: تحقق مفصّل
@@ -201,16 +394,7 @@ def verify_match_detailed(product1: str, product2: str) -> Dict:
 # ══════════════════════════════════════════════════════════════
 
 def batch_verify_matches(pairs: List[Tuple[str, str]], batch_size: int = 10) -> List[Dict]:
-    """
-    تحقق مجمع من عدة أزواج منتجات في طلب واحد
-    
-    Args:
-        pairs: قائمة أزواج [(product1, product2), ...]
-        batch_size: عدد الأزواج في كل طلب
-    
-    Returns:
-        List[Dict]: نتائج التحقق لكل زوج
-    """
+    """تحقق مجمع من عدة أزواج منتجات في طلب واحد"""
     all_results = []
     
     for i in range(0, len(pairs), batch_size):
@@ -247,20 +431,155 @@ def batch_verify_matches(pairs: List[Tuple[str, str]], batch_size: int = 10) -> 
             all_results.append({
                 "match": result,
                 "confidence": 95 if result else 10,
-                "reason": "Gemini (فردي)"
+                "reason": "AI (فردي)"
             })
     
     return all_results
 
 
 # ══════════════════════════════════════════════════════════════
-# 3. البحث النصي والمرئي (محسّن)
+# 3. تحليل ذكي متخصص لكل قسم (جديد v5.0)
+# ══════════════════════════════════════════════════════════════
+
+def analyze_for_section(
+    section_type: str,
+    our_product: str,
+    competitor_product: str = "",
+    our_price: float = 0,
+    competitor_price: float = 0,
+    competitor_name: str = "",
+    confidence: float = 0,
+    diff_pct: float = 0,
+) -> Dict:
+    """
+    تحليل ذكي متخصص حسب نوع القسم
+    
+    section_type: "raise" | "lower" | "approved" | "missing"
+    
+    Returns:
+        Dict مع: match_correct, recommendation, action, reason, suggested_price, details
+    """
+    
+    # حساب الفرق إذا لم يُعطى
+    if our_price and competitor_price and diff_pct == 0:
+        diff_pct = ((our_price - competitor_price) / competitor_price * 100) if competitor_price > 0 else 0
+    
+    diff_amount = our_price - competitor_price if our_price and competitor_price else 0
+    
+    # بناء prompt مخصص حسب القسم
+    if section_type == "raise":
+        section_prompt = f"""أنت خبير تسعير عطور في السوق السعودي. هذا المنتج في قسم "رفع السعر" - يعني سعرنا أعلى من المنافس.
+
+## بيانات المنتج:
+- منتجنا: {our_product}
+- منتج المنافس: {competitor_product}
+- المنافس: {competitor_name}
+- سعرنا: {our_price} ريال
+- سعر المنافس: {competitor_price} ريال
+- الفرق: {diff_amount:.2f} ريال ({diff_pct:.1f}%)
+- نسبة ثقة المطابقة: {confidence}%
+
+## مهمتك:
+1. تأكد أن المنتجين فعلاً نفس المنتج (نفس الماركة + الاسم + الحجم + التركيز)
+2. إذا كانت المطابقة صحيحة: هل يجب فعلاً خفض سعرنا؟ أم أن الفرق مقبول؟
+3. اقترح سعراً مناسباً يحقق التنافسية مع الحفاظ على هامش ربح
+
+## أجب بـ JSON فقط:
+{{"match_correct": true/false, "match_reason": "هل المنتجان متطابقان فعلاً؟ اشرح بالتفصيل", "recommendation": "نص التوصية التفصيلية (3-4 جمل)", "action": "تعديل السعر/تأجيل/إزالة من القائمة", "suggested_price": السعر_المقترح_رقم, "urgency": "عاجل/متوسط/منخفض", "reason": "سبب التوصية المختصر"}}"""
+
+    elif section_type == "lower":
+        section_prompt = f"""أنت خبير تسعير عطور في السوق السعودي. هذا المنتج في قسم "خفض السعر" - يعني سعرنا أقل من المنافس.
+
+## بيانات المنتج:
+- منتجنا: {our_product}
+- منتج المنافس: {competitor_product}
+- المنافس: {competitor_name}
+- سعرنا: {our_price} ريال
+- سعر المنافس: {competitor_price} ريال
+- الفرق: {diff_amount:.2f} ريال ({diff_pct:.1f}%)
+- نسبة ثقة المطابقة: {confidence}%
+
+## مهمتك:
+1. تأكد أن المنتجين فعلاً نفس المنتج
+2. إذا سعرنا أقل: هل نرفع السعر للاستفادة من الفرصة؟ أم نبقيه كميزة تنافسية؟
+3. اقترح سعراً يحقق أفضل ربح
+
+## أجب بـ JSON فقط:
+{{"match_correct": true/false, "match_reason": "هل المنتجان متطابقان فعلاً؟ اشرح بالتفصيل", "recommendation": "نص التوصية التفصيلية (3-4 جمل)", "action": "رفع السعر/تأجيل/إزالة من القائمة", "suggested_price": السعر_المقترح_رقم, "urgency": "عاجل/متوسط/منخفض", "reason": "سبب التوصية المختصر"}}"""
+
+    elif section_type == "approved":
+        section_prompt = f"""أنت خبير تسعير عطور في السوق السعودي. هذا المنتج في قسم "موافق عليها" - يعني السعر متقارب مع المنافس.
+
+## بيانات المنتج:
+- منتجنا: {our_product}
+- منتج المنافس: {competitor_product}
+- المنافس: {competitor_name}
+- سعرنا: {our_price} ريال
+- سعر المنافس: {competitor_price} ريال
+- الفرق: {diff_amount:.2f} ريال ({diff_pct:.1f}%)
+- نسبة ثقة المطابقة: {confidence}%
+
+## مهمتك:
+1. تأكد أن المطابقة صحيحة
+2. هل السعر فعلاً مناسب أم يحتاج تعديل بسيط؟
+3. هل هناك فرصة لتحسين الربح؟
+
+## أجب بـ JSON فقط:
+{{"match_correct": true/false, "match_reason": "هل المنتجان متطابقان فعلاً؟ اشرح بالتفصيل", "recommendation": "نص التوصية التفصيلية (3-4 جمل)", "action": "تثبيت السعر/تعديل بسيط/إزالة من القائمة", "suggested_price": السعر_المقترح_رقم, "urgency": "منخفض/متوسط", "reason": "سبب التوصية المختصر"}}"""
+
+    elif section_type == "missing":
+        section_prompt = f"""أنت خبير عطور في السوق السعودي. هذا المنتج موجود عند المنافس وغير موجود عندنا.
+
+## بيانات المنتج:
+- المنتج: {our_product}
+- المنافس: {competitor_name}
+- سعر المنافس: {competitor_price} ريال
+
+## مهمتك:
+1. حدد نوع المنتج (عطر رجالي/نسائي/للجنسين، تركيز، حجم)
+2. هل يستحق الإضافة لمتجرنا؟
+3. ما السعر المقترح للبيع؟
+4. ما هو هامش الربح المتوقع؟
+
+## أجب بـ JSON فقط:
+{{"product_type": "نوع المنتج", "brand": "الماركة", "worth_adding": true/false, "recommendation": "نص التوصية التفصيلية (3-4 جمل)", "action": "إضافة للمتجر/تأجيل/تجاهل", "suggested_sell_price": السعر_المقترح_للبيع, "estimated_cost": التكلفة_المتوقعة, "profit_margin": "هامش الربح المتوقع", "reason": "سبب التوصية المختصر"}}"""
+    else:
+        return {"success": False, "error": "نوع قسم غير معروف"}
+    
+    # استدعاء AI
+    text = _call_gemini(section_prompt, temperature=0.3, max_tokens=800, timeout=30)
+    
+    if text:
+        try:
+            data = json.loads(_clean_json_response(text))
+            return {
+                "success": True,
+                "provider": key_manager.provider_used,
+                "data": data
+            }
+        except (json.JSONDecodeError, KeyError):
+            # محاولة استخراج المعلومات من النص العادي
+            return {
+                "success": True,
+                "provider": key_manager.provider_used,
+                "data": {
+                    "match_correct": True,
+                    "recommendation": text[:500],
+                    "action": "تأجيل",
+                    "reason": "تم الحصول على رد نصي",
+                    "suggested_price": our_price or competitor_price or 0,
+                }
+            }
+    
+    return {"success": False, "error": "فشل الاتصال بالذكاء الاصطناعي"}
+
+
+# ══════════════════════════════════════════════════════════════
+# 4. البحث عن المنتج (محسّن)
 # ══════════════════════════════════════════════════════════════
 
 def search_product_online(product_name: str, brand: str = "") -> Dict:
-    """
-    البحث عن المنتج في الإنترنت باستخدام Gemini
-    """
+    """البحث عن المنتج باستخدام AI"""
     try:
         search_query = f"{brand} {product_name}" if brand else product_name
         
@@ -283,13 +602,11 @@ def search_product_online(product_name: str, brand: str = "") -> Dict:
 
 
 # ══════════════════════════════════════════════════════════════
-# 4. التحقق من ملف المتجر (محسّن)
+# 5. التحقق من ملف المتجر
 # ══════════════════════════════════════════════════════════════
 
 def verify_in_store_file(product_name: str, store_file_path: str) -> Dict:
-    """
-    التحقق من وجود المنتج في ملف المتجر
-    """
+    """التحقق من وجود المنتج في ملف المتجر"""
     try:
         df = pd.read_csv(store_file_path, encoding='utf-8-sig')
         
@@ -301,7 +618,6 @@ def verify_in_store_file(product_name: str, store_file_path: str) -> Dict:
             price = prices_list[i] if i < len(prices_list) else "غير متوفر"
             full_list.append(f"{i+1}. {product} - {price} ر.س")
         
-        # تقسيم القائمة إلى أجزاء
         chunk_size = 500
         
         for chunk_start in range(0, len(full_list), chunk_size):
@@ -334,9 +650,7 @@ def verify_in_store_file(product_name: str, store_file_path: str) -> Dict:
 
 
 def verify_in_store_file_simple(product_name: str, store_file_path: str) -> Dict:
-    """
-    التحقق السريع من وجود المنتج في ملف المتجر (عينة 200)
-    """
+    """التحقق السريع من وجود المنتج في ملف المتجر (عينة 200)"""
     try:
         df = pd.read_csv(store_file_path, encoding='utf-8-sig')
         
@@ -382,7 +696,7 @@ def verify_in_store_file_simple(product_name: str, store_file_path: str) -> Dict
 
 
 # ══════════════════════════════════════════════════════════════
-# 5. المقارنة الذكية الشاملة (محسّنة)
+# 6. المقارنة الذكية الشاملة (متوافقة مع الإصدار القديم)
 # ══════════════════════════════════════════════════════════════
 
 def smart_comparison(
@@ -391,9 +705,7 @@ def smart_comparison(
     our_price: float = None, 
     store_file_path: Optional[str] = None
 ) -> Dict:
-    """
-    مقارنة ذكية شاملة للمنتج مع تحليل وتوصيات
-    """
+    """مقارنة ذكية شاملة للمنتج مع تحليل وتوصيات"""
     try:
         results = {
             "product_name": product_name,
@@ -426,15 +738,17 @@ def smart_comparison(
             diff_pct = (diff / competitor_price * 100) if competitor_price > 0 else 0
             price_info += f"الفرق: {diff:.2f} ريال ({diff_pct:.1f}%)\n"
         
-        analysis_prompt = f"""{ANALYSIS_SYSTEM_PROMPT}
+        analysis_prompt = f"""أنت محلل أسعار عطور محترف في السوق السعودي والخليجي.
 
 المنتج: {product_name}
 {price_info}
 
-أعد JSON فقط:
-{{"competitive": true/false, "price_status": "منخفض/متوسط/مرتفع", "in_our_store": true/false, "profitability": "ممتاز/جيد/ضعيف", "recommendations": ["توصية 1", "توصية 2"], "suggested_price": السعر_المقترح, "notes": "ملاحظات"}}"""
+حلل هذا المنتج وأعطني توصيات تسعير حقيقية ومفصلة.
 
-        text = _call_gemini(analysis_prompt, temperature=0.2, max_tokens=500, timeout=30)
+أعد JSON فقط:
+{{"competitive": true/false, "price_status": "منخفض/متوسط/مرتفع", "in_our_store": true/false, "profitability": "ممتاز/جيد/ضعيف", "recommendations": ["توصية تفصيلية 1", "توصية تفصيلية 2", "توصية تفصيلية 3"], "suggested_price": السعر_المقترح, "notes": "ملاحظات تفصيلية عن المنتج والسوق"}}"""
+
+        text = _call_gemini(analysis_prompt, temperature=0.3, max_tokens=600, timeout=30)
         
         if text:
             try:
@@ -443,7 +757,8 @@ def smart_comparison(
                 results["analysis"] = {
                     "competitive": False,
                     "price_status": "غير محدد",
-                    "notes": "فشل التحليل"
+                    "recommendations": ["لم يتمكن AI من تحليل المنتج بشكل كامل"],
+                    "notes": "فشل التحليل - يرجى المحاولة مرة أخرى"
                 }
         
         return {"success": True, "results": results}
@@ -453,13 +768,11 @@ def smart_comparison(
 
 
 # ══════════════════════════════════════════════════════════════
-# 6. التحقق المجمع للمنتجات (محسّن)
+# 7. التحقق المجمع للمنتجات
 # ══════════════════════════════════════════════════════════════
 
-def batch_verification(products: List[Dict], store_file_path: Optional[str] = None) -> Dict:
-    """
-    تحقق مجمع لعدة منتجات مع تقرير شامل
-    """
+def batch_verification(products: List[Dict], store_file_path: Optional[str] = None, **kwargs) -> Dict:
+    """تحقق مجمع لعدة منتجات مع تقرير شامل"""
     try:
         results = []
         
@@ -501,20 +814,11 @@ def batch_verification(products: List[Dict], store_file_path: Optional[str] = No
 
 
 # ══════════════════════════════════════════════════════════════
-# 7. كشف أخطاء المطابقة (جديد)
+# 8. كشف أخطاء المطابقة
 # ══════════════════════════════════════════════════════════════
 
 def detect_matching_errors(matches: List[Dict], batch_size: int = 5) -> List[Dict]:
-    """
-    كشف أخطاء المطابقة في نتائج موجودة
-    
-    Args:
-        matches: قائمة المطابقات [{"our_product": "...", "competitor_product": "...", "confidence": ...}, ...]
-        batch_size: عدد المطابقات في كل طلب
-    
-    Returns:
-        List[Dict]: المطابقات المشبوهة مع السبب
-    """
+    """كشف أخطاء المطابقة في نتائج موجودة"""
     suspicious = []
     
     for i in range(0, len(matches), batch_size):

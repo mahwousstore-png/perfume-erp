@@ -413,18 +413,47 @@ init_session()
 # ══════════════════════════════════════════════════════════════
 
 def verify_gemini_connection(api_key=None, update_session=True):
-    """فحص اتصال Gemini وتحديث حالة Session تلقائياً."""
-    # استخدام المفتاح المدمج إذا لم يتم تمرير مفتاح
-    if api_key is None:
-        api_key = DEFAULT_GEMINI_KEY
+    """فحص اتصال Gemini/OpenRouter مع نظام المفاتيح المتعددة."""
+    try:
+        from modules.ai_verification import verify_ai_connection, get_ai_status
+        
+        # فحص الاتصال الفعلي
+        ai_result = verify_ai_connection()
+        ai_status = get_ai_status()
+        
+        if ai_result.get("connected"):
+            provider = ai_result.get("provider", "gemini")
+            gemini_count = ai_status.get("gemini_active", 0)
+            openrouter_count = ai_status.get("openrouter_active", 0)
+            
+            result = {
+                "connected": True, 
+                "model": f"{provider}",
+                "message": f"✅ متصل عبر {provider} | Gemini: {gemini_count} مفتاح | OpenRouter: {openrouter_count} مفتاح"
+            }
+            if update_session:
+                st.session_state.gemini_connected = True
+            return result
+        else:
+            result = {
+                "connected": False, 
+                "message": f"❌ جميع المفاتيح فاشلة | Gemini: {ai_status.get('gemini_total', 0)} | OpenRouter: {ai_status.get('openrouter_total', 0)}"
+            }
+            if update_session:
+                st.session_state.gemini_connected = False
+            return result
     
-    if not api_key or len(api_key) < 10:
-        result = {"connected": False, "message": "مفتاح API مفقود أو غير صالح"}
-        if update_session:
-            st.session_state.gemini_connected = False
-        return result
-    
-    for attempt in range(2):
+    except Exception as e:
+        # Fallback: المحاولة بالطريقة القديمة
+        if api_key is None:
+            api_key = DEFAULT_GEMINI_KEY
+        
+        if not api_key or len(api_key) < 10:
+            result = {"connected": False, "message": "مفتاح API مفقود أو غير صالح"}
+            if update_session:
+                st.session_state.gemini_connected = False
+            return result
+        
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
             response = requests.post(
@@ -439,37 +468,21 @@ def verify_gemini_connection(api_key=None, update_session=True):
                 if update_session:
                     st.session_state.gemini_connected = True
                 return result
-            
             else:
                 err_msg = "خطأ"
                 try:
                     err_msg = response.json().get("error", {}).get("message", f"HTTP {response.status_code}")
                 except:
                     err_msg = f"HTTP {response.status_code}"
-                
                 result = {"connected": False, "message": err_msg}
                 if update_session:
                     st.session_state.gemini_connected = False
                 return result
-        
-        except requests.exceptions.Timeout:
-            if attempt == 0:
-                continue  # retry once
-            result = {"connected": False, "message": "انتهت مهلة الاتصال (timeout)"}
+        except Exception as ex:
+            result = {"connected": False, "message": str(ex)}
             if update_session:
                 st.session_state.gemini_connected = False
             return result
-        
-        except Exception as e:
-            result = {"connected": False, "message": str(e)}
-            if update_session:
-                st.session_state.gemini_connected = False
-            return result
-    
-    result = {"connected": False, "message": "فشل الاتصال"}
-    if update_session:
-        st.session_state.gemini_connected = False
-    return result
 
 def verify_openrouter_connection(api_key):
     try:
@@ -919,71 +932,109 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                 st.session_state[f"ai_check_{section_key}_{original_idx}"] = True
                 st.rerun()
         
-        # ── نتيجة التحقق AI + أزرار القرار ──
+        # ── نتيجة التحقق AI + أزرار القرار (v5.0) ──
         if st.session_state.get(f"ai_check_{section_key}_{original_idx}"):
-            with st.spinner("🔍 جاري التحقق بالذكاء الصناعي..."):
-                from modules.ai_verification import smart_comparison
+            with st.spinner("🤖 جاري التحليل الذكي المتخصص..."):
+                from modules.ai_verification import analyze_for_section
                 product_name = str(row.get('المنتج', ''))
-                result = smart_comparison(
-                    product_name=product_name,
-                    competitor_price=row.get('سعر المنافس', row.get('أقل سعر منافس', 0)),
-                    store_file_path=None
+                comp_product_name = str(row.get('اسم المنافس', ''))
+                our_price_val = 0
+                comp_price_val = 0
+                try:
+                    our_price_val = float(row.get('السعر', 0) or 0)
+                except (ValueError, TypeError):
+                    our_price_val = 0
+                try:
+                    comp_price_val = float(row.get('سعر المنافس', row.get('أقل سعر منافس', 0)) or 0)
+                except (ValueError, TypeError):
+                    comp_price_val = 0
+                
+                result = analyze_for_section(
+                    section_type=section_key,  # "raise" أو "lower"
+                    our_product=product_name,
+                    competitor_product=comp_product_name,
+                    our_price=our_price_val,
+                    competitor_price=comp_price_val,
+                    competitor_name=str(row.get('المنافس', '')).replace('.xlsx', '').replace('.csv', ''),
+                    confidence=float(row.get('الثقة %', 0) or 0),
+                    diff_pct=float(row.get('النسبة %', 0) or 0),
                 )
                 
                 if result["success"]:
-                    data = result.get("results", {}) or {}
-                    analysis = data.get('analysis', {}) if isinstance(data, dict) else {}
-                    if not isinstance(analysis, dict):
-                        analysis = {}
+                    ai_data = result.get("data", {})
+                    if not isinstance(ai_data, dict):
+                        ai_data = {}
                     
-                    price_status = analysis.get('price_status', 'غير محدد') if isinstance(analysis, dict) else 'غير محدد'
-                    profitability = analysis.get('profitability', 'غير محدد') if isinstance(analysis, dict) else 'غير محدد'
-                    recommendations = analysis.get('recommendations', []) if isinstance(analysis, dict) else []
-                    if not isinstance(recommendations, list):
-                        recommendations = [str(recommendations)]
+                    match_correct = ai_data.get('match_correct', True)
+                    match_reason = ai_data.get('match_reason', '')
+                    recommendation = ai_data.get('recommendation', 'لا توجد توصية')
+                    action = ai_data.get('action', 'تأجيل')
+                    suggested_price = ai_data.get('suggested_price', 0)
+                    urgency = ai_data.get('urgency', 'متوسط')
+                    reason = ai_data.get('reason', '')
                     
-                    comp_price = 0
-                    try:
-                        comp_price = float(data.get('competitor_price', 0) or 0)
-                    except (ValueError, TypeError):
-                        comp_price = 0
+                    # لون حسب صحة المطابقة
+                    if match_correct:
+                        bg_color = "#e8f5e9"
+                        border_color = "#4caf50"
+                        match_icon = "✅"
+                    else:
+                        bg_color = "#ffebee"
+                        border_color = "#f44336"
+                        match_icon = "❌"
+                    
+                    # لون الاستعجال
+                    urgency_colors = {'عاجل': '#f44336', 'متوسط': '#ff9800', 'منخفض': '#4caf50'}
+                    urgency_color = urgency_colors.get(urgency, '#999')
                     
                     st.markdown(f"""
-                    <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0; border-right: 4px solid #4caf50;">
-                        <h4 style="margin:0; color: #2e7d32;">🤖 نتائج التحقق الذكي</h4>
-                        <table style="width:100%; margin-top:10px;">
-                            <tr><td><b>📦 منتجنا:</b></td><td>{product_name}</td></tr>
-                            <tr><td><b>🏪 منتج المنافس:</b></td><td>{str(row.get('اسم المنافس', ''))}</td></tr>
-                            <tr><td><b>💰 سعر المنافس:</b></td><td>{comp_price:.2f} ر.س</td></tr>
-                            <tr><td><b>📉 حالة السعر:</b></td><td>{price_status}</td></tr>
-                            <tr><td><b>💹 الربحية:</b></td><td>{profitability}</td></tr>
+                    <div style="background: linear-gradient(135deg, {bg_color}, #fff); border-radius: 12px; padding: 18px; margin: 10px 0; border-right: 5px solid {border_color}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <h4 style="margin:0 0 12px 0; color: #1a237e;">🤖 تحليل الذكاء الاصطناعي</h4>
+                        <table style="width:100%; border-collapse: collapse;">
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>📦 منتجنا:</b></td><td style="padding:6px;">{product_name}</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🏪 منتج المنافس:</b></td><td style="padding:6px;">{comp_product_name}</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>{match_icon} المطابقة:</b></td><td style="padding:6px;">{'صحيحة' if match_correct else 'خاطئة - ' + match_reason}</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>💰 سعرنا:</b></td><td style="padding:6px;">{our_price_val:.2f} ر.س</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🏷️ سعر المنافس:</b></td><td style="padding:6px;">{comp_price_val:.2f} ر.س</td></tr>
+                            {f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🎯 السعر المقترح:</b></td><td style="padding:6px;"><b style="color:#1565c0;font-size:1.1em;">{float(suggested_price):.2f} ر.س</b></td></tr>' if suggested_price else ''}
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>⏰ الاستعجال:</b></td><td style="padding:6px;"><span style="color:{urgency_color};font-weight:bold;">{urgency}</span></td></tr>
                         </table>
-                        <p style="margin-top:10px;"><b>🎯 التوصيات:</b></p>
-                        <ul>
-                        {''.join([f"<li>{rec}</li>" for rec in recommendations])}
-                        </ul>
+                        <div style="margin-top:12px; padding:10px; background:#f5f5f5; border-radius:8px;">
+                            <p style="margin:0 0 5px 0;"><b>🎯 التوصية:</b></p>
+                            <p style="margin:0; color:#333; line-height:1.6;">{recommendation}</p>
+                        </div>
+                        <div style="margin-top:8px; padding:8px; background:#e3f2fd; border-radius:8px;">
+                            <p style="margin:0;"><b>📋 الإجراء المقترح:</b> <span style="color:#1565c0; font-weight:bold;">{action}</span></p>
+                            {f'<p style="margin:4px 0 0 0; color:#666;"><small>{reason}</small></p>' if reason else ''}
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # أزرار القرار
-                    col_keep, col_remove, col_close = st.columns(3)
-                    with col_keep:
-                        if st.button("✅ إبقاء في القسم", key=f"keep_{section_key}_{original_idx}", type="primary"):
+                    # أزرار القرار المحسنة
+                    col_modify, col_delay, col_remove, col_close = st.columns(4)
+                    with col_modify:
+                        if st.button("✅ تعديل السعر", key=f"modify_{section_key}_{original_idx}", type="primary"):
                             st.session_state[f"ai_check_{section_key}_{original_idx}"] = False
-                            st.success("✅ تم الإبقاء")
+                            st.session_state[f"sel_{section_key}"][original_idx] = True
+                            st.success(f"✅ تم تحديد المنتج للتعديل")
+                            st.rerun()
+                    with col_delay:
+                        if st.button("⏸️ تأجيل", key=f"delay_{section_key}_{original_idx}"):
+                            st.session_state[f"ai_check_{section_key}_{original_idx}"] = False
+                            st.info("⏸️ تم تأجيل القرار")
                             st.rerun()
                     with col_remove:
-                        if st.button("❌ إزالة من القسم", key=f"remove_{section_key}_{original_idx}"):
+                        if st.button("🗑️ إزالة", key=f"remove_{section_key}_{original_idx}"):
                             st.session_state[removed_key].add(original_idx)
                             st.session_state[f"ai_check_{section_key}_{original_idx}"] = False
-                            st.warning("🗑️ تم إزالة المنتج")
+                            st.warning("🗑️ تم إزالة المنتج من القائمة")
                             st.rerun()
                     with col_close:
                         if st.button("🔙 إغلاق", key=f"close_{section_key}_{original_idx}"):
                             st.session_state[f"ai_check_{section_key}_{original_idx}"] = False
                             st.rerun()
                 else:
-                    st.error(f"❌ {result.get('error', 'خطأ')}")
+                    st.error(f"❌ {result.get('error', 'فشل الاتصال بالذكاء الاصطناعي')}")
                     if st.button("🔙 إغلاق", key=f"close_err_{section_key}_{original_idx}"):
                         st.session_state[f"ai_check_{section_key}_{original_idx}"] = False
                         st.rerun()
@@ -1097,12 +1148,21 @@ with st.sidebar:
     # حالة الاتصالات
     st.markdown("### 📡 حالة الاتصالات")
     
-    gem_status = "🟢" if st.session_state.get("gemini_connected") else "🔴"
-    or_status = "🟢" if st.session_state.get("openrouter_connected") else "🔴"
+    try:
+        from modules.ai_verification import get_ai_status
+        ai_st = get_ai_status()
+        g_active = ai_st.get('gemini_active', 0)
+        o_active = ai_st.get('openrouter_active', 0)
+        gem_status = "🟢" if g_active > 0 else "🔴"
+        or_status = "🟢" if o_active > 0 else "🔴"
+        st.markdown(f"{gem_status} Gemini ({g_active}) | {or_status} OpenRouter ({o_active})")
+    except:
+        gem_status = "🟢" if st.session_state.get("gemini_connected") else "🔴"
+        or_status = "🟢" if st.session_state.get("openrouter_connected") else "🔴"
+        st.markdown(f"{gem_status} Gemini AI | {or_status} OpenRouter")
+    
     mu_status = "🟢" if st.session_state.get("make_update_connected") else "🔴"
     mn_status = "🟢" if st.session_state.get("make_new_connected") else "🔴"
-    
-    st.markdown(f"{gem_status} Gemini AI | {or_status} OpenRouter")
     st.markdown(f"{mu_status} Make تحديث | {mn_status} Make إضافة")
     
     st.markdown("---")
@@ -1211,10 +1271,17 @@ if section == "🏠 لوحة القيادة":
     
     if st.button("🔄 تحقق من جميع الاتصالات", type="primary"):
         with st.spinner("⏳ جاري التحقق..."):
-            gem = verify_gemini_connection()  # يستخدم المفتاح المدمج
+            gem = verify_gemini_connection()
             
-            ort = verify_openrouter_connection(st.session_state.openrouter_key)
-            st.session_state.openrouter_connected = ort["connected"]
+            # فحص OpenRouter عبر النظام الجديد
+            try:
+                from modules.ai_verification import get_ai_status
+                ai_st = get_ai_status()
+                or_connected = ai_st.get('openrouter_active', 0) > 0
+            except:
+                ort = verify_openrouter_connection(st.session_state.openrouter_key)
+                or_connected = ort["connected"]
+            st.session_state.openrouter_connected = or_connected
             
             mu = verify_webhook_connection(WEBHOOK_UPDATE_PRICES, "update")
             st.session_state.make_update_connected = mu["connected"]
@@ -1222,10 +1289,27 @@ if section == "🏠 لوحة القيادة":
             mn = verify_webhook_connection(WEBHOOK_NEW_PRODUCTS, "new")
             st.session_state.make_new_connected = mn["connected"]
         
+        # عرض حالة المفاتيح المتعددة
+        try:
+            from modules.ai_verification import get_ai_status
+            ai_st = get_ai_status()
+            st.markdown("#### 🔑 نظام المفاتيح المتعددة")
+            c1, c2 = st.columns(2)
+            with c1:
+                g_a = ai_st.get('gemini_active', 0)
+                g_t = ai_st.get('gemini_total', 0)
+                st.metric("🤖 Gemini", f"{g_a}/{g_t} نشط")
+            with c2:
+                o_a = ai_st.get('openrouter_active', 0)
+                o_t = ai_st.get('openrouter_total', 0)
+                st.metric("🧠 OpenRouter", f"{o_a}/{o_t} نشط")
+        except:
+            pass
+        
         c1, c2, c3, c4 = st.columns(4)
         for col, name, connected in [
             (c1, "🤖 Gemini AI", gem["connected"]),
-            (c2, "🧠 OpenRouter", ort["connected"]),
+            (c2, "🧠 OpenRouter", or_connected),
             (c3, "⚡ Make تحديث", mu["connected"]),
             (c4, "⚡ Make إضافة", mn["connected"]),
         ]:
@@ -1725,39 +1809,88 @@ elif section == "🟢 موافق عليها":
                         st.session_state[f"ai_verify_approved_{original_idx}"] = True
                         st.rerun()
                 
-                # نتيجة AI
+                # نتيجة AI (v5.0) مع أزرار قرار
                 if st.session_state.get(f"ai_verify_approved_{original_idx}"):
-                    with st.spinner("⏳ جاري التحقق الذكي..."):
-                        from modules.ai_verification import smart_comparison
+                    with st.spinner("🤖 جاري التحليل الذكي المتخصص..."):
+                        from modules.ai_verification import analyze_for_section
                         product_name = str(row.get('المنتج', row.get('اسم المنتج', '')))
-                        result = smart_comparison(
-                            product_name=product_name,
-                            competitor_price=row.get('سعر المنافس', row.get('أقل سعر منافس', 0)),
-                            store_file_path=None
+                        comp_product_name = str(row.get('اسم المنافس', ''))
+                        our_price_val = 0
+                        comp_price_val = 0
+                        try:
+                            our_price_val = float(row.get('السعر', 0) or 0)
+                        except (ValueError, TypeError):
+                            our_price_val = 0
+                        try:
+                            comp_price_val = float(row.get('سعر المنافس', row.get('أقل سعر منافس', 0)) or 0)
+                        except (ValueError, TypeError):
+                            comp_price_val = 0
+                        
+                        result = analyze_for_section(
+                            section_type="approved",
+                            our_product=product_name,
+                            competitor_product=comp_product_name,
+                            our_price=our_price_val,
+                            competitor_price=comp_price_val,
+                            competitor_name=str(row.get('المنافس', '')).replace('.xlsx', '').replace('.csv', ''),
+                            confidence=float(row.get('الثقة %', 0) or 0),
+                            diff_pct=float(row.get('النسبة %', 0) or 0),
                         )
+                        
                         if result["success"]:
-                            data = result.get("results", {}) or {}
-                            analysis = data.get('analysis', {}) if isinstance(data, dict) else {}
-                            if not isinstance(analysis, dict):
-                                analysis = {}
-                            _ps = analysis.get('price_status', 'غير محدد') if isinstance(analysis, dict) else 'غير محدد'
-                            _pf = analysis.get('profitability', 'غير محدد') if isinstance(analysis, dict) else 'غير محدد'
+                            ai_data = result.get("data", {})
+                            if not isinstance(ai_data, dict):
+                                ai_data = {}
+                            
+                            match_correct = ai_data.get('match_correct', True)
+                            recommendation = ai_data.get('recommendation', 'لا توجد توصية')
+                            action = ai_data.get('action', 'تثبيت السعر')
+                            suggested_price = ai_data.get('suggested_price', 0)
+                            reason = ai_data.get('reason', '')
+                            
+                            bg_color = "#e8f5e9" if match_correct else "#ffebee"
+                            border_color = "#4caf50" if match_correct else "#f44336"
+                            
                             st.markdown(f"""
-                            <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0; border-right: 4px solid #4caf50;">
-                                <h4 style="margin:0; color: #2e7d32;">🤖 نتائج التحقق</h4>
-                                <table style="width:100%; margin-top:10px;">
-                                    <tr><td><b>📦 منتجنا:</b></td><td>{product_name}</td></tr>
-                                    <tr><td><b>🏪 منتج المنافس:</b></td><td>{str(row.get('اسم المنافس', ''))}</td></tr>
-                                    <tr><td><b>📉 حالة السعر:</b></td><td>{_ps}</td></tr>
-                                    <tr><td><b>💹 الربحية:</b></td><td>{_pf}</td></tr>
+                            <div style="background: linear-gradient(135deg, {bg_color}, #fff); border-radius: 12px; padding: 18px; margin: 10px 0; border-right: 5px solid {border_color}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <h4 style="margin:0 0 12px 0; color: #1a237e;">🤖 تحليل الذكاء الاصطناعي</h4>
+                                <table style="width:100%; border-collapse: collapse;">
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>📦 منتجنا:</b></td><td style="padding:6px;">{product_name}</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🏪 منتج المنافس:</b></td><td style="padding:6px;">{comp_product_name}</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>{'✅' if match_correct else '❌'} المطابقة:</b></td><td style="padding:6px;">{'صحيحة' if match_correct else 'خاطئة'}</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>💰 سعرنا:</b></td><td style="padding:6px;">{our_price_val:.2f} ر.س</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🏷️ سعر المنافس:</b></td><td style="padding:6px;">{comp_price_val:.2f} ر.س</td></tr>
+                                    {f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🎯 السعر المقترح:</b></td><td style="padding:6px;"><b style="color:#1565c0;">{float(suggested_price):.2f} ر.س</b></td></tr>' if suggested_price else ''}
                                 </table>
+                                <div style="margin-top:12px; padding:10px; background:#f5f5f5; border-radius:8px;">
+                                    <p style="margin:0 0 5px 0;"><b>🎯 التوصية:</b></p>
+                                    <p style="margin:0; color:#333; line-height:1.6;">{recommendation}</p>
+                                </div>
+                                <div style="margin-top:8px; padding:8px; background:#e3f2fd; border-radius:8px;">
+                                    <p style="margin:0;"><b>📋 الإجراء:</b> <span style="color:#1565c0; font-weight:bold;">{action}</span></p>
+                                    {f'<p style="margin:4px 0 0 0; color:#666;"><small>{reason}</small></p>' if reason else ''}
+                                </div>
                             </div>
                             """, unsafe_allow_html=True)
                         else:
-                            st.error(f"❌ {result.get('error', 'خطأ')}")
-                        if st.button("🔙 إغلاق", key=f"close_approved_{original_idx}"):
-                            st.session_state[f"ai_verify_approved_{original_idx}"] = False
-                            st.rerun()
+                            st.error(f"❌ {result.get('error', 'فشل الاتصال')}")
+                        
+                        # أزرار القرار
+                        col_keep_a, col_delay_a, col_close_a = st.columns(3)
+                        with col_keep_a:
+                            if st.button("✅ تثبيت", key=f"keep_approved_{original_idx}", type="primary"):
+                                st.session_state[f"ai_verify_approved_{original_idx}"] = False
+                                st.success("✅ تم تثبيت السعر")
+                                st.rerun()
+                        with col_delay_a:
+                            if st.button("⏸️ تأجيل", key=f"delay_approved_{original_idx}"):
+                                st.session_state[f"ai_verify_approved_{original_idx}"] = False
+                                st.info("⏸️ تم تأجيل القرار")
+                                st.rerun()
+                        with col_close_a:
+                            if st.button("🔙 إغلاق", key=f"close_approved_{original_idx}"):
+                                st.session_state[f"ai_verify_approved_{original_idx}"] = False
+                                st.rerun()
             
             # Pagination أسفل
             if total_pages_a > 1:
@@ -2900,13 +3033,34 @@ elif section == "⚙️ الإعدادات":
     with tab1:
         st.markdown("### 🤖 إعدادات الذكاء الصناعي")
         
-        # عرض حالة Gemini المدمج
-        st.info("🔑 **Gemini API مدمج مع البرنامج** - لا حاجة لإدخال مفتاح")
+        # عرض حالة المفاتيح المتعددة
+        st.info("🔑 **نظام مفاتيح متعددة** - تبديل تلقائي عند الفشل (Gemini + OpenRouter)")
         
-        if DEFAULT_GEMINI_KEY:
-            st.success(f"✅ مفتاح Gemini موجود وجاهز (يبدأ بـ {DEFAULT_GEMINI_KEY[:15]}...)")
-        else:
-            st.warning("⚠️ مفتاح Gemini غير موجود في Streamlit Secrets")
+        try:
+            from modules.ai_verification import get_ai_status
+            ai_status = get_ai_status()
+            col_g, col_o = st.columns(2)
+            with col_g:
+                g_count = ai_status.get('gemini_active', 0)
+                g_total = ai_status.get('gemini_total', 0)
+                if g_count > 0:
+                    st.success(f"✅ Gemini: {g_count}/{g_total} مفتاح نشط")
+                else:
+                    st.error(f"❌ Gemini: لا مفاتيح نشطة ({g_total} إجمالي)")
+            with col_o:
+                o_count = ai_status.get('openrouter_active', 0)
+                o_total = ai_status.get('openrouter_total', 0)
+                if o_count > 0:
+                    st.success(f"✅ OpenRouter: {o_count}/{o_total} مفتاح نشط")
+                else:
+                    st.warning(f"⚠️ OpenRouter: لا مفاتيح ({o_total} إجمالي)")
+            
+            st.metric("إجمالي الطلبات", ai_status.get('total_calls', 0))
+        except Exception:
+            if DEFAULT_GEMINI_KEY:
+                st.success(f"✅ مفتاح Gemini موجود وجاهز")
+            else:
+                st.warning("⚠️ مفتاح Gemini غير موجود في Streamlit Secrets")
         
         if st.button("🔄 اختبار اتصال Gemini", key="test_gemini_settings"):
             with st.spinner("⏳ جاري الاختبار..."):
