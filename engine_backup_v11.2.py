@@ -284,9 +284,8 @@ def match_products(my_products, comp_products, threshold=60):
                 continue
 
             # قانون 2: تطابق الحجم
-            if my_size > 0 and cp_size > 0:
-                if abs(my_size - cp_size) > 1:
-                    continue
+            if my_size > 0 and cp_size > 0 and abs(my_size - cp_size) > 1:
+                continue
 
             # قانون 3: فيتو العينات
             if cp_type == "rejected":
@@ -428,9 +427,8 @@ def match_products(my_products, comp_products, threshold=60):
                 # تطابق النوع والحجم
                 if my_type != cp_type:
                     continue
-                if my_size > 0 and cp_size > 0:
-                    if abs(my_size - cp_size) > 1:
-                        continue
+                if my_size > 0 and cp_size > 0 and abs(my_size - cp_size) > 1:
+                    continue
                 
                 # حساب التشابه بنسبة أقل
                 my_norm = normalize_name(my_name)

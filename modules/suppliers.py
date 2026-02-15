@@ -335,40 +335,39 @@ def show_suppliers_list():
                 st.markdown(f"""
                 **إحصائيات:**
                 - 📦 المشتريات: {supplier['total_purchases']}
-                - 💰 المبلغ: {supplier['total_amount']:,.0f} SAR
-                - 💳 الدفع: {supplier['payment_terms']}
-                - 📅 تاريخ الإضافة: {supplier['created_at']}
-                """)
-            
-            if supplier['notes']:
-                st.info(f"📝 **ملاحظات:** {supplier['notes']}")
-            
-            # الأزرار
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                if st.button("📊 المشتريات", key=f"purchases_{supplier['id']}"):
-                    show_supplier_purchases_dialog(supplier['id'], supplier['name'])
-            
-            with col2:
-                if st.button("✏️ تعديل", key=f"edit_{supplier['id']}"):
-                    show_edit_supplier_dialog(supplier)
-            
-            with col3:
-                if st.button("⭐ تقييم", key=f"rate_{supplier['id']}"):
-                    show_rate_supplier_dialog(supplier['id'], supplier['name'])
-            
-            with col4:
-                if supplier['is_active']:
-                    if st.button("🔴 تعطيل", key=f"disable_{supplier['id']}"):
-                        if delete_supplier(supplier['id']):
-                            st.success("تم تعطيل المورد")
-                            st.rerun()
-                else:
-                    if st.button("🟢 تفعيل", key=f"enable_{supplier['id']}"):
-                        if update_supplier(supplier['id'], {'is_active': True}):
-                            st.success("تم تفعيل المورد")
-                            st.rerun()
+            - 💰 المبلغ: {supplier['total_amount']:,.0f} SAR
+            - 💳 الدفع: {supplier['payment_terms']}
+            - 📅 تاريخ الإضافة: {supplier['created_at']}
+            """)
+        
+        if supplier['notes']:
+            st.info(f"📝 **ملاحظات:** {supplier['notes']}")
+        
+        # الأزرار
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            if st.button("📊 المشتريات", key=f"purchases_{supplier['id']}"):
+                show_supplier_purchases_dialog(supplier['id'], supplier['name'])
+        
+        with col2:
+            if st.button("✏️ تعديل", key=f"edit_{supplier['id']}"):
+                show_edit_supplier_dialog(supplier)
+        
+        with col3:
+            if st.button("⭐ تقييم", key=f"rate_{supplier['id']}"):
+                show_rate_supplier_dialog(supplier['id'], supplier['name'])
+        
+        with col4:
+            if supplier['is_active'] and st.button("🔴 تعطيل", key=f"disable_{supplier['id']}"):
+                if delete_supplier(supplier['id']):
+                    st.success("تم تعطيل المورد")
+                    st.rerun()
+            else:
+                if st.button("🟢 تفعيل", key=f"enable_{supplier['id']}"):
+                    if update_supplier(supplier['id'], {'is_active': True}):
+                        st.success("تم تفعيل المورد")
+                        st.rerun()
 
 def show_add_supplier_form():
     """
@@ -480,7 +479,6 @@ def show_rate_supplier_dialog(supplier_id: int, supplier_name: str):
     
     new_rating = st.slider("التقييم الجديد", 1.0, 5.0, 3.0, 0.5)
     
-    if st.button("💾 حفظ التقييم"):
-        if update_supplier(supplier_id, {'rating': new_rating}):
-            st.success("✅ تم تحديث التقييم")
-            st.rerun()
+    if st.button("💾 حفظ التقييم") and update_supplier(supplier_id, {'rating': new_rating}):
+        st.success("✅ تم تحديث التقييم")
+        st.rerun()
