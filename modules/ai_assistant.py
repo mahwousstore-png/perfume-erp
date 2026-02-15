@@ -243,7 +243,7 @@ class AIAssistant:
         
         return response
 
-def show_ai_widget(context="general", data=None):
+def show_ai_widget(context="general", _data=None):
     """
     عرض ويدجت المساعد الذكي في أي صفحة
     

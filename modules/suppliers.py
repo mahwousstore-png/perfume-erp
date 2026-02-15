@@ -139,12 +139,12 @@ def delete_supplier(supplier_id: int) -> bool:
         st.error(f"خطأ في حذف المورد: {str(e)}")
         return False
 
-def get_supplier_purchases(supplier_id: int) -> pd.DataFrame:
+def get_supplier_purchases(_supplier_id: int) -> pd.DataFrame:
     """
     جلب مشتريات مورد معين
     
     Args:
-        supplier_id: معرف المورد
+        _supplier_id: معرف المورد
     
     Returns:
         DataFrame مع المشتريات
