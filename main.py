@@ -743,135 +743,278 @@ def call_openrouter(prompt, api_key=None):
         return {"success": False, "error": str(e)}
 
 def render_approval_section(df, section_key, section_label, send_func, webhook_label):
-    """دالة مشتركة لعرض أزرار الموافقة والإرسال لأي قسم."""
+    """دالة مشتركة لعرض أزرار الموافقة والإرسال لأي قسم - مع Pagination ونظام قرارات."""
     if df is None or df.empty:
         st.info(f"📋 لا توجد منتجات في قسم {section_label}")
         return
     
+    total_products = len(df)
+    
+    # ── نظام القرارات: تتبع المنتجات المُزالة ──
+    removed_key = f"removed_{section_key}"
+    if removed_key not in st.session_state:
+        st.session_state[removed_key] = set()
+    
+    # فلترة المنتجات المُزالة
+    removed_indices = st.session_state[removed_key]
+    df_filtered = df[~df.index.isin(removed_indices)]
+    filtered_count = len(df_filtered)
+    removed_count = total_products - filtered_count
+    
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border-radius: 12px; padding: 15px; margin: 10px 0; text-align: center;">
-        <h3 style="margin:0; color: #1565c0;">📊 عداد المنتجات: <span style="font-size: 1.8rem; color: #d32f2f;">{len(df)}</span> منتج في قسم {section_label}</h3>
+        <h3 style="margin:0; color: #1565c0;">📊 عداد المنتجات: <span style="font-size: 1.8rem; color: #d32f2f;">{filtered_count}</span> منتج في قسم {section_label}
+        {f' | <span style="color: #999;">🗑️ تم إزالة {removed_count}</span>' if removed_count > 0 else ''}</h3>
     </div>""", unsafe_allow_html=True)
     
+    # ── Pagination ──
+    ITEMS_PER_PAGE = 25
+    page_key = f"page_{section_key}"
+    if page_key not in st.session_state:
+        st.session_state[page_key] = 0
+    
+    total_pages = max(1, (filtered_count + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
+    current_page = min(st.session_state[page_key], total_pages - 1)
+    
+    # أزرار التنقل بين الصفحات
+    if total_pages > 1:
+        col_prev, col_page_info, col_next, col_goto = st.columns([1, 2, 1, 2])
+        with col_prev:
+            if st.button("◀️ السابق", key=f"prev_{section_key}", disabled=current_page == 0):
+                st.session_state[page_key] = current_page - 1
+                st.rerun()
+        with col_page_info:
+            st.markdown(f"<div style='text-align:center; padding:8px;'><b>صفحة {current_page + 1} من {total_pages}</b> ({filtered_count} منتج)</div>", unsafe_allow_html=True)
+        with col_next:
+            if st.button("التالي ▶️", key=f"next_{section_key}", disabled=current_page >= total_pages - 1):
+                st.session_state[page_key] = current_page + 1
+                st.rerun()
+        with col_goto:
+            goto_page = st.number_input("انتقل لصفحة", min_value=1, max_value=total_pages, value=current_page + 1, key=f"goto_{section_key}", label_visibility="collapsed")
+            if goto_page - 1 != current_page:
+                st.session_state[page_key] = goto_page - 1
+                st.rerun()
+    
+    # حساب نطاق الصفحة الحالية
+    start_idx = current_page * ITEMS_PER_PAGE
+    end_idx = min(start_idx + ITEMS_PER_PAGE, filtered_count)
+    page_df = df_filtered.iloc[start_idx:end_idx]
+    
     # أزرار تحديد الكل / إلغاء الكل
-    col_s1, col_s2, col_s3 = st.columns([1, 1, 3])
+    col_s1, col_s2, col_s3, col_s4 = st.columns([1, 1, 1, 2])
     with col_s1:
         if st.button("✅ تحديد الكل", key=f"sel_all_{section_key}"):
-            st.session_state[f"sel_{section_key}"] = [True] * len(df)
+            st.session_state[f"sel_{section_key}"] = {idx: True for idx in df_filtered.index}
             st.rerun()
     with col_s2:
         if st.button("❌ إلغاء الكل", key=f"desel_all_{section_key}"):
-            st.session_state[f"sel_{section_key}"] = [False] * len(df)
+            st.session_state[f"sel_{section_key}"] = {idx: False for idx in df_filtered.index}
             st.rerun()
+    with col_s3:
+        if removed_count > 0:
+            if st.button(f"♻️ استعادة المُزالة ({removed_count})", key=f"restore_{section_key}"):
+                st.session_state[removed_key] = set()
+                st.rerun()
     
     if f"sel_{section_key}" not in st.session_state:
-        st.session_state[f"sel_{section_key}"] = [False] * len(df)
+        st.session_state[f"sel_{section_key}"] = {}
     
-    # عرض الجدول مع checkboxes
+    # ── عناوين الأعمدة ──
+    header_cols = st.columns([0.3, 2.5, 2.5, 1.0, 1.0, 1.0, 0.8, 0.8, 0.8, 0.5])
+    with header_cols[0]:
+        st.markdown("**✓**")
+    with header_cols[1]:
+        st.markdown("**📦 منتجنا**")
+    with header_cols[2]:
+        st.markdown("**🏪 منتج المنافس**")
+    with header_cols[3]:
+        st.markdown("**💰 سعرنا**")
+    with header_cols[4]:
+        st.markdown("**🏷️ سعر المنافس**")
+    with header_cols[5]:
+        st.markdown("**🎯 الموصى**")
+    with header_cols[6]:
+        st.markdown("**📊 النسبة**")
+    with header_cols[7]:
+        st.markdown("**🔒 الثقة**")
+    with header_cols[8]:
+        st.markdown("**⚠️ خطورة**")
+    with header_cols[9]:
+        st.markdown("**🤖**")
+    st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
+    
+    # ── عرض المنتجات مع أسماء كاملة ──
     selected = []
-    for i, (_, row) in enumerate(df.iterrows()):
-        cols = st.columns([0.2, 2.0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.5])
+    for _, row in page_df.iterrows():
+        original_idx = row.name  # الفهرس الأصلي
+        cols = st.columns([0.3, 2.5, 2.5, 1.0, 1.0, 1.0, 0.8, 0.8, 0.8, 0.5])
+        
         with cols[0]:
-            default_val = st.session_state[f"sel_{section_key}"][i] if i < len(st.session_state[f"sel_{section_key}"]) else False
-            checked = st.checkbox("", value=default_val, key=f"{section_key}_{i}")
+            default_val = st.session_state[f"sel_{section_key}"].get(original_idx, False)
+            checked = st.checkbox("", value=default_val, key=f"{section_key}_{original_idx}")
+            st.session_state[f"sel_{section_key}"][original_idx] = checked
             if checked:
                 selected.append(row.to_dict())
+        
         with cols[1]:
-            product_name = str(row.get('المنتج', ''))[:40]
-            comp_name = str(row.get('اسم المنافس', ''))[:40]
-            st.write(f"**{product_name}**")
-            if comp_name:
-                st.caption(f"🏪 المنافس: {comp_name}")
+            # اسم منتجنا كامل
+            my_product = str(row.get('المنتج', ''))
+            my_brand = str(row.get('ماركتنا', ''))
+            st.markdown(f"**{my_product}**")
+            if my_brand:
+                st.caption(f"🏷️ {my_brand}")
+        
         with cols[2]:
-            st.write(f"💰 {row.get('السعر', 0)}")
+            # اسم منتج المنافس كامل + اسم المنافس
+            comp_product = str(row.get('اسم المنافس', ''))
+            competitor_name = str(row.get('المنافس', '')).replace('.xlsx', '').replace('.csv', '')
+            match_stage = str(row.get('مرحلة المطابقة', ''))
+            if comp_product and comp_product != 'nan':
+                st.markdown(f"**{comp_product}**")
+                stage_emoji = {'fast': '⚡', 'medium': '🔍', 'deep': '🔬', 'gemini': '🤖'}.get(match_stage, '📋')
+                st.caption(f"{stage_emoji} {competitor_name}")
+            else:
+                st.markdown("*غير متاح*")
+        
         with cols[3]:
-            comp_price = row.get('أقل سعر منافس', row.get('سعر المنافس', 0))
-            st.write(f"🏪 {comp_price}")
+            st.write(f"💰 {row.get('السعر', 0)}")
+        
         with cols[4]:
+            comp_price = row.get('أقل سعر منافس', row.get('سعر المنافس', 0))
+            st.write(f"🏷️ {comp_price}")
+        
+        with cols[5]:
             rec_price = row.get('السعر الموصى', '')
             if rec_price:
                 st.write(f"🎯 {rec_price}")
             else:
-                st.write("")
-        with cols[5]:
-            diff = row.get('الفرق', 0)
-            color = "red" if diff > 0 else "green"
-            st.markdown(f'<span style="color:{color}">{row.get("النسبة %", 0)}%</span>', unsafe_allow_html=True)
+                st.write("—")
+        
         with cols[6]:
+            diff_pct = row.get('النسبة %', 0)
+            color = "red" if diff_pct > 0 else "green"
+            st.markdown(f'<span style="color:{color};font-weight:bold">{diff_pct}%</span>', unsafe_allow_html=True)
+        
+        with cols[7]:
             confidence = row.get('الثقة %', '')
             if confidence:
-                st.write(f"📊 {confidence}%")
+                conf_val = float(confidence) if confidence else 0
+                conf_color = "#4caf50" if conf_val >= 90 else "#ff9800" if conf_val >= 75 else "#f44336"
+                st.markdown(f'<span style="color:{conf_color};font-weight:bold">{confidence}%</span>', unsafe_allow_html=True)
             else:
-                st.write("")
-        with cols[7]:
+                st.write("—")
+        
+        with cols[8]:
             risk = row.get('الخطورة', 'عادي')
             if risk == 'حرج':
-                st.markdown('🔴 حرج')
+                st.markdown('🔴')
             elif risk == 'متوسط':
-                st.markdown('🟡 متوسط')
+                st.markdown('🟡')
             else:
-                st.markdown('🟢 عادي')
-        with cols[8]:
-            if st.button("🤖", key=f"ai_{section_key}_{i}", help="تحقق بالذكاء الصناعي"):
+                st.markdown('🟢')
+        
+        with cols[9]:
+            if st.button("🤖", key=f"ai_{section_key}_{original_idx}", help="تحقق بالذكاء الصناعي"):
+                st.session_state[f"ai_check_{section_key}_{original_idx}"] = True
+                st.rerun()
+        
+        # ── نتيجة التحقق AI + أزرار القرار ──
+        if st.session_state.get(f"ai_check_{section_key}_{original_idx}"):
+            with st.spinner("🔍 جاري التحقق بالذكاء الصناعي..."):
+                from modules.ai_verification import smart_comparison
                 product_name = str(row.get('المنتج', ''))
-                with st.spinner("🔍 جاري التحقق..."):
-                    from modules.ai_verification import smart_comparison
-                    result = smart_comparison(
-                        product_name=product_name,
-                        competitor_price=row.get('سعر المنافس', row.get('أقل سعر منافس', 0)),
-                        store_file_path=None
-                    )
+                result = smart_comparison(
+                    product_name=product_name,
+                    competitor_price=row.get('سعر المنافس', row.get('أقل سعر منافس', 0)),
+                    store_file_path=None
+                )
+                
+                if result["success"]:
+                    data = result["results"]
+                    analysis = data.get('analysis', {})
                     
-                    if result["success"]:
-                        data = result["results"]
-                        analysis = data.get('analysis', {})
-                        
-                        st.markdown(f"""
-                        <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0;">
-                            <h4 style="margin:0; color: #2e7d32;">✅ نتائج التحقق الذكي</h4>
-                            <p><b>🏪 المنتج:</b> {data.get('product_name', '')}</p>
-                            <p><b>💰 سعر المنافس:</b> {data.get('competitor_price', 0):.2f} ر.س</p>
-                            <p><b>🏪 في متجرنا:</b> {'✅ موجود' if analysis.get('in_our_store') else '❌ غير موجود'}</p>
-                            {f"<p><b>💵 سعرنا:</b> {data.get('our_price', 0):.2f} ر.س</p>" if data.get('our_price') else ''}
-                            <p><b>📉 حالة السعر:</b> {analysis.get('price_status', 'غير محدد')}</p>
-                            <p><b>💹 الربحية:</b> {analysis.get('profitability', 'غير محدد')}</p>
-                            <p><b>🎯 التوصيات:</b></p>
-                            <ul>
-                            {''.join([f"<li>{rec}</li>" for rec in analysis.get('recommendations', [])])}
-                            </ul>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        col_act1, col_act2 = st.columns(2)
-                        with col_act1:
-                            if st.button("❌ إزالة", key=f"remove_{section_key}_{i}"):
-                                st.success("✅ تم إزالة المنتج")
-                        with col_act2:
-                            if st.button("✅ إبقاء", key=f"keep_{section_key}_{i}"):
-                                st.success("✅ تم الإبقاء")
-                    else:
-                        st.error(f"❌ {result.get('error', 'خطأ')}")
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0; border-right: 4px solid #4caf50;">
+                        <h4 style="margin:0; color: #2e7d32;">🤖 نتائج التحقق الذكي</h4>
+                        <table style="width:100%; margin-top:10px;">
+                            <tr><td><b>📦 منتجنا:</b></td><td>{product_name}</td></tr>
+                            <tr><td><b>🏪 منتج المنافس:</b></td><td>{str(row.get('اسم المنافس', ''))}</td></tr>
+                            <tr><td><b>💰 سعر المنافس:</b></td><td>{data.get('competitor_price', 0):.2f} ر.س</td></tr>
+                            <tr><td><b>📉 حالة السعر:</b></td><td>{analysis.get('price_status', 'غير محدد')}</td></tr>
+                            <tr><td><b>💹 الربحية:</b></td><td>{analysis.get('profitability', 'غير محدد')}</td></tr>
+                        </table>
+                        <p style="margin-top:10px;"><b>🎯 التوصيات:</b></p>
+                        <ul>
+                        {''.join([f"<li>{rec}</li>" for rec in analysis.get('recommendations', [])])}
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # أزرار القرار
+                    col_keep, col_remove, col_close = st.columns(3)
+                    with col_keep:
+                        if st.button("✅ إبقاء في القسم", key=f"keep_{section_key}_{original_idx}", type="primary"):
+                            st.session_state[f"ai_check_{section_key}_{original_idx}"] = False
+                            st.success("✅ تم الإبقاء")
+                            st.rerun()
+                    with col_remove:
+                        if st.button("❌ إزالة من القسم", key=f"remove_{section_key}_{original_idx}"):
+                            st.session_state[removed_key].add(original_idx)
+                            st.session_state[f"ai_check_{section_key}_{original_idx}"] = False
+                            st.warning("🗑️ تم إزالة المنتج")
+                            st.rerun()
+                    with col_close:
+                        if st.button("🔙 إغلاق", key=f"close_{section_key}_{original_idx}"):
+                            st.session_state[f"ai_check_{section_key}_{original_idx}"] = False
+                            st.rerun()
+                else:
+                    st.error(f"❌ {result.get('error', 'خطأ')}")
+                    if st.button("🔙 إغلاق", key=f"close_err_{section_key}_{original_idx}"):
+                        st.session_state[f"ai_check_{section_key}_{original_idx}"] = False
+                        st.rerun()
+    
+    # ── Pagination أسفل ──
+    if total_pages > 1:
+        st.markdown("---")
+        col_prev2, col_info2, col_next2 = st.columns([1, 3, 1])
+        with col_prev2:
+            if st.button("◀️ السابق", key=f"prev2_{section_key}", disabled=current_page == 0):
+                st.session_state[page_key] = current_page - 1
+                st.rerun()
+        with col_info2:
+            st.markdown(f"<div style='text-align:center;'>عرض {start_idx + 1}-{end_idx} من {filtered_count} | صفحة {current_page + 1}/{total_pages}</div>", unsafe_allow_html=True)
+        with col_next2:
+            if st.button("التالي ▶️", key=f"next2_{section_key}", disabled=current_page >= total_pages - 1):
+                st.session_state[page_key] = current_page + 1
+                st.rerun()
+    
+    # ── ملخص التحديد والإجراءات ──
+    # جمع كل المحددين من جميع الصفحات
+    all_selected = []
+    for idx, row in df_filtered.iterrows():
+        if st.session_state[f"sel_{section_key}"].get(idx, False):
+            all_selected.append(row.to_dict())
     
     st.markdown("---")
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #fff8e1, #ffecb3); border-radius: 10px; padding: 12px; text-align: center;">
-        <b>📌 تم تحديد <span style="font-size: 1.5rem; color: #e65100;">{len(selected)}</span> من أصل <span style="font-size: 1.5rem; color: #1565c0;">{len(df)}</span> منتج</b>
+        <b>📌 تم تحديد <span style="font-size: 1.5rem; color: #e65100;">{len(all_selected)}</span> من أصل <span style="font-size: 1.5rem; color: #1565c0;">{filtered_count}</span> منتج</b>
     </div>""", unsafe_allow_html=True)
     
-    col_b1, col_b2 = st.columns(2)
+    col_b1, col_b2, col_b3 = st.columns(3)
     with col_b1:
         if st.button(f"✅ موافقة وإرسال إلى سلة ({section_label})", 
                      use_container_width=True, type="primary",
-                     disabled=len(selected) == 0, key=f"send_{section_key}"):
-            with st.spinner(f"⏳ جاري إرسال {len(selected)} منتج..."):
+                     disabled=len(all_selected) == 0, key=f"send_{section_key}"):
+            with st.spinner(f"⏳ جاري إرسال {len(all_selected)} منتج..."):
                 # استيراد نظام قاعدة البيانات
                 from database import log_operation, mark_product_modified, is_product_modified
                 
                 batch_size = 50
                 total_sent = 0
                 total_failed = 0
-                for batch_start in range(0, len(selected), batch_size):
-                    batch = selected[batch_start:batch_start + batch_size]
+                for batch_start in range(0, len(all_selected), batch_size):
+                    batch = all_selected[batch_start:batch_start + batch_size]
                     result = send_func(batch)
                     if result["success"]:
                         total_sent += len(batch)
@@ -892,7 +1035,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                     else:
                         total_failed += len(batch)
                 
-                save_send_log(section_label, len(selected), total_sent, total_failed, webhook_label)
+                save_send_log(section_label, len(all_selected), total_sent, total_failed, webhook_label)
                 
                 if total_failed == 0:
                     st.markdown(f"""<div class="success-box">
@@ -904,8 +1047,8 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                     st.warning(f"⚠️ نجح {total_sent}، فشل {total_failed}")
     
     with col_b2:
-        if selected:
-            df_sel = pd.DataFrame(selected)
+        if all_selected:
+            df_sel = pd.DataFrame(all_selected)
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df_sel.to_excel(writer, sheet_name=section_label, index=False)
@@ -914,6 +1057,17 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                               file_name=f"{section_key}_{datetime.now():%Y%m%d_%H%M%S}.xlsx",
                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                               use_container_width=True, key=f"dl_{section_key}")
+    
+    with col_b3:
+        # تحميل الكل كـ Excel
+        output_all = BytesIO()
+        with pd.ExcelWriter(output_all, engine='openpyxl') as writer:
+            df_filtered.to_excel(writer, sheet_name=section_label, index=False)
+        output_all.seek(0)
+        st.download_button(f"📥 تحميل الكل ({filtered_count})", data=output_all.getvalue(),
+                          file_name=f"{section_key}_all_{datetime.now():%Y%m%d_%H%M%S}.xlsx",
+                          mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                          use_container_width=True, key=f"dl_all_{section_key}")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -1422,56 +1576,152 @@ elif section == "🟢 موافق عليها":
     if st.session_state.results:
         df_approved = st.session_state.results.get("approved")
         if df_approved is not None and not df_approved.empty:
+            total_approved = len(df_approved)
+            
             st.markdown(f"""
             <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 12px; padding: 15px; margin: 10px 0; text-align: center;">
-                <h3 style="margin:0; color: #2e7d32;">✅ عداد المنتجات الموافق عليها: <span style="font-size: 1.8rem; color: #1b5e20;">{len(df_approved)}</span> منتج</h3>
+                <h3 style="margin:0; color: #2e7d32;">✅ عداد المنتجات الموافق عليها: <span style="font-size: 1.8rem; color: #1b5e20;">{total_approved}</span> منتج</h3>
             </div>""", unsafe_allow_html=True)
-            # إضافة عمود AI للتحقق
-            df_display = df_approved.copy()
             
-            # عرض الجدول مع أزرار AI
-            for idx, row in df_display.iterrows():
-                cols = st.columns([0.7, 0.15, 0.15])
+            # ── Pagination ──
+            ITEMS_PER_PAGE_APPROVED = 25
+            if "page_approved" not in st.session_state:
+                st.session_state.page_approved = 0
+            
+            total_pages_a = max(1, (total_approved + ITEMS_PER_PAGE_APPROVED - 1) // ITEMS_PER_PAGE_APPROVED)
+            current_page_a = min(st.session_state.page_approved, total_pages_a - 1)
+            
+            if total_pages_a > 1:
+                col_prev_a, col_info_a, col_next_a = st.columns([1, 3, 1])
+                with col_prev_a:
+                    if st.button("◀️ السابق", key="prev_approved", disabled=current_page_a == 0):
+                        st.session_state.page_approved = current_page_a - 1
+                        st.rerun()
+                with col_info_a:
+                    st.markdown(f"<div style='text-align:center; padding:8px;'><b>صفحة {current_page_a + 1} من {total_pages_a}</b> ({total_approved} منتج)</div>", unsafe_allow_html=True)
+                with col_next_a:
+                    if st.button("التالي ▶️", key="next_approved", disabled=current_page_a >= total_pages_a - 1):
+                        st.session_state.page_approved = current_page_a + 1
+                        st.rerun()
+            
+            start_a = current_page_a * ITEMS_PER_PAGE_APPROVED
+            end_a = min(start_a + ITEMS_PER_PAGE_APPROVED, total_approved)
+            page_approved_df = df_approved.iloc[start_a:end_a]
+            
+            # ── عناوين الأعمدة ──
+            h_cols = st.columns([3.0, 3.0, 1.0, 1.0, 1.0, 0.8, 0.5])
+            with h_cols[0]:
+                st.markdown("**📦 منتجنا**")
+            with h_cols[1]:
+                st.markdown("**🏪 منتج المنافس**")
+            with h_cols[2]:
+                st.markdown("**💰 سعرنا**")
+            with h_cols[3]:
+                st.markdown("**🏷️ المنافس**")
+            with h_cols[4]:
+                st.markdown("**📊 النسبة**")
+            with h_cols[5]:
+                st.markdown("**🔒 الثقة**")
+            with h_cols[6]:
+                st.markdown("**🤖**")
+            st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
+            
+            # ── عرض المنتجات ──
+            for _, row in page_approved_df.iterrows():
+                original_idx = row.name
+                cols = st.columns([3.0, 3.0, 1.0, 1.0, 1.0, 0.8, 0.5])
                 
                 with cols[0]:
-                    st.write(f"**{row.get('المنتج', row.get('اسم المنتج', row.iloc[0]))}**")
-                    st.caption(f"السعر: {row.get('السعر', row.iloc[1] if len(row) > 1 else 'N/A')} ريال")
+                    my_product = str(row.get('المنتج', row.get('اسم المنتج', '')))
+                    my_brand = str(row.get('ماركتنا', ''))
+                    st.markdown(f"**{my_product}**")
+                    if my_brand and my_brand != 'nan':
+                        st.caption(f"🏷️ {my_brand}")
                 
                 with cols[1]:
-                    if st.button("🤖 AI", key=f"ai_approved_{idx}", help="تحقق ذكي من المنتج"):
-                        st.session_state[f"ai_verify_{idx}"] = True
+                    comp_product = str(row.get('اسم المنافس', ''))
+                    competitor_name = str(row.get('المنافس', '')).replace('.xlsx', '').replace('.csv', '')
+                    match_stage = str(row.get('مرحلة المطابقة', ''))
+                    if comp_product and comp_product != 'nan':
+                        st.markdown(f"**{comp_product}**")
+                        stage_emoji = {'fast': '⚡', 'medium': '🔍', 'deep': '🔬', 'gemini': '🤖'}.get(match_stage, '📋')
+                        st.caption(f"{stage_emoji} {competitor_name}")
+                    else:
+                        st.markdown("*غير متاح*")
                 
-                with cols[2], st.expander("📊"):
-                    st.caption("تفاصيل إضافية")
-                    for col in df_display.columns:
-                        st.text(f"{col}: {row[col]}")
+                with cols[2]:
+                    st.write(f"💰 {row.get('السعر', 0)}")
                 
-                # إذا تم الضغط على AI
-                if st.session_state.get(f"ai_verify_{idx}"):
+                with cols[3]:
+                    comp_price = row.get('أقل سعر منافس', row.get('سعر المنافس', 0))
+                    st.write(f"🏷️ {comp_price}")
+                
+                with cols[4]:
+                    diff_pct = row.get('النسبة %', 0)
+                    st.markdown(f'<span style="color:#4caf50;font-weight:bold">{diff_pct}%</span>', unsafe_allow_html=True)
+                
+                with cols[5]:
+                    confidence = row.get('الثقة %', '')
+                    if confidence:
+                        conf_val = float(confidence) if confidence else 0
+                        conf_color = "#4caf50" if conf_val >= 90 else "#ff9800" if conf_val >= 75 else "#f44336"
+                        st.markdown(f'<span style="color:{conf_color};font-weight:bold">{confidence}%</span>', unsafe_allow_html=True)
+                    else:
+                        st.write("—")
+                
+                with cols[6]:
+                    if st.button("🤖", key=f"ai_approved_{original_idx}", help="تحقق ذكي"):
+                        st.session_state[f"ai_verify_approved_{original_idx}"] = True
+                        st.rerun()
+                
+                # نتيجة AI
+                if st.session_state.get(f"ai_verify_approved_{original_idx}"):
                     with st.spinner("⏳ جاري التحقق الذكي..."):
                         from modules.ai_verification import smart_comparison
-                        
-                        product_name = row.get('اسم المنتج', row.iloc[0])
-                        product_price = float(row.get('السعر', row.iloc[1] if len(row) > 1 else 0))
-                        
-                        result = smart_comparison(product_name, product_price)
-                        
+                        product_name = str(row.get('المنتج', row.get('اسم المنتج', '')))
+                        result = smart_comparison(
+                            product_name=product_name,
+                            competitor_price=row.get('سعر المنافس', row.get('أقل سعر منافس', 0)),
+                            store_file_path=None
+                        )
                         if result["success"]:
-                            st.success("✅ تم التحقق بنجاح!")
-                            
-                            analysis = result["results"].get("analysis")
-                            if analysis:
-                                st.json(analysis)
+                            data = result["results"]
+                            analysis = data.get('analysis', {})
+                            st.markdown(f"""
+                            <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0; border-right: 4px solid #4caf50;">
+                                <h4 style="margin:0; color: #2e7d32;">🤖 نتائج التحقق</h4>
+                                <table style="width:100%; margin-top:10px;">
+                                    <tr><td><b>📦 منتجنا:</b></td><td>{product_name}</td></tr>
+                                    <tr><td><b>🏪 منتج المنافس:</b></td><td>{str(row.get('اسم المنافس', ''))}</td></tr>
+                                    <tr><td><b>📉 حالة السعر:</b></td><td>{analysis.get('price_status', 'غير محدد')}</td></tr>
+                                    <tr><td><b>💹 الربحية:</b></td><td>{analysis.get('profitability', 'غير محدد')}</td></tr>
+                                </table>
+                            </div>
+                            """, unsafe_allow_html=True)
                         else:
-                            st.error(f"❌ خطأ: {result.get('error', 'غير معروف')}")
-                    
-                    st.session_state[f"ai_verify_{idx}"] = False
-                
-                st.markdown("---")
+                            st.error(f"❌ {result.get('error', 'خطأ')}")
+                        if st.button("🔙 إغلاق", key=f"close_approved_{original_idx}"):
+                            st.session_state[f"ai_verify_approved_{original_idx}"] = False
+                            st.rerun()
             
-            # عرض الجدول الكامل أيضاً
+            # Pagination أسفل
+            if total_pages_a > 1:
+                st.markdown("---")
+                col_p2, col_i2, col_n2 = st.columns([1, 3, 1])
+                with col_p2:
+                    if st.button("◀️ السابق", key="prev2_approved", disabled=current_page_a == 0):
+                        st.session_state.page_approved = current_page_a - 1
+                        st.rerun()
+                with col_i2:
+                    st.markdown(f"<div style='text-align:center;'>عرض {start_a + 1}-{end_a} من {total_approved} | صفحة {current_page_a + 1}/{total_pages_a}</div>", unsafe_allow_html=True)
+                with col_n2:
+                    if st.button("التالي ▶️", key="next2_approved", disabled=current_page_a >= total_pages_a - 1):
+                        st.session_state.page_approved = current_page_a + 1
+                        st.rerun()
+            
+            # عرض الجدول الكامل
             with st.expander("📊 عرض الجدول الكامل"):
-                st.dataframe(df_approved, use_container_width=True)
+                st.dataframe(df_approved, use_container_width=True, height=400)
             
             # تحميل Excel
             output = BytesIO()
