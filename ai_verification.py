@@ -9,9 +9,13 @@ import os
 import requests
 import json
 import time
+import streamlit as st
 
-# مفتاح Gemini API
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyBLgjwRh_t0gHqgN-V2NsDzdL5kro4lXVE")
+# مفتاح Gemini API من Streamlit Secrets
+try:
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+except:
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyAF0vGtfKtQn4zaDb5XfjOJrzO3EEPBYR8")
 
 def verify_match_with_ai(my_product, comp_product, semantic_result):
     """

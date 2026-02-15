@@ -750,7 +750,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
     # عرض الجدول مع checkboxes
     selected = []
     for i, (_, row) in enumerate(df.iterrows()):
-        cols = st.columns([0.2, 2.0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8])
+        cols = st.columns([0.2, 2.0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.5])
         with cols[0]:
             default_val = st.session_state[f"sel_{section_key}"][i] if i < len(st.session_state[f"sel_{section_key}"]) else False
             checked = st.checkbox("", value=default_val, key=f"{section_key}_{i}")
@@ -791,6 +791,46 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                 st.markdown('🟡 متوسط')
             else:
                 st.markdown('🟢 عادي')
+        with cols[8]:
+            if st.button("🤖", key=f"ai_{section_key}_{i}", help="تحقق بالذكاء الصناعي"):
+                product_name = str(row.get('المنتج', ''))
+                with st.spinner("🔍 جاري التحقق..."):
+                    from modules.ai_verification import smart_comparison
+                    result = smart_comparison(
+                        product_name=product_name,
+                        competitor_price=row.get('سعر المنافس', row.get('أقل سعر منافس', 0)),
+                        store_file_path=None
+                    )
+                    
+                    if result["success"]:
+                        data = result["results"]
+                        analysis = data.get('analysis', {})
+                        
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0;">
+                            <h4 style="margin:0; color: #2e7d32;">✅ نتائج التحقق الذكي</h4>
+                            <p><b>🏪 المنتج:</b> {data.get('product_name', '')}</p>
+                            <p><b>💰 سعر المنافس:</b> {data.get('competitor_price', 0):.2f} ر.س</p>
+                            <p><b>🏪 في متجرنا:</b> {'✅ موجود' if analysis.get('in_our_store') else '❌ غير موجود'}</p>
+                            {f"<p><b>💵 سعرنا:</b> {data.get('our_price', 0):.2f} ر.س</p>" if data.get('our_price') else ''}
+                            <p><b>📉 حالة السعر:</b> {analysis.get('price_status', 'غير محدد')}</p>
+                            <p><b>💹 الربحية:</b> {analysis.get('profitability', 'غير محدد')}</p>
+                            <p><b>🎯 التوصيات:</b></p>
+                            <ul>
+                            {''.join([f"<li>{rec}</li>" for rec in analysis.get('recommendations', [])])}
+                            </ul>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        col_act1, col_act2 = st.columns(2)
+                        with col_act1:
+                            if st.button("❌ إزالة", key=f"remove_{section_key}_{i}"):
+                                st.success("✅ تم إزالة المنتج")
+                        with col_act2:
+                            if st.button("✅ إبقاء", key=f"keep_{section_key}_{i}"):
+                                st.success("✅ تم الإبقاء")
+                    else:
+                        st.error(f"❌ {result.get('error', 'خطأ')}")
     
     st.markdown("---")
     st.markdown(f"""

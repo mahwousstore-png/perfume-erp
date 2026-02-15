@@ -262,8 +262,9 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
             continue
         
         cp_type = classify_product(cp_name)
-        if cp_type == "rejected":
-            continue
+        # لا نرفض منتجات المنافسين - نصنفها فقط
+        # if cp_type == "rejected":
+        #     continue
         
         cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
         cp_price = _get_price(cp)
@@ -298,8 +299,9 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
             continue
 
         my_type = classify_product(my_name)
-        if my_type == "rejected":
-            continue
+        # لا نرفض أي منتج - نصنفه فقط للمطابقة الدقيقة
+        # if my_type == "rejected":
+        #     continue
         
         my_size = my_p.get("size_ml", 0) or extract_size(my_name)
         my_price = _get_price(my_p)
@@ -563,8 +565,9 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
         if not my_name:
             continue
         my_type = classify_product(my_name)
-        if my_type == "rejected":
-            continue
+        # لا نرفض أي منتج - نصنفه فقط للمطابقة الدقيقة
+        # if my_type == "rejected":
+        #     continue
         my_size = my_p.get("size_ml", 0) or extract_size(my_name)
         size_bucket = round(my_size / 5) * 5 if my_size > 0 else 0
         key = (my_type, size_bucket)
@@ -584,8 +587,9 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
             continue
         
         cp_type = classify_product(cp_name)
-        if cp_type == "rejected":
-            continue
+        # لا نرفض منتجات المنافسين - نصنفها فقط
+        # if cp_type == "rejected":
+        #     continue
         
         cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
         cp_norm = normalize_name(cp_name)
