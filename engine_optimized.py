@@ -316,7 +316,7 @@ def match_products_optimized(my_products, comp_products, threshold=60):
     return results
 
 
-def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None):
+def run_full_analysis(my_file, comp_files, threshold=60):
     """
     تشغيل التحليل الكامل المحسّن.
     """

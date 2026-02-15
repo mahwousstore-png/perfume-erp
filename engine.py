@@ -941,7 +941,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     }
 
 
-def gemini_verify(product_name, product_type, gemini_client=None):
+def gemini_verify(product_name, product_type, _gemini_client=None):
     """
     التحقق من صحة تصنيف المنتج باستخدام Gemini AI.
     """
@@ -954,7 +954,7 @@ def gemini_verify(product_name, product_type, gemini_client=None):
     }
 
 
-def export_excel(match_results, filename="perfume_analysis.xlsx"):
+def export_excel(match_results, _filename="perfume_analysis.xlsx"):
     """
     تصدير نتائج المطابقة إلى ملف Excel.
     """
