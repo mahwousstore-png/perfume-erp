@@ -1282,45 +1282,67 @@ elif section == "📤 رفع الملفات":
         status_text = st.empty()
         time_text = st.empty()
         counter_text = st.empty()
+        stats_text = st.empty()
         
         start_time = time.time()
-        estimated_time = 25  # الوقت المتوقع بالثواني (60% threshold)
+        _progress_state = {'current': 0, 'total': 0, 'matched': 0, 'ai_active': False, 'ai_calls': 0}
         
         def update_progress(percent, message=""):
-            progress_bar.progress(min(percent, 99))
+            progress_bar.progress(min(int(percent), 99) if percent < 100 else 100)
             elapsed = time.time() - start_time
             
-            # تحويل الوقت إلى دقائق وثواني
+            # تحويل الوقت
             elapsed_min = int(elapsed // 60)
             elapsed_sec = int(elapsed % 60)
+            elapsed_display = f"{elapsed_min}د {elapsed_sec}ث" if elapsed_min > 0 else f"{elapsed_sec}ث"
             
-            # استخراج الوقت المتبقي من الرسالة (إذا موجود)
-            remaining_text = ""
+            # استخراج الوقت المتبقي
+            remaining_display = ""
             if "متبقي:" in message:
                 import re
                 match = re.search(r'متبقي: ~(\d+)ث', message)
                 if match:
-                    remaining_sec = int(match.group(1))
-                    remaining_min = int(remaining_sec // 60)
-                    remaining_sec = int(remaining_sec % 60)
-                    if remaining_min > 0:
-                        remaining_text = f"<b>⏳ الوقت المتبقي:</b> ~{remaining_min}د {remaining_sec}ث"
-                    else:
-                        remaining_text = f"<b>⏳ الوقت المتبقي:</b> ~{remaining_sec}ث"
+                    rem = int(match.group(1))
+                    rem_min = int(rem // 60)
+                    rem_sec = int(rem % 60)
+                    remaining_display = f"{rem_min}د {rem_sec}ث" if rem_min > 0 else f"~{rem_sec}ث"
             
+            # حالة AI
+            ai_status = "🟢 متصل" if _progress_state.get('ai_active') else "⚪ في الانتظار"
+            ai_calls = _progress_state.get('ai_calls', 0)
+            current = _progress_state.get('current', 0)
+            total = _progress_state.get('total', 0)
+            matched = _progress_state.get('matched', 0)
+            
+            # عرض الحالة الرئيسية
             status_text.markdown(f"### {message}")
             
-            # عرض محسّن
-            if elapsed_min > 0:
-                elapsed_display = f"{elapsed_min}د {elapsed_sec}ث"
-            else:
-                elapsed_display = f"{elapsed_sec}ث"
-            
+            # عداد رقمي كبير وواضح
             time_text.markdown(f"""
-            <div style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border-radius: 10px; padding: 20px; margin: 10px 0; font-size: 18px;">
-                <p style="margin:0; margin-bottom: 10px;"><b>⏱️ الوقت المنقضي:</b> {elapsed_display}</p>
-                {f'<p style="margin:0; margin-bottom: 10px;">{remaining_text}</p>' if remaining_text else ''}
-                <p style="margin:0;"><b>📊 التقدم:</b> {percent}%</p>
+            <div style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border-radius: 12px; padding: 20px; margin: 10px 0; direction: rtl;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div style="text-align: center; min-width: 120px;">
+                        <div style="font-size: 2.2rem; font-weight: bold; color: #1565c0;">{int(percent)}%</div>
+                        <div style="font-size: 0.85rem; color: #546e7a;">نسبة الإنجاز</div>
+                    </div>
+                    <div style="text-align: center; min-width: 120px;">
+                        <div style="font-size: 2.2rem; font-weight: bold; color: #2e7d32;">{current}/{total}</div>
+                        <div style="font-size: 0.85rem; color: #546e7a;">المنتج الحالي</div>
+                    </div>
+                    <div style="text-align: center; min-width: 120px;">
+                        <div style="font-size: 2.2rem; font-weight: bold; color: #e65100;">{matched}</div>
+                        <div style="font-size: 0.85rem; color: #546e7a;">تم مطابقته</div>
+                    </div>
+                    <div style="text-align: center; min-width: 120px;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #37474f;">{elapsed_display}</div>
+                        <div style="font-size: 0.85rem; color: #546e7a;">الوقت المنقضي</div>
+                    </div>
+                    {'<div style="text-align: center; min-width: 120px;"><div style="font-size: 1.5rem; font-weight: bold; color: #c62828;">' + remaining_display + '</div><div style="font-size: 0.85rem; color: #546e7a;">الوقت المتبقي</div></div>' if remaining_display else ''}
+                </div>
+                <div style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #90caf9; display: flex; justify-content: center; gap: 25px; flex-wrap: wrap;">
+                    <span style="font-size: 0.95rem;">🤖 Gemini AI: <b>{ai_status}</b></span>
+                    <span style="font-size: 0.95rem;">📡 طلبات AI: <b>{ai_calls}</b></span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -1371,22 +1393,36 @@ elif section == "📤 رفع الملفات":
         
         update_progress(10, f"✅ تم تحميل {len(my_products)} منتج + {len(comp_products)} منافس")
         
+        _progress_state['total'] = len(my_products)
+        
         if USE_V2:
             # المحرك الجديد
             def smart_progress(progress, elapsed, eta, stats):
                 percent = int(progress * 80) + 10  # 10-90%
+                current_idx = int(progress * len(my_products))
+                total_matched = stats['fast_matches'] + stats['medium_matches'] + stats['deep_matches']
+                
+                # تحديث العداد
+                _progress_state['current'] = current_idx
+                _progress_state['matched'] = total_matched
+                _progress_state['ai_calls'] = stats['gemini_calls']
+                _progress_state['ai_active'] = stats['gemini_calls'] > 0
+                
                 message = f"🔍 جاري المطابقة... | متبقي: ~{int(eta)}ث"
                 update_progress(percent, message)
                 
-                # عرض إحصائيات
-                counter_text.markdown(f"""
-                **📊 إحصائيات المطابقة:**
-                - ⚖️ سريعة: {stats['fast_matches']}
-                - 💡 متوسطة: {stats['medium_matches']}
-                - 🧠 عميقة: {stats['deep_matches']}
-                - 🤖 Gemini: {stats['gemini_calls']}
-                - 💾 Cache: {stats['cache_hits']}
-                """)
+                # عرض إحصائيات المطابقة
+                stats_text.markdown(f"""
+                <div style="background: #f5f5f5; border-radius: 8px; padding: 12px; margin: 5px 0; direction: rtl;">
+                    <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px;">
+                        <span>⚖️ سريعة: <b>{stats['fast_matches']}</b></span>
+                        <span>💡 متوسطة: <b>{stats['medium_matches']}</b></span>
+                        <span>🧠 عميقة: <b>{stats['deep_matches']}</b></span>
+                        <span>🤖 Gemini: <b>{stats['gemini_calls']}</b></span>
+                        <span>💾 Cache: <b>{stats['cache_hits']}</b></span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
             
             raw_results = run_smart_matching(
                 my_products,
