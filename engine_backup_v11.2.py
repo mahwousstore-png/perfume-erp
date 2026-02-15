@@ -690,29 +690,17 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
 
     # 7. إحصائيات
     stats = {
-        "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "total": len(df_all),
-        "raise_count": len(df_raise),
-        "lower_count": len(df_lower),
-        "approved_count": len(df_approved),
-        "missing_count": len(df_missing),
-        "review_count": 0,
-        "critical": len(df_all[df_all.get("الخطورة", pd.Series()) == "حرج"]) if not df_all.empty and "الخطورة" in df_all.columns else 0,
-        "avg_diff": round(df_all["الفرق"].mean(), 2) if not df_all.empty and "الفرق" in df_all.columns else 0,
-        "competitors": len(comp_files),
-        "my_products_count": len(my_products),
-        "comp_products_count": len(all_comp_products),
         "threshold": threshold,
     }
-return {
-    "stats": stats,
-    "raise": df_raise,
-    "lower": df_lower,
-    "approved": df_approved,
-    "missing": df_missing,
-    "review": df_review,
-    "all": df_all,
-}
+    return {
+        "stats": stats,
+        "raise": df_raise,
+        "lower": df_lower,
+        "approved": df_approved,
+        "missing": df_missing,
+        "review": df_review,
+        "all": df_all,
+    }
 
 
 def gemini_verify(product_name, product_type, _gemini_client=None):
