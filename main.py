@@ -1939,8 +1939,8 @@ elif section == "💬 محادثة AI":
                 st.session_state.chat_history.append({"role": "assistant", "content": result["text"]})
             else:
                 error_msg = f"❌ خطأ: {result['error']}"
-                    st.error(error_msg)
-                    st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+                st.error(error_msg)
+                st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
     
     # زر مسح المحادثة
     if st.button("🗑️ مسح المحادثة"):

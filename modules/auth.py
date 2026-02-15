@@ -31,7 +31,6 @@ ROLES = {
     'accountant': {
         'name': 'المحاسب',
         'permissions': ['view_reports', 'add_expenses', 'view_costs']
-    }
     },
     'viewer': {
         'name': 'مشاهد',

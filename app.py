@@ -1939,8 +1939,8 @@ elif section == "💬 محادثة AI":
                 st.session_state.chat_history.append({"role": "assistant", "content": result["text"]})
             else:
                 error_msg = f"❌ خطأ: {result['error']}"
-                    st.error(error_msg)
-                    st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+                st.error(error_msg)
+                st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
     
     # زر مسح المحادثة
     if st.button("🗑️ مسح المحادثة"):
@@ -1956,7 +1956,8 @@ elif section == "🎬 استديو مهووس":
         show_studio_page()
     except Exception as e:
         st.error(f"❌ خطأ في تحميل استديو مهووس: {str(e)}")
-        st.code(f"تفاصيل الخطأ:\n{e}", language="python")
+        st.code(f"تفاصيل الخطأ:
+{e}", language="python")
         import traceback
         st.code(traceback.format_exc(), language="python")
 

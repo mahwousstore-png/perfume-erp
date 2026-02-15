@@ -37,7 +37,6 @@ def create_alert(alert_type, title, message, priority="متوسطة", data=None)
         'read': False,
         'resolved': False
     }
-    }
 
 def get_alert_icon(alert_type):
     """الحصول على أيقونة التنبيه"""
