@@ -1208,7 +1208,7 @@ elif section == "📤 رفع الملفات":
                 records = comp_df.to_dict('records')
                 # إضافة اسم المنافس
                 for r in records:
-                    r['_competitor_name'] = comp_file_name
+                    r['_competitor'] = comp_file_name.replace('.csv', '').replace('.xlsx', '').replace('متجر', '').replace('متحر', '').strip()
                 comp_products.extend(records)
             except Exception as e:
                 st.warning(f"⚠️ خطأ في قراءة ملف منافس: {e}")
@@ -1260,13 +1260,15 @@ elif section == "📤 رفع الملفات":
                     "سعر المنافس": r.get("comp_price", 0),
                     "الفرق": round(r.get("diff", 0), 2),
                     "النسبة %": round(r.get("diff_pct", 0), 1),
-                    "الثقة %": r.get("match_confidence", 0),
-                    "ثقة AI %": r.get("match_confidence", 0),
+                    "الثقة %": r.get("confidence", r.get("match_confidence", 0)),
+                    "ثقة AI %": r.get("confidence", r.get("match_confidence", 0)),
                     "حالة التحقق": r.get("match_reason", "✅ مؤكد"),
                     "تفسير AI": r.get("match_reason", ""),
                     "عدد المنافسين": 1,
                     "التفسير": r.get("match_reason", ""),
-                    "نسبة التطابق": r.get("match_confidence", 0),
+                    "نسبة التطابق": r.get("confidence", r.get("match_confidence", 0)),
+                    "المنافس": r.get("competitor", ""),
+                    "مرحلة المطابقة": r.get("match_stage", ""),
                     "pid_my": "",
                 }
                 if include_recommended:
@@ -1355,7 +1357,7 @@ elif section == "📤 رفع الملفات":
             time_text.markdown(f"""
             <div style="background: linear-gradient(135deg, #c8e6c9, #a5d6a7); border-radius: 10px; padding: 15px; margin: 10px 0;">
                 <p style="margin:0; font-size: 1.1rem;"><b>✅ اكتمل التحليل بنجاح!</b></p>
-                <p style="margin:5px 0 0 0;"><b>⏱️ إجمالي الوقت:</b> {total_time:.1f} ثانية | <b>🎯 نسبة التطابق:</b> 60%</p>
+                <p style="margin:5px 0 0 0;"><b>⏱️ إجمالي الوقت:</b> {total_time:.1f} ثانية | <b>🎯 نسبة التطابق:</b> {results['stats']['total'] / (results['stats']['total'] + results['stats']['missing_count']) * 100 if (results['stats']['total'] + results['stats']['missing_count']) > 0 else 0:.1f}%</p>
             </div>
             """, unsafe_allow_html=True)
             
