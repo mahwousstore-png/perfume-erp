@@ -1736,16 +1736,20 @@ elif section == "🟢 موافق عليها":
                             store_file_path=None
                         )
                         if result["success"]:
-                            data = result["results"]
-                            analysis = data.get('analysis', {})
+                            data = result.get("results", {}) or {}
+                            analysis = data.get('analysis', {}) if isinstance(data, dict) else {}
+                            if not isinstance(analysis, dict):
+                                analysis = {}
+                            _ps = analysis.get('price_status', 'غير محدد') if isinstance(analysis, dict) else 'غير محدد'
+                            _pf = analysis.get('profitability', 'غير محدد') if isinstance(analysis, dict) else 'غير محدد'
                             st.markdown(f"""
                             <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0; border-right: 4px solid #4caf50;">
                                 <h4 style="margin:0; color: #2e7d32;">🤖 نتائج التحقق</h4>
                                 <table style="width:100%; margin-top:10px;">
                                     <tr><td><b>📦 منتجنا:</b></td><td>{product_name}</td></tr>
                                     <tr><td><b>🏪 منتج المنافس:</b></td><td>{str(row.get('اسم المنافس', ''))}</td></tr>
-                                    <tr><td><b>📉 حالة السعر:</b></td><td>{analysis.get('price_status', 'غير محدد')}</td></tr>
-                                    <tr><td><b>💹 الربحية:</b></td><td>{analysis.get('profitability', 'غير محدد')}</td></tr>
+                                    <tr><td><b>📉 حالة السعر:</b></td><td>{_ps}</td></tr>
+                                    <tr><td><b>💹 الربحية:</b></td><td>{_pf}</td></tr>
                                 </table>
                             </div>
                             """, unsafe_allow_html=True)
@@ -1847,32 +1851,58 @@ elif section == "🔵 منتجات مفقودة":
                             )
                             
                             if result["success"]:
-                                data = result["results"]
-                                analysis = data.get('analysis', {})
+                                data = result.get("results", {}) or {}
+                                if not isinstance(data, dict):
+                                    data = {}
+                                analysis = data.get('analysis', {}) if isinstance(data, dict) else {}
+                                if not isinstance(analysis, dict):
+                                    analysis = {}
                                 
-                                # حساب الفرق
+                                # حساب الفرق بأمان
                                 price_diff = ""
-                                if data.get('our_price') and data.get('competitor_price'):
-                                    diff = data['our_price'] - data['competitor_price']
-                                    price_diff = f"{diff:.2f}"
+                                try:
+                                    _our = float(data.get('our_price', 0) or 0)
+                                    _comp = float(data.get('competitor_price', 0) or 0)
+                                    if _our and _comp:
+                                        price_diff = f"{_our - _comp:.2f}"
+                                except (ValueError, TypeError):
+                                    pass
+                                
+                                _ps = analysis.get('price_status', 'غير محدد') if isinstance(analysis, dict) else 'غير محدد'
+                                _pf = analysis.get('profitability', 'غير محدد') if isinstance(analysis, dict) else 'غير محدد'
+                                _recs = analysis.get('recommendations', []) if isinstance(analysis, dict) else []
+                                if not isinstance(_recs, list):
+                                    _recs = [str(_recs)]
+                                _in_store = analysis.get('in_our_store', False) if isinstance(analysis, dict) else False
+                                _suggested = None
+                                try:
+                                    _suggested = float(analysis.get('suggested_price', 0) or 0) if isinstance(analysis, dict) else None
+                                except (ValueError, TypeError):
+                                    _suggested = None
+                                _notes = analysis.get('notes', '') if isinstance(analysis, dict) else ''
+                                
+                                try:
+                                    _comp_display = f"{float(data.get('competitor_price', 0) or 0):.2f}"
+                                except (ValueError, TypeError):
+                                    _comp_display = "0.00"
                                 
                                 # عرض النتائج
                                 st.markdown(f"""
                                 <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0;">
                                     <h4 style="margin:0; color: #2e7d32;">✅ نتائج التحقق الذكي</h4>
-                                    <p><b>🏪 المنتج:</b> {data.get('product_name', '')}</p>
-                                    <p><b>💰 سعر المنافس:</b> {data.get('competitor_price', 0):.2f} ر.س</p>
-                                    <p><b>🏪 في متجرنا:</b> {'✅ موجود' if analysis.get('in_our_store') else '❌ غير موجود'}</p>
-                                    {f"<p><b>💵 سعرنا:</b> {data.get('our_price', 0):.2f} ر.س</p>" if data.get('our_price') else ''}
-                                    {f"<p><b>📈 الفرق:</b> {price_diff} ر.س</p>" if price_diff else ''}
-                                    <p><b>📉 حالة السعر:</b> {analysis.get('price_status', 'غير محدد')}</p>
-                                    <p><b>💹 الربحية:</b> {analysis.get('profitability', 'غير محدد')}</p>
+                                    <p><b>🏪 المنتج:</b> {data.get('product_name', '') if isinstance(data, dict) else ''}</p>
+                                    <p><b>💰 سعر المنافس:</b> {_comp_display} ر.س</p>
+                                    <p><b>🏪 في متجرنا:</b> {'✅ موجود' if _in_store else '❌ غير موجود'}</p>
+                                    {f'<p><b>💵 سعرنا:</b> {_our:.2f} ر.س</p>' if _our else ''}
+                                    {f'<p><b>📈 الفرق:</b> {price_diff} ر.س</p>' if price_diff else ''}
+                                    <p><b>📉 حالة السعر:</b> {_ps}</p>
+                                    <p><b>💹 الربحية:</b> {_pf}</p>
                                     <p><b>🎯 التوصيات:</b></p>
                                     <ul>
-                                    {''.join([f"<li>{rec}</li>" for rec in analysis.get('recommendations', [])])}
+                                    {''.join([f'<li>{rec}</li>' for rec in _recs])}
                                     </ul>
-                                    {f"<p><b>💵 السعر المقترح:</b> {analysis.get('suggested_price', 0):.2f} ر.س</p>" if analysis.get('suggested_price') else ''}
-                                    {f"<p><b>📝 ملاحظات:</b> {analysis.get('notes', '')}</p>" if analysis.get('notes') else ''}
+                                    {f'<p><b>💵 السعر المقترح:</b> {_suggested:.2f} ر.س</p>' if _suggested else ''}
+                                    {f'<p><b>📝 ملاحظات:</b> {_notes}</p>' if _notes else ''}
                                 </div>
                                 """, unsafe_allow_html=True)
                             else:
