@@ -143,7 +143,7 @@ def prepare_for_make_webhook(results, operation_type='price_update'):
         }
 
 
-def export_to_csv(df, filename):
+def export_to_csv(df, _filename):
     """
     تصدير DataFrame إلى ملف CSV.
     

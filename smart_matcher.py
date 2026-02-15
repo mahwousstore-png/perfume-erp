@@ -5,14 +5,8 @@
 
 import pandas as pd
 from collections import defaultdict
-from smart_classifier import (
-    create_product_signature,
-    classify_gender,
-    classify_size,
-    classify_concentration,
-    classify_product_type
-)
-from brand_matcher import load_brands, extract_brand_from_list
+from smart_classifier import create_product_signature
+from brand_matcher import load_brands
 
 
 def create_smart_groups(df, brands_list):

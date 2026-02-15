@@ -284,9 +284,8 @@ def match_products(my_products, comp_products, threshold=60):
                 continue
 
             # قانون 2: تطابق الحجم
-            if my_size > 0 and cp_size > 0:
-                if abs(my_size - cp_size) > 1:
-                    continue
+            if my_size > 0 and cp_size > 0 and abs(my_size - cp_size) > 1:
+                continue
 
             # قانون 3: فيتو العينات
             if cp_type == "rejected":
@@ -428,9 +427,8 @@ def match_products(my_products, comp_products, threshold=60):
                 # تطابق النوع والحجم
                 if my_type != cp_type:
                     continue
-                if my_size > 0 and cp_size > 0:
-                    if abs(my_size - cp_size) > 1:
-                        continue
+                if my_size > 0 and cp_size > 0 and abs(my_size - cp_size) > 1:
+                    continue
                 
                 # حساب التشابه بنسبة أقل
                 my_norm = normalize_name(my_name)
@@ -690,21 +688,8 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
 
     # 7. إحصائيات
     stats = {
-        "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "total": len(df_all),
-        "raise_count": len(df_raise),
-        "lower_count": len(df_lower),
-        "approved_count": len(df_approved),
-        "missing_count": len(df_missing),
-        "review_count": 0,
-        "critical": len(df_all[df_all.get("الخطورة", pd.Series()) == "حرج"]) if not df_all.empty and "الخطورة" in df_all.columns else 0,
-        "avg_diff": round(df_all["الفرق"].mean(), 2) if not df_all.empty and "الفرق" in df_all.columns else 0,
-        "competitors": len(comp_files),
-        "my_products_count": len(my_products),
-        "comp_products_count": len(all_comp_products),
         "threshold": threshold,
     }
-
     return {
         "stats": stats,
         "raise": df_raise,
@@ -716,7 +701,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     }
 
 
-def gemini_verify(product_name, product_type, gemini_client=None):
+def gemini_verify(product_name, product_type, _gemini_client=None):
     """
     التحقق من صحة تصنيف المنتج باستخدام Gemini AI.
     """
@@ -729,7 +714,7 @@ def gemini_verify(product_name, product_type, gemini_client=None):
     }
 
 
-def export_excel(match_results, filename="perfume_analysis.xlsx"):
+def export_excel(match_results, _filename="perfume_analysis.xlsx"):
     """
     تصدير نتائج المطابقة إلى ملف Excel.
     """

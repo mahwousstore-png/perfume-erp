@@ -92,32 +92,12 @@ def analyze_perfume_image(image_bytes):
             # استخراج JSON من النص
             text = text.strip()
             if text.startswith("```json"):
-                text = text[7:]
-            if text.startswith("```"):
-                text = text[3:]
-            if text.endswith("```"):
-                text = text[:-3]
-            text = text.strip()
-            
-            # تنظيف النص من الأحرف غير المرغوبة
-            text = text.replace('\n', ' ').replace('\r', '')
-            # إصلاح الاقتباسات المفقودة
-            import re
-            text = re.sub(r'([{,]\s*)(\w+)\s*:', r'\1"\2":', text)
-            
-            analysis = json.loads(text)
-            return {"success": True, "analysis": analysis}
-        else:
-            return {"success": False, "error": f"خطأ في API: {response.status_code}"}
-            
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
+                pass
 # ══════════════════════════════════════════════════════════════
 # دوال Gemini Imagen
 # ══════════════════════════════════════════════════════════════
 
-def generate_product_images(analysis, original_image_bytes):
+def generate_product_images(analysis):
     """توليد 3 صور احترافية بأحجام مختلفة"""
     
     # استخراج المعلومات

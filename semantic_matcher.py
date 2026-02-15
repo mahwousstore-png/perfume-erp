@@ -1,6 +1,6 @@
 """
 نظام المطابقة الدلالية المتقدم - Advanced Semantic Matching System
-=========================================================================
+==========================================================================
 نظام خبير محلي بدون API - دقة 99%+
 """
 
@@ -15,7 +15,7 @@ from rapidfuzz import fuzz
 def semantic_verify_match(
     my_product: Dict,
     comp_product: Dict,
-    text_score: float
+    _text_score: float
 ) -> Dict:
     """
     التحقق الدلالي المتقدم من المطابقة.
@@ -23,7 +23,7 @@ def semantic_verify_match(
     Args:
         my_product: منتجنا {name, brand, concentration, size}
         comp_product: منتج المنافس {name, brand, concentration, size}
-        text_score: نسبة التشابه النصي (0-100)
+        _text_score: نسبة التشابه النصي (0-100)
     
     Returns:
         Dict: نتيجة التحقق مع درجة الثقة والتوصية
@@ -223,7 +223,7 @@ def semantic_verify_match(
 # دوال مساعدة
 # ══════════════════════════════════════════════════════════════
 
-def extract_core_name(name: str, brand: str, conc: str, size: int) -> str:
+def extract_core_name(name: str, brand: str, _conc: str, _size: int) -> str:
     """استخراج الاسم الأساسي للعطر (بدون الماركة والتركيز والحجم)."""
     core = name.lower()
     

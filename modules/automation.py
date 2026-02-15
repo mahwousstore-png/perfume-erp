@@ -10,9 +10,6 @@
 """
 
 import streamlit as st
-import pandas as pd
-from datetime import datetime, timedelta
-import json
 
 def detect_discontinued_products(our_products, competitor_products):
     """

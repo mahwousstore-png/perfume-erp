@@ -7,7 +7,6 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, date
 from typing import List, Dict, Optional
-import calendar
 
 # ============================================
 # فئات المصروفات
@@ -36,7 +35,7 @@ EXPENSE_CATEGORIES = [
 # دوال قاعدة البيانات
 # ============================================
 
-def get_expenses(month: int, year: int) -> pd.DataFrame:
+def get_expenses(_month: int, _year: int) -> pd.DataFrame:
     """
     جلب المصروفات لشهر معين
     
@@ -383,7 +382,7 @@ def show_expenses_list(month: int, year: int):
             use_container_width=True
         )
 
-def show_add_expense_form(month: int, year: int):
+def show_add_expense_form(_month: int, _year: int):
     """
     نموذج إضافة مصروف جديد
     """

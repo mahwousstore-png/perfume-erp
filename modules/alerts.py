@@ -10,9 +10,7 @@
 """
 
 import streamlit as st
-import pandas as pd
-from datetime import datetime, timedelta
-import json
+from datetime import datetime
 
 def create_alert(alert_type, title, message, priority="متوسطة", data=None):
     """

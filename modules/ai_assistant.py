@@ -10,9 +10,7 @@
 """
 
 import streamlit as st
-import pandas as pd
 from datetime import datetime
-import json
 
 class AIAssistant:
     """المساعد الذكي الشامل"""
@@ -27,7 +25,8 @@ class AIAssistant:
         self.context = context
         self.history = []
     
-    def analyze_purchase(self, purchase_data):
+    @staticmethod
+    def analyze_purchase(purchase_data):
         """
         تحليل مشترى جديد وتقديم توصيات
         
@@ -67,7 +66,8 @@ class AIAssistant:
         
         return analysis
     
-    def evaluate_supplier(self, supplier_data):
+    @staticmethod
+    def evaluate_supplier(supplier_data):
         """
         تقييم مورد بناءً على الأداء التاريخي
         
@@ -81,10 +81,16 @@ class AIAssistant:
         
         # TODO: تحليل عميق باستخدام Gemini
         evaluation = {
-            'score': 0,
-            'strengths': [],
-            'weaknesses': [],
-            'recommendation': ''
+            'score': 4.5,
+            'strengths': [
+                "أسعار تنافسية",
+                "توريد سريع",
+                "منتجات أصلية"
+            ],
+            'weaknesses': [
+                "أحياناً تأخير في التوريد"
+            ],
+            'recommendation': "مورد موثوق - يُنصح بالاستمرار"
         }
         
         # TODO: حساب التقييم بناءً على:
@@ -93,20 +99,10 @@ class AIAssistant:
         # - سرعة التوريد
         # - الموثوقية
         
-        evaluation['score'] = 4.5  # من 5
-        evaluation['strengths'] = [
-            "أسعار تنافسية",
-            "توريد سريع",
-            "منتجات أصلية"
-        ]
-        evaluation['weaknesses'] = [
-            "أحياناً تأخير في التوريد"
-        ]
-        evaluation['recommendation'] = "مورد موثوق - يُنصح بالاستمرار"
-        
         return evaluation
     
-    def detect_expense_anomaly(self, expense_data):
+    @staticmethod
+    def detect_expense_anomaly(expense_data):
         """
         كشف الشذوذ في المصروفات
         
@@ -122,22 +118,18 @@ class AIAssistant:
         # TODO: استخدام ML لكشف الشذوذ
         result = {
             'is_anomaly': False,
-            'confidence': 0,
-            'reason': '',
-            'suggestion': ''
+            'confidence': 95,
+            'reason': "المصروف ضمن النطاق الطبيعي",
+            'suggestion': "لا توجد إجراءات مطلوبة"
         }
         
         # TODO: مقارنة مع المتوسط التاريخي للفئة
         # إذا كان المصروف أعلى بـ 50%+ من المتوسط
         
-        result['is_anomaly'] = False
-        result['confidence'] = 95
-        result['reason'] = "المصروف ضمن النطاق الطبيعي"
-        result['suggestion'] = "لا توجد إجراءات مطلوبة"
-        
         return result
     
-    def predict_price_trend(self, product_data):
+    @staticmethod
+    def predict_price_trend(product_data):
         """
         توقع اتجاه السعر للمنتج
         
@@ -149,10 +141,10 @@ class AIAssistant:
         """
         # TODO: استخدام ML للتنبؤ
         prediction = {
-            'trend': 'stable',  # up, down, stable
-            'confidence': 0,
-            'reason': '',
-            'action': ''
+            'trend': 'up',  # up, down, stable
+            'confidence': 75,
+            'reason': "توقع ارتفاع الطلب في الموسم القادم",
+            'action': "يُنصح برفع السعر تدريجياً"
         }
         
         # TODO: تحليل:
@@ -161,14 +153,10 @@ class AIAssistant:
         # - المنافسين
         # - المخزون
         
-        prediction['trend'] = 'up'
-        prediction['confidence'] = 75
-        prediction['reason'] = "توقع ارتفاع الطلب في الموسم القادم"
-        prediction['action'] = "يُنصح برفع السعر تدريجياً"
-        
         return prediction
     
-    def suggest_optimal_price(self, product_data):
+    @staticmethod
+    def suggest_optimal_price(product_data):
         """
         اقتراح السعر الأمثل
         
@@ -181,13 +169,6 @@ class AIAssistant:
         current_price = product_data.get('our_price', 0)
         
         # TODO: خوارزمية تسعير ذكية
-        suggestion = {
-            'optimal_price': 0,
-            'min_price': 0,
-            'max_price': 0,
-            'reasoning': [],
-            'expected_impact': {}
-        }
         
         # TODO: حساب بناءً على:
         # - تكلفة الشراء
@@ -196,18 +177,20 @@ class AIAssistant:
         # - المخزون
         # - الموسمية
         
-        suggestion['optimal_price'] = current_price * 1.05
-        suggestion['min_price'] = current_price * 0.95
-        suggestion['max_price'] = current_price * 1.15
-        suggestion['reasoning'] = [
-            "السعر الحالي تنافسي",
-            "هناك مجال لرفع السعر 5%",
-            "المبيعات لن تتأثر سلباً"
-        ]
-        suggestion['expected_impact'] = {
-            'sales_change': '-2%',
-            'revenue_change': '+3%',
-            'profit_change': '+8%'
+        suggestion = {
+            'optimal_price': current_price * 1.05,
+            'min_price': current_price * 0.95,
+            'max_price': current_price * 1.15,
+            'reasoning': [
+                "السعر الحالي تنافسي",
+                "هناك مجال لرفع السعر 5%",
+                "المبيعات لن تتأثر سلباً"
+            ],
+            'expected_impact': {
+                'sales_change': '-2%',
+                'revenue_change': '+3%',
+                'profit_change': '+8%'
+            }
         }
         
         return suggestion
@@ -240,7 +223,7 @@ class AIAssistant:
         
         return response
 
-def show_ai_widget(context="general", data=None):
+def show_ai_widget(context="general", _data=None):
     """
     عرض ويدجت المساعد الذكي في أي صفحة
     

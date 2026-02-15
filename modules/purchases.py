@@ -7,13 +7,12 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional
-import json
 
 # ============================================
 # دوال قاعدة البيانات
 # ============================================
 
-def get_purchases(start_date: Optional[date] = None, end_date: Optional[date] = None) -> pd.DataFrame:
+def get_purchases(_start_date: Optional[date] = None, _end_date: Optional[date] = None) -> pd.DataFrame:
     """
     جلب المشتريات من Supabase
     
