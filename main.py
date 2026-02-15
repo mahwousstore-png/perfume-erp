@@ -931,8 +931,22 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                 )
                 
                 if result["success"]:
-                    data = result["results"]
-                    analysis = data.get('analysis', {})
+                    data = result.get("results", {}) or {}
+                    analysis = data.get('analysis', {}) if isinstance(data, dict) else {}
+                    if not isinstance(analysis, dict):
+                        analysis = {}
+                    
+                    price_status = analysis.get('price_status', 'غير محدد') if isinstance(analysis, dict) else 'غير محدد'
+                    profitability = analysis.get('profitability', 'غير محدد') if isinstance(analysis, dict) else 'غير محدد'
+                    recommendations = analysis.get('recommendations', []) if isinstance(analysis, dict) else []
+                    if not isinstance(recommendations, list):
+                        recommendations = [str(recommendations)]
+                    
+                    comp_price = 0
+                    try:
+                        comp_price = float(data.get('competitor_price', 0) or 0)
+                    except (ValueError, TypeError):
+                        comp_price = 0
                     
                     st.markdown(f"""
                     <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 10px; padding: 15px; margin: 10px 0; border-right: 4px solid #4caf50;">
@@ -940,13 +954,13 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                         <table style="width:100%; margin-top:10px;">
                             <tr><td><b>📦 منتجنا:</b></td><td>{product_name}</td></tr>
                             <tr><td><b>🏪 منتج المنافس:</b></td><td>{str(row.get('اسم المنافس', ''))}</td></tr>
-                            <tr><td><b>💰 سعر المنافس:</b></td><td>{data.get('competitor_price', 0):.2f} ر.س</td></tr>
-                            <tr><td><b>📉 حالة السعر:</b></td><td>{analysis.get('price_status', 'غير محدد')}</td></tr>
-                            <tr><td><b>💹 الربحية:</b></td><td>{analysis.get('profitability', 'غير محدد')}</td></tr>
+                            <tr><td><b>💰 سعر المنافس:</b></td><td>{comp_price:.2f} ر.س</td></tr>
+                            <tr><td><b>📉 حالة السعر:</b></td><td>{price_status}</td></tr>
+                            <tr><td><b>💹 الربحية:</b></td><td>{profitability}</td></tr>
                         </table>
                         <p style="margin-top:10px;"><b>🎯 التوصيات:</b></p>
                         <ul>
-                        {''.join([f"<li>{rec}</li>" for rec in analysis.get('recommendations', [])])}
+                        {''.join([f"<li>{rec}</li>" for rec in recommendations])}
                         </ul>
                     </div>
                     """, unsafe_allow_html=True)
