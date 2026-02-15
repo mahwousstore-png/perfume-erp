@@ -1192,7 +1192,7 @@ elif section == "🟢 موافق عليها":
     st.markdown("# 🟢 منتجات موافق عليها")
     st.markdown("> المنتجات التي سعرها ضمن النطاق المقبول (±5 ريال من أقل منافس)")
     st.markdown("---")
-    
+
     if st.session_state.results:
         df_approved = st.session_state.results.get("approved")
         if df_approved is not None and not df_approved.empty:
@@ -1215,11 +1215,10 @@ elif section == "🟢 موافق عليها":
                     if st.button("🤖 AI", key=f"ai_approved_{idx}", help="تحقق ذكي من المنتج"):
                         st.session_state[f"ai_verify_{idx}"] = True
                 
-                with cols[2]:
-                    with st.expander("📊"):
-                        st.caption("تفاصيل إضافية")
-                        for col in df_display.columns:
-                            st.text(f"{col}: {row[col]}")
+                with cols[2], st.expander("📊"):
+                    st.caption("تفاصيل إضافية")
+                    for col in df_display.columns:
+                        st.text(f"{col}: {row[col]}")
                 
                 # إذا تم الضغط على AI
                 if st.session_state.get(f"ai_verify_{idx}"):
@@ -1915,32 +1914,31 @@ elif section == "💬 محادثة AI":
         with st.chat_message("user"):
             st.markdown(user_input)
         
-        with st.chat_message("assistant"):
-            with st.spinner("⏳ جاري التفكير..."):
-                context = ""
-                if st.session_state.results:
-                    stats = st.session_state.results.get("stats", {})
-                    context = f"""
+        with st.chat_message("assistant"), st.spinner("⏳ جاري التفكير..."):
+            context = ""
+            if st.session_state.results:
+                stats = st.session_state.results.get("stats", {})
+                context = f"""
 سياق: نظام تسعير عطور فاخرة في السوق السعودي.
 الإحصائيات الحالية: {json.dumps(stats, ensure_ascii=False)}
 """
-                
-                full_prompt = f"""أنت مساعد ذكي متخصص في تسعير العطور الفاخرة في السوق السعودي.
+            
+            full_prompt = f"""أنت مساعد ذكي متخصص في تسعير العطور الفاخرة في السوق السعودي.
 {context}
 سؤال المستخدم: {user_input}
 
 أجب بشكل مفيد ومختصر باللغة العربية."""
-                
-                if ai_provider == "Gemini":
-                    result = call_gemini(full_prompt)
-                else:
-                    result = call_openrouter(full_prompt)
-                
-                if result["success"]:
-                    st.markdown(result["text"])
-                    st.session_state.chat_history.append({"role": "assistant", "content": result["text"]})
-                else:
-                    error_msg = f"❌ خطأ: {result['error']}"
+            
+            if ai_provider == "Gemini":
+                result = call_gemini(full_prompt)
+            else:
+                result = call_openrouter(full_prompt)
+            
+            if result["success"]:
+                st.markdown(result["text"])
+                st.session_state.chat_history.append({"role": "assistant", "content": result["text"]})
+            else:
+                error_msg = f"❌ خطأ: {result['error']}"
                     st.error(error_msg)
                     st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
     
