@@ -1,23 +1,30 @@
-streamlit>=1.28.0
+# المكتبات الأساسية
+streamlit>=1.30.0
 pandas>=2.0.0
 openpyxl>=3.1.0
-rapidfuzz>=3.1.0
-fuzzywuzzy>=0.18.0
-python-Levenshtein>=0.21.0
+
+# مكتبة المطابقة الذكية (RapidFuzz - أسرع 10x من fuzzywuzzy)
+rapidfuzz>=3.5.0
+
+# المكتبات الإضافية
 plotly>=5.15.0
 requests>=2.31.0
 python-dotenv>=1.0.0
+Pillow>=10.0.0
+
+# Google AI & APIs
 google-generativeai>=0.3.0
+google-genai>=0.2.0
+google-ai-generativelanguage>=0.6.0
 google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.2.0
 google-api-python-client>=2.100.0
+
+# FastAPI & Server
 fastapi>=0.104.0
 uvicorn>=0.24.0
 python-multipart>=0.0.6
 httpx>=0.25.0
 
 # استديو مهووس الذكي v9.0
-google-genai>=0.2.0
-google-ai-generativelanguage>=0.6.0
-Pillow>=10.0.0
 lumaai>=0.1.0
