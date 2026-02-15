@@ -15,14 +15,21 @@ import streamlit as st
 # إعدادات API
 # ══════════════════════════════════════════════════════════════
 
+# قراءة GEMINI_API_KEY من Streamlit Secrets
 try:
-    GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
-except:
+    if hasattr(st, 'secrets') and "GEMINI_API_KEY" in st.secrets:
+        GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+        st.success("✅ Gemini API Key محمّل من Secrets!")
+    else:
+        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+except Exception as e:
+    st.warning(f"⚠️ خطأ في قراءة GEMINI_API_KEY: {e}")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # Fallback: إذا كان المفتاح فارغاً، استخدم المفتاح الاحتياطي
 if not GEMINI_API_KEY or GEMINI_API_KEY.strip() == "":
     GEMINI_API_KEY = "AIzaSyBLgjwRh_t0gHqgN-V2NsDzdL5kro4lXVE"
+    st.warning("⚠️ استخدام مفتاح Gemini الاحتياطي")
 
 # ══════════════════════════════════════════════════════════════
 # نظام خبير العطور - Expert System Prompt
