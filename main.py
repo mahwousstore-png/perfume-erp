@@ -1092,7 +1092,14 @@ elif section == "📤 رفع الملفات":
     
     if st.button("🚀 بدء المعالجة", type="primary", use_container_width=True,
                  disabled=not (st.session_state.my_file and st.session_state.supplier_files)):
-        from engine import run_full_analysis  # محرك المطابقة الرئيسي
+        # استيراد المحرك الجديد
+        try:
+            from engine_v2 import run_smart_matching
+            USE_V2 = True
+        except:
+            from engine import run_full_analysis
+            USE_V2 = False
+            st.warning("⚠️ استخدام المحرك القديم")
         import time
         
         # عناصر العرض
@@ -1148,12 +1155,65 @@ elif section == "📤 رفع الملفات":
         def progress_callback(percent, message):
             update_progress(percent, message)
         
-        results = run_full_analysis(
-            st.session_state.my_file,
-            st.session_state.supplier_files,
-            threshold=threshold,
-            progress_callback=progress_callback
-        )
+        # تحميل الملفات
+        import pandas as pd
+        
+        my_df = pd.read_csv(st.session_state.my_file['data'])
+        my_products = my_df.to_dict('records')
+        
+        comp_products = []
+        for comp_file in st.session_state.supplier_files:
+            comp_df = pd.read_csv(comp_file['data'])
+            comp_products.extend(comp_df.to_dict('records'))
+        
+        update_progress(10, f"✅ تم تحميل {len(my_products)} منتج + {len(comp_products)} منافس")
+        
+        if USE_V2:
+            # المحرك الجديد
+            def smart_progress(progress, elapsed, eta, stats):
+                percent = int(progress * 80) + 10  # 10-90%
+                message = f"🔍 جاري المطابقة... | متبقي: ~{int(eta)}ث"
+                update_progress(percent, message)
+                
+                # عرض إحصائيات
+                counter_text.markdown(f"""
+                **📊 إحصائيات المطابقة:**
+                - ⚖️ سريعة: {stats['fast_matches']}
+                - 💡 متوسطة: {stats['medium_matches']}
+                - 🧠 عميقة: {stats['deep_matches']}
+                - 🤖 Gemini: {stats['gemini_calls']}
+                - 💾 Cache: {stats['cache_hits']}
+                """)
+            
+            raw_results = run_smart_matching(
+                my_products,
+                comp_products,
+                progress_callback=smart_progress
+            )
+            
+            # تحويل إلى نفس الشكل القديم
+            results = {
+                "raise_price": [r for r in raw_results if r["category"] == "raise_price"],
+                "lower_price": [r for r in raw_results if r["category"] == "lower_price"],
+                "keep_price": [r for r in raw_results if r["category"] == "keep_price"],
+                "missing": [r for r in raw_results if r["category"] == "missing"],
+                "stats": {
+                    "total": len(raw_results),
+                    "raise_count": len([r for r in raw_results if r["category"] == "raise_price"]),
+                    "lower_count": len([r for r in raw_results if r["category"] == "lower_price"]),
+                    "approved_count": len([r for r in raw_results if r["category"] == "keep_price"]),
+                    "missing_count": len([r for r in raw_results if r["category"] == "missing"]),
+                    "competitors": len(st.session_state.supplier_files),
+                },
+            }
+        else:
+            # المحرك القديم
+            results = run_full_analysis(
+                st.session_state.my_file,
+                st.session_state.supplier_files,
+                threshold=threshold,
+                progress_callback=progress_callback
+            )
         
         update_progress(90, "⏳ جاري حفظ النتائج...")
         
