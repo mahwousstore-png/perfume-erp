@@ -20,7 +20,7 @@ except:
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 if not GEMINI_API_KEY or GEMINI_API_KEY.strip() == "":
-    GEMINI_API_KEY = "AIzaSyBLgjwRh_t0gHqgN-V2NsDzdL5kro4lXVE"
+    GEMINI_API_KEY = ""
 
 # ══════════════════════════════════════════════════════════════
 # نظام الخبير - System Prompt

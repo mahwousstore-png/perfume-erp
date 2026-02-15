@@ -117,7 +117,8 @@ except:
 
 # Fallback: إذا كان المفتاح فارغاً، استخدم المفتاح الاحتياطي
 if not DEFAULT_GEMINI_KEY or DEFAULT_GEMINI_KEY.strip() == "":
-    DEFAULT_GEMINI_KEY = "AIzaSyBLgjwRh_t0gHqgN-V2NsDzdL5kro4lXVE"
+    # المفتاح يُقرأ من Streamlit Secrets فقط - لا تضع المفتاح هنا
+    DEFAULT_GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # ── Supabase قاعدة البيانات السحابية ─────────────────────────
 SUPABASE_URL = "https://csivkasoqkivprldxqlc.supabase.co"

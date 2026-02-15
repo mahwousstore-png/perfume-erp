@@ -32,7 +32,7 @@ except Exception as e:
 
 # Fallback: إذا كان المفتاح فارغاً، استخدم المفتاح الاحتياطي
 if not GEMINI_API_KEY or GEMINI_API_KEY.strip() == "":
-    GEMINI_API_KEY = "AIzaSyBLgjwRh_t0gHqgN-V2NsDzdL5kro4lXVE"
+    GEMINI_API_KEY = ""
 
 # ══════════════════════════════════════════════════════════════
 # أدوات مساعدة
