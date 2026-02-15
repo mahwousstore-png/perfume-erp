@@ -9,19 +9,17 @@ Backend FastAPI - نظام التسعير الذكي للعطور
 """
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
 import pandas as pd
 import os
 from io import BytesIO
 import json
 from datetime import datetime
 import httpx
-import asyncio
 
 # Google Drive API
 from google.colab import auth
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
+from googleapiclient.http import MediaIoBaseUpload
 
 # Gemini AI
 import google.generativeai as genai
