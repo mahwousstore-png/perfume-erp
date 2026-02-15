@@ -92,6 +92,7 @@ def analyze_perfume_image(image_bytes):
             # استخراج JSON من النص
             text = text.strip()
             if text.startswith("```json"):
+                pass
 # ══════════════════════════════════════════════════════════════
 # دوال Gemini Imagen
 # ══════════════════════════════════════════════════════════════
