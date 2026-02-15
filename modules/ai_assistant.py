@@ -10,7 +10,7 @@
 """
 
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timezone
 
 class AIAssistant:
     """المساعد الذكي الشامل"""
@@ -23,7 +23,10 @@ class AIAssistant:
             context: السياق (purchases, suppliers, expenses, pricing, etc.)
         """
         self.context = context
-        self.history = []
+        # Initialize ai_history in session state if not exists
+        if 'ai_history' not in st.session_state:
+            st.session_state['ai_history'] = []
+        self.history = st.session_state['ai_history']
     
     @staticmethod
     def analyze_purchase(purchase_data):
@@ -206,31 +209,36 @@ class AIAssistant:
             str: رد المساعد
         """
         # TODO: استخدام Gemini للمحادثة
-        self.history.append({
+        # Append to session-managed history
+        st.session_state['ai_history'].append({
             'role': 'user',
             'content': message,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         })
         
         # رد تجريبي
         response = f"فهمت سؤالك: '{message}'. كيف يمكنني مساعدتك؟"
         
-        self.history.append({
+        st.session_state['ai_history'].append({
             'role': 'assistant',
             'content': response,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         })
         
         return response
 
-def show_ai_widget(context="general", _data=None):
+def show_ai_widget(context="general", data=None):
     """
     عرض ويدجت المساعد الذكي في أي صفحة
     
     Args:
         context: السياق الحالي
-        data: بيانات السياق
+        data: بيانات السياق (optional, for future use)
     """
+    # Initialize show_ai_chat in session state if not exists
+    if 'show_ai_chat' not in st.session_state:
+        st.session_state['show_ai_chat'] = False
+    
     with st.sidebar:
         st.markdown("---")
         st.markdown("### 🧠 المساعد الذكي")
