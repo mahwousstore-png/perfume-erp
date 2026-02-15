@@ -186,16 +186,29 @@ class SmartMatcher:
         return weighted
     
     def _remove_brand_from_name(self, name: str, brand: str) -> str:
-        """إزالة الماركة من اسم المنتج للحصول على اسم المنتج الفعلي"""
+        """إزالة الماركة وكلمات التركيز/الحجم للحصول على اسم المنتج الفعلي"""
         if not brand:
-            return name
-        result = name.lower()
-        brand_lower = brand.lower()
-        # إزالة الماركة العربية
-        result = result.replace(brand_lower, "")
-        # إزالة الماركة المطبّعة
-        brand_light = light_normalize(brand)
-        result = result.replace(brand_light, "")
+            result = name.lower()
+        else:
+            result = name.lower()
+            brand_lower = brand.lower()
+            # إزالة الماركة العربية
+            result = result.replace(brand_lower, "")
+            # إزالة الماركة المطبّعة
+            brand_light = light_normalize(brand)
+            result = result.replace(brand_light, "")
+        
+        # إزالة كلمات التركيز والحجم المشتركة (لا تميّز المنتج)
+        noise_words = [
+            r'\b\d+\s*مل\b', r'\b\d+\s*ml\b',
+            r'\bاو دو برفيوم\b', r'\bأو دو برفيوم\b',
+            r'\bاو دو تواليت\b', r'\bأو دو تواليت\b',
+            r'\bبارفيوم\b', r'\bبرفيوم\b', r'\bparfum\b', r'\bedp\b', r'\bedt\b',
+            r'\bعطر\b', r'\bperfume\b', r'\beau de\b',
+        ]
+        for pattern in noise_words:
+            result = re.sub(pattern, '', result, flags=re.IGNORECASE)
+        
         # تنظيف
         result = re.sub(r"\s+", " ", result).strip()
         return result
@@ -244,13 +257,23 @@ class SmartMatcher:
             if my_product_name and comp_product_name:
                 product_score = fuzz.token_sort_ratio(my_product_name, comp_product_name)
                 
-                # إذا اسم المنتج مختلف جداً (أقل من 55%)، فهذا منتج مختلف
-                if product_score < 55:
-                    return (False, name_score * 0.5, f"منتج مختلف من نفس الماركة ({product_score}%)")
+                # تحقق إضافي: الكلمات المشتركة في اسم المنتج
+                my_words = set(my_product_name.split())
+                comp_words = set(comp_product_name.split())
+                # إزالة الكلمات القصيرة (أقل من 3 أحرف)
+                my_words = {w for w in my_words if len(w) >= 3}
+                comp_words = {w for w in comp_words if len(w) >= 3}
+                common_words = my_words & comp_words
+                all_words = my_words | comp_words
+                word_overlap = len(common_words) / max(len(all_words), 1)
+                
+                # إذا اسم المنتج مختلف جداً (أقل من 70%) أو الكلمات المشتركة قليلة
+                if product_score < 70 or (word_overlap < 0.5 and product_score < 85):
+                    return (False, name_score * 0.3, f"منتج مختلف من نفس الماركة (prod:{product_score}% words:{word_overlap:.0%})")
                 
                 # تعديل النتيجة بناءً على تشابه اسم المنتج
-                adjusted_score = (name_score * 0.6) + (product_score * 0.4)
-                return (adjusted_score >= 75, adjusted_score, f"Score: {adjusted_score:.0f}% (product: {product_score}%)")
+                adjusted_score = (name_score * 0.4) + (product_score * 0.4) + (word_overlap * 100 * 0.2)
+                return (adjusted_score >= 82, adjusted_score, f"Score: {adjusted_score:.0f}% (product: {product_score}% words: {word_overlap:.0%})")
         
         return (True, name_score, f"Score: {name_score:.0f}%")
     
@@ -468,15 +491,22 @@ def run_smart_matching(
                 if b > 0:
                     add(size_index.get(b, []))
         
-        # 3. بحث fuzzy في الكل إذا لم نجد مرشحين كافيين
+        # 3. بحث fuzzy محدود إذا لم نجد مرشحين كافيين
         if len(candidate_list) < 5:
             my_light = light_normalize(my_name)
+            # بحث سريع بالكلمة الأولى لتقليل عدد المقارنات
+            first_words = set(my_light.split()[:3])
             for entry in all_candidates:
                 if entry["index"] not in seen:
-                    quick = fuzz.token_set_ratio(my_light, entry["light"])
-                    if quick >= 60:
-                        seen.add(entry["index"])
-                        candidate_list.append(entry)
+                    # فحص سريع: هل يحتوي على أي من الكلمات الأولى؟
+                    entry_words = set(entry["light"].split())
+                    if first_words & entry_words:  # تقاطع
+                        quick = fuzz.token_set_ratio(my_light, entry["light"])
+                        if quick >= 60:
+                            seen.add(entry["index"])
+                            candidate_list.append(entry)
+                            if len(candidate_list) >= 20:  # حد أقصى
+                                break
         
         # البحث عن أفضل مطابقة
         match_result = matcher.find_best_match(my_p, candidate_list, use_gemini=use_gemini)
