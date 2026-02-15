@@ -81,10 +81,16 @@ class AIAssistant:
         
         # TODO: تحليل عميق باستخدام Gemini
         evaluation = {
-            'score': 0,
-            'strengths': [],
-            'weaknesses': [],
-            'recommendation': ''
+            'score': 4.5,
+            'strengths': [
+                "أسعار تنافسية",
+                "توريد سريع",
+                "منتجات أصلية"
+            ],
+            'weaknesses': [
+                "أحياناً تأخير في التوريد"
+            ],
+            'recommendation': "مورد موثوق - يُنصح بالاستمرار"
         }
         
         # TODO: حساب التقييم بناءً على:
@@ -92,17 +98,6 @@ class AIAssistant:
         # - جودة المنتجات
         # - سرعة التوريد
         # - الموثوقية
-        
-        evaluation['score'] = 4.5  # من 5
-        evaluation['strengths'] = [
-            "أسعار تنافسية",
-            "توريد سريع",
-            "منتجات أصلية"
-        ]
-        evaluation['weaknesses'] = [
-            "أحياناً تأخير في التوريد"
-        ]
-        evaluation['recommendation'] = "مورد موثوق - يُنصح بالاستمرار"
         
         return evaluation
     
@@ -123,18 +118,13 @@ class AIAssistant:
         # TODO: استخدام ML لكشف الشذوذ
         result = {
             'is_anomaly': False,
-            'confidence': 0,
-            'reason': '',
-            'suggestion': ''
+            'confidence': 95,
+            'reason': "المصروف ضمن النطاق الطبيعي",
+            'suggestion': "لا توجد إجراءات مطلوبة"
         }
         
         # TODO: مقارنة مع المتوسط التاريخي للفئة
         # إذا كان المصروف أعلى بـ 50%+ من المتوسط
-        
-        result['is_anomaly'] = False
-        result['confidence'] = 95
-        result['reason'] = "المصروف ضمن النطاق الطبيعي"
-        result['suggestion'] = "لا توجد إجراءات مطلوبة"
         
         return result
     
@@ -151,10 +141,10 @@ class AIAssistant:
         """
         # TODO: استخدام ML للتنبؤ
         prediction = {
-            'trend': 'stable',  # up, down, stable
-            'confidence': 0,
-            'reason': '',
-            'action': ''
+            'trend': 'up',  # up, down, stable
+            'confidence': 75,
+            'reason': "توقع ارتفاع الطلب في الموسم القادم",
+            'action': "يُنصح برفع السعر تدريجياً"
         }
         
         # TODO: تحليل:
@@ -162,11 +152,6 @@ class AIAssistant:
         # - الموسمية
         # - المنافسين
         # - المخزون
-        
-        prediction['trend'] = 'up'
-        prediction['confidence'] = 75
-        prediction['reason'] = "توقع ارتفاع الطلب في الموسم القادم"
-        prediction['action'] = "يُنصح برفع السعر تدريجياً"
         
         return prediction
     
@@ -184,13 +169,6 @@ class AIAssistant:
         current_price = product_data.get('our_price', 0)
         
         # TODO: خوارزمية تسعير ذكية
-        suggestion = {
-            'optimal_price': 0,
-            'min_price': 0,
-            'max_price': 0,
-            'reasoning': [],
-            'expected_impact': {}
-        }
         
         # TODO: حساب بناءً على:
         # - تكلفة الشراء
@@ -199,18 +177,20 @@ class AIAssistant:
         # - المخزون
         # - الموسمية
         
-        suggestion['optimal_price'] = current_price * 1.05
-        suggestion['min_price'] = current_price * 0.95
-        suggestion['max_price'] = current_price * 1.15
-        suggestion['reasoning'] = [
-            "السعر الحالي تنافسي",
-            "هناك مجال لرفع السعر 5%",
-            "المبيعات لن تتأثر سلباً"
-        ]
-        suggestion['expected_impact'] = {
-            'sales_change': '-2%',
-            'revenue_change': '+3%',
-            'profit_change': '+8%'
+        suggestion = {
+            'optimal_price': current_price * 1.05,
+            'min_price': current_price * 0.95,
+            'max_price': current_price * 1.15,
+            'reasoning': [
+                "السعر الحالي تنافسي",
+                "هناك مجال لرفع السعر 5%",
+                "المبيعات لن تتأثر سلباً"
+            ],
+            'expected_impact': {
+                'sales_change': '-2%',
+                'revenue_change': '+3%',
+                'profit_change': '+8%'
+            }
         }
         
         return suggestion
