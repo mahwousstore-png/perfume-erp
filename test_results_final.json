@@ -1,0 +1,10 @@
+{
+  "total": 7505,
+  "matched": 702,
+  "missing": 6803,
+  "raise_price": 125,
+  "lower_price": 345,
+  "ok_price": 232,
+  "elapsed": 44.58790993690491,
+  "suspicious": 3
+}

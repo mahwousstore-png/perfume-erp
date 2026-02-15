@@ -119,16 +119,10 @@ def light_normalize(name: str) -> str:
     for ar, en in brand_replacements.items():
         n = n.replace(ar, en)
     
-    # تطبيع كلمات شائعة (بحدود كلمة لتجنب التداخل)
-    # إصلاح: "مل" تُحوّل فقط بعد أرقام (لا داخل "الملوك" أو "مليون")
-    n = re.sub(r'(\d+(?:\.\d+)?)\s*مل\b', r'\1 ml', n)
-    n = re.sub(r'\bملي\b', 'ml', n)
-    
-    # إصلاح: "عطر" تُزال فقط ككلمة مستقلة (لا داخل "عطري" أو "عطرلطافة")
-    n = re.sub(r'\bعطر\b', '', n)
-    
+    # تطبيع كلمات شائعة
     word_replacements = {
-        'تستر': 'tester', 'تيستر': 'tester',
+        'مل': 'ml', 'ملي': 'ml',
+        'عطر': '', 'تستر': 'tester', 'تيستر': 'tester',
         'عينة': 'sample',
         'رجالي': 'men', 'نسائي': 'women',
         'للرجال': 'men', 'للنساء': 'women', 'للجنسين': 'unisex',

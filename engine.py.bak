@@ -83,119 +83,35 @@ def extract_size(name):
 
 
 def extract_brand(name):
-    """استخراج الماركة من اسم المنتج - قاموس موسّع v4.0 (200+ ماركة)."""
+    """استخراج الماركة من اسم المنتج."""
     known_brands = [
-        # ── ماركات عالمية (إنجليزي) ─────────────────────────
-        "Maison Francis Kurkdjian", "Dolce & Gabbana", "Dolce Gabbana",
-        "Acqua di Parma", "Parfums de Marly", "Van Cleef & Arpels",
-        "Van Cleef", "Clive Christian", "Tiziana Terenzi",
-        "Roberto Cavalli", "Antonio Banderas", "Viktor & Rolf",
-        "Viktor Rolf", "Narciso Rodriguez", "Carolina Herrera",
-        "Costume National", "Maison Margiela", "Maison Crivelli",
-        "Juliette Has A Gun", "Clean Reserve", "Elizabeth Arden",
-        "Issey Miyake", "Jean Paul Gaultier", "Thierry Mugler",
-        "Ralph Lauren", "Marc Jacobs", "Oscar de la Renta",
-        "Elie Saab", "Azzaro", "Boucheron", "Chopard",
-        "Missoni", "Ferragamo", "Salvatore Ferragamo",
-        "Bottega Veneta", "Balenciaga", "Loewe", "Celine",
-        "Miu Miu", "Coach", "Michael Kors", "Abercrombie",
-        "Hollister", "Zara", "Guess", "Lacoste", "Dunhill",
-        "Alfred Dunhill", "Bentley", "Jaguar", "Mercedes",
-        "Ferrari", "Porsche", "Maserati", "Aston Martin",
-        "Franck Muller", "Swiss Arabian", "Arabian Oud",
-        "Ibrahim Al Qurashi", "Al Haramain",
-        "Tom Ford", "Calvin Klein", "Hugo Boss", "Jo Malone",
-        "Dior", "Chanel", "Gucci", "Versace", "Armani",
-        "Giorgio Armani", "Emporio Armani",
-        "YSL", "Yves Saint Laurent", "Prada", "Burberry",
-        "Givenchy", "Hermes", "Hermès", "Creed", "Montblanc",
-        "Mont Blanc", "Valentino", "Bvlgari", "Bulgari",
-        "Cartier", "Lancome", "Lancôme", "Amouage",
-        "Rasasi", "Lattafa", "Ajmal", "Afnan", "Armaf",
-        "Nishane", "Xerjoff", "Initio", "Byredo",
-        "Le Labo", "Diptyque", "Mancera", "Montale",
-        "Kilian", "Roja", "Roja Dove", "Penhaligon",
-        "Penhaligons", "Memo", "Aerin", "Davidoff",
-        "Kayali", "Paco Rabanne", "Estee Lauder",
-        "Guerlain", "Chloe", "Chloé", "Dolce",
-        "Mugler", "Angel", "Alien",
-        "Philipp Plein", "Moresque", "Orto Parisi",
-        "Nasomatto", "Nobile 1942", "Nicolai",
-        "Floris", "Atelier Cologne", "Malin Goetz",
-        "Commodity", "D.S. & Durga", "Escentric Molecules",
-        "Histoires de Parfums", "Serge Lutens", "Frederic Malle",
-        "Amouage", "Bond No 9", "Carner Barcelona",
-        "Profumum Roma", "Santa Maria Novella",
-        "Vilhelm Parfumerie", "Zarko",
-        # ── ماركات عربية ─────────────────────────────────────
-        "إبراهيم القرشي", "ابراهيم القرشي",
-        "ميزون فرانسيس كوركدجيان", "ميزون كريفلي",
-        "تيزيانا تيرينزي", "تيزيانا ترينزى",
-        "دولتشي اند غابانا", "دولتشي آند غابانا", "دولتشي غابانا",
-        "فان كليف اند اربلز", "فان كليف",
-        "كلايف كريستيان", "كلايف كرستيان",
-        "روبرتو كافالي", "روبرتو كفالي",
-        "نرسيسو رودريغز", "نارسيسو رودريغيز", "نارسيسو",
-        "كارولينا هيريرا", "كارولينا هريرا",
-        "جان بول غوتييه", "جان بول قوتييه",
-        "ايف سان لوران", "إيف سان لوران",
-        "رالف لورين", "مارك جاكوبس",
-        "إيلي صعب", "ايلي صعب",
-        "فيكتور اند رولف", "فيكتور أند رولف",
-        "انتونيو بانديراس", "أنطونيو بانديراس",
-        "كوستوم ناشونال",
-        "استي لودر", "إستي لودر",
-        "كالفن كلاين", "كالفين كلاين",
-        "هوقو بوس", "هيوغو بوس", "هوغو بوس",
-        "مونت بلانك", "مون بلان", "مونت بلان",
-        "باكو رابان", "باكو ربان",
-        "توم فورد", "ديور", "شانيل",
-        "غوتشي", "قوتشي", "فرزاتشي", "فيرساتشي",
-        "برادا", "أرماني", "ارماني", "جورجيو أرماني",
-        "بربري", "جيفنشي", "هيرميس", "هرمس",
-        "كارتييه", "كارتير", "بولغاري", "بلغاري",
-        "فالنتينو", "لانكوم", "لانكم",
-        "جو مالون", "كريد",
+        "Dior", "Chanel", "Gucci", "Tom Ford",
+        "Versace", "Armani", "YSL", "Prada",
+        "Burberry", "Givenchy", "Hermes", "Creed",
+        "Montblanc", "Calvin Klein", "Hugo Boss",
+        "Dolce & Gabbana", "Valentino", "Bvlgari",
+        "Cartier", "Lancome", "Jo Malone",
+        "Maison Francis Kurkdjian", "Amouage",
+        "Rasasi", "Lattafa", "Arabian Oud",
+        "Swiss Arabian", "Ajmal", "Al Haramain",
+        "Afnan", "Armaf", "Nishane", "Xerjoff",
+        "Parfums de Marly", "Initio", "Byredo",
+        "Le Labo", "Diptyque", "Acqua di Parma",
+        "Mancera", "Montale", "Tiziana Terenzi",
+        "Kilian", "Roja", "Clive Christian",
+        "Penhaligon", "Memo", "Aerin",
+        # ماركات عربية
         "لطافة", "العربية للعود", "رصاصي",
-        "أجمل", "اجمل", "الحرمين",
-        "عفنان", "أفنان", "أرماف", "ارماف",
-        "سويس أربيان", "سويس اربيان",
-        "نيشان", "نيشاني", "زيرجوف",
-        "أمواج", "امواج",
-        "بايريدو", "ميمو",
-        "كيليان", "كليان",
-        "روجا", "روجا دوف",
-        "كايالي", "دافيدوف",
-        "مانسيرا", "مونتال",
-        "إنيشيو", "انيشيو",
-        "لو لابو",
-        "ديبتيك", "ديبتيق",
-        "أكوا دي بارما",
-        "بارفيوم دي مارلي", "بارفيومز دي مارلي",
-        "غيرلان", "جيرلان", "قيرلان",
-        "كلوي", "شلوي",
-        "موقلر", "موغلر", "ميغلر",
-        "فيليب بلين",
-        "بوشرون", "شوبارد",
-        "ميسوني", "فيراغامو", "سلفاتوري فيراغامو",
-        "بوتيغا فينيتا", "بالنسياغا",
-        "لويفي", "سيلين",
-        "ميو ميو", "كوتش", "مايكل كورس",
-        "لاكوست", "دنهل", "دانهل",
-        "بنتلي", "جاكوار", "مرسيدس",
-        "فيراري", "بورشه", "مازيراتي",
-        "أزارو", "ازارو",
-        "إيسي مياكي", "ايسي مياكي",
-        "سيرج لوتان", "فريدريك مال",
-        "نيكولاي", "أورتو باريسي",
-        "ناسوماتو", "نوبيلي",
-        "فلوريس", "أتيليه كولون",
-        "بوند نمبر 9", "بوند نو 9",
+        "أجمل", "الحرمين", "عفنان", "أرماف",
+        "سويس أربيان", "نيشان", "زيرجوف",
+        "أمواج", "كريد", "توم فورد",
+        "فرزاتشي", "ديور", "شانيل",
+        "غوتشي", "برادا", "بربري",
+        "جيفنشي", "هيرميس", "كارتييه",
+        "بولغاري", "فالنتينو",
     ]
     lower = name.lower()
-    # ترتيب حسب الطول (الأطول أولاً) لتجنب المطابقة الجزئية
-    sorted_brands = sorted(known_brands, key=len, reverse=True)
-    for brand in sorted_brands:
+    for brand in known_brands:
         if brand.lower() in lower:
             return brand
     return ""
@@ -252,14 +168,15 @@ def normalize_name(name):
         # أخرى
         'نمبر': 'no',
         'فايف': '5',
+        'مل': 'ml',
+        'ملي': 'ml',
     }
     for ar, en in word_replacements.items():
         name = name.replace(ar, en)
     
-    # إزالة الحجم (مع تحويل "مل" بأمان - فقط بعد أرقام أو ككلمة مستقلة)
-    name = re.sub(r"(\d+(?:\.\d+)?)\s*مل\b", r"\1 ml", name)
-    name = re.sub(r"\bملي\b", "ml", name)
+    # إزالة الحجم
     name = re.sub(r"\d+(?:\.\d+)?\s*ml", "", name, flags=re.I)
+    name = re.sub(r"\d+(?:\.\d+)?\s*مل", "", name, flags=re.I)
     
     # إزالة كلمات التصنيف
     remove_words = [
