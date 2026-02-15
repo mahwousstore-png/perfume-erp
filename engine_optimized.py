@@ -7,20 +7,15 @@ engine_optimized.py - محرك محسّن للأداء v12.0
 3. Batch processing - معالجة دفعات بدلاً من حلقات
 4. Index caching - تخزين النتائج مؤقتاً
 """
-import re
-import numpy as np
 from rapidfuzz import fuzz
 from collections import defaultdict
 
 
 # ===== استيراد القوانين من engine.py =====
 from engine import (
-    REJECT_KEYWORDS, TESTER_KEYWORDS, HAIR_MIST_KEYWORDS,
-    BODY_MIST_KEYWORDS, SET_KEYWORDS,
-    classify_product, extract_size, extract_brand,
-    normalize_name, _get_field, _get_name, _get_price, _get_id,
+    classify_product, extract_size,
+    normalize_name, _get_name, _get_price, _get_id,
     detect_outliers, _calculate_confidence, _price_consistency,
-    get_risk_color, get_risk_emoji, get_type_label,
     normalize_columns
 )
 

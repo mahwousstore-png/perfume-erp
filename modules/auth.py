@@ -5,10 +5,7 @@
 
 import streamlit as st
 import hashlib
-import hmac
-from datetime import datetime
 from typing import Optional, Dict, List
-import os
 
 # ============================================
 # الأدوار والصلاحيات
@@ -34,6 +31,7 @@ ROLES = {
     'accountant': {
         'name': 'المحاسب',
         'permissions': ['view_reports', 'add_expenses', 'view_costs']
+    }
     },
     'viewer': {
         'name': 'مشاهد',

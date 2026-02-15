@@ -3,7 +3,6 @@
 يقسم المنتجات إلى مجموعات صغيرة لتسريع المطابقة وتحسين الدقة
 """
 
-import pandas as pd
 import re
 from brand_matcher import load_brands, extract_brand_from_list
 

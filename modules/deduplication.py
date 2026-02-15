@@ -10,9 +10,6 @@
 """
 
 import streamlit as st
-import pandas as pd
-from datetime import datetime
-import json
 import re
 
 def normalize_product_name(name):
