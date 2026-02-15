@@ -1195,17 +1195,25 @@ elif section == "📤 رفع الملفات":
             )
             
             # تحويل إلى نفس الشكل القديم
+            import pandas as pd
+            
+            raise_list = [r for r in raw_results if r["category"] == "raise_price"]
+            lower_list = [r for r in raw_results if r["category"] == "lower_price"]
+            keep_list = [r for r in raw_results if r["category"] == "keep_price"]
+            missing_list = [r for r in raw_results if r["category"] == "missing"]
+            
             results = {
-                "raise_price": [r for r in raw_results if r["category"] == "raise_price"],
-                "lower_price": [r for r in raw_results if r["category"] == "lower_price"],
-                "keep_price": [r for r in raw_results if r["category"] == "keep_price"],
-                "missing": [r for r in raw_results if r["category"] == "missing"],
+                "raise": pd.DataFrame(raise_list) if raise_list else pd.DataFrame(),
+                "lower": pd.DataFrame(lower_list) if lower_list else pd.DataFrame(),
+                "approved": pd.DataFrame(keep_list) if keep_list else pd.DataFrame(),
+                "missing": pd.DataFrame(missing_list) if missing_list else pd.DataFrame(),
+                "review": pd.DataFrame(),  # لا حاجة له في v2
                 "stats": {
                     "total": len(raw_results),
-                    "raise_count": len([r for r in raw_results if r["category"] == "raise_price"]),
-                    "lower_count": len([r for r in raw_results if r["category"] == "lower_price"]),
-                    "approved_count": len([r for r in raw_results if r["category"] == "keep_price"]),
-                    "missing_count": len([r for r in raw_results if r["category"] == "missing"]),
+                    "raise_count": len(raise_list),
+                    "lower_count": len(lower_list),
+                    "approved_count": len(keep_list),
+                    "missing_count": len(missing_list),
                     "competitors": len(st.session_state.supplier_files),
                 },
             }
