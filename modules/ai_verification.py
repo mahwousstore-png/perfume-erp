@@ -542,3 +542,97 @@ def batch_verification(products: List[Dict], store_file_path: Optional[str] = No
         
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+# ══════════════════════════════════════════════════════════════
+# 5. المطابقة الذكية بين منتجين
+# ══════════════════════════════════════════════════════════════
+
+def verify_match_with_gemini(product1: str, product2: str) -> bool:
+    """
+    التحقق من تطابق منتجين باستخدام Gemini AI
+    
+    Args:
+        product1: اسم المنتج الأول
+        product2: اسم المنتج الثاني
+    
+    Returns:
+        bool: True إذا كان المنتجان متطابقان، False إذا كانا مختلفين
+    """
+    try:
+        prompt = f"""{EXPERT_SYSTEM_PROMPT}
+
+---
+
+## 🔍 المهمة: مطابقة منتجين
+
+**المنتج الأول:** {product1}
+**المنتج الثاني:** {product2}
+
+### السؤال:
+هل هذان المنتجان **نفس المنتج** (متطابقان 100%)؟
+
+### القواعد الصارمة:
+1. ✅ **متطابق** فقط إذا:
+   - نفس العلامة التجارية
+   - نفس اسم العطر
+   - نفس الحجم (±5ml مقبول)
+   - نفس التركيز (EDT, EDP, Parfum, Cologne)
+   - نفس الجنس (رجالي، نسائي، للجنسين)
+
+2. ❌ **غير متطابق** إذا:
+   - اختلاف التركيز (مثلاً: EDT vs EDP)
+   - اختلاف الحجم (أكثر من 5ml)
+   - اختلاف الجنس
+   - أحدهما تستر والآخر ريتيل
+   - أحدهما طقم والآخر منتج فردي
+
+### أمثلة:
+- ✅ "Versace Crystal Noir EDP 90ml" = "فرزاتشي كرستال نوار او دو بارفيوم 90مل"
+- ✅ "Dior Sauvage EDT 100ml" = "ديور سوفاج او دو تواليت 100مل"
+- ❌ "Chanel Coco EDP 50ml" ≠ "Chanel Coco EDT 50ml" (تركيز مختلف)
+- ❌ "Armani Code 75ml" ≠ "Armani Code 100ml" (حجم مختلف)
+
+### المطلوب:
+أعد **فقط** كلمة واحدة:
+- "YES" إذا كان المنتجان متطابقان
+- "NO" إذا كان المنتجان مختلفان
+
+**لا تضف أي شرح أو تفاصيل، فقط YES أو NO**
+"""
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+        
+        response = requests.post(
+            url,
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.1,  # دقة عالية
+                    "maxOutputTokens": 10,  # نريد فقط YES أو NO
+                }
+            },
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            text = result["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
+            
+            # استخراج YES أو NO
+            if "YES" in text:
+                return True
+            elif "NO" in text:
+                return False
+            else:
+                # إذا كانت الإجابة غير واضحة، نرجع False (أمان)
+                st.warning(f"⚠️ Gemini response غير واضح: {text}")
+                return False
+        else:
+            st.error(f"❌ Gemini API error: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        st.error(f"❌ خطأ في Gemini: {e}")
+        return False
