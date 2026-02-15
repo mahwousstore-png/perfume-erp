@@ -150,31 +150,51 @@ def supabase_request(method, table, data=None, params=None):
     except Exception:
         return None
 
+def _safe_df_len(obj):
+    """حساب طول DataFrame أو List بأمان"""
+    if obj is None:
+        return 0
+    if isinstance(obj, pd.DataFrame):
+        return 0 if obj.empty else len(obj)
+    if isinstance(obj, list):
+        return len(obj)
+    return 0
+
+def _safe_df_to_records(obj):
+    """تحويل DataFrame أو List إلى قائمة records بأمان"""
+    if obj is None:
+        return []
+    if isinstance(obj, pd.DataFrame):
+        return obj.to_dict(orient="records") if not obj.empty else []
+    if isinstance(obj, list):
+        return obj
+    return []
+
 def save_results_to_db(results):
     """حفظ نتائج التحليل في Supabase (هيكل JSONB)."""
     import uuid
     session_id = str(uuid.uuid4())[:8]
     
-    # حساب الإحصائيات
+    # حساب الإحصائيات بأمان (يتعامل مع DataFrame و List)
     raise_df = results.get("raise")
     lower_df = results.get("lower")
     approved_df = results.get("approved")
     missing_df = results.get("missing")
     review_df = results.get("review")
     
-    raise_count = len(raise_df) if raise_df is not None and not raise_df.empty else 0
-    lower_count = len(lower_df) if lower_df is not None and not lower_df.empty else 0
-    approved_count = len(approved_df) if approved_df is not None and not approved_df.empty else 0
-    missing_count = len(missing_df) if missing_df is not None and not missing_df.empty else 0
-    review_count = len(review_df) if review_df is not None and not review_df.empty else 0
+    raise_count = _safe_df_len(raise_df)
+    lower_count = _safe_df_len(lower_df)
+    approved_count = _safe_df_len(approved_df)
+    missing_count = _safe_df_len(missing_df)
+    review_count = _safe_df_len(review_df)
     total = raise_count + lower_count + approved_count
     
     # تحويل النتائج إلى JSON
     results_json = {}
     for key in ["raise", "lower", "approved", "missing", "review"]:
-        df = results.get(key)
-        if df is not None and not df.empty:
-            results_json[key] = df.to_dict(orient="records")
+        records = _safe_df_to_records(results.get(key))
+        if records:
+            results_json[key] = records
     
     data = {
         "session_id": session_id,
@@ -1160,14 +1180,39 @@ elif section == "📤 رفع الملفات":
         import io
         
         # قراءة ملف المتجر من bytes
-        my_df = pd.read_csv(io.BytesIO(st.session_state.my_file['data']))
-        my_products = my_df.to_dict('records')
+        from engine import normalize_columns
+        try:
+            my_file_data = st.session_state.my_file['data']
+            my_file_name = st.session_state.my_file['name']
+            if my_file_name.endswith('.xlsx'):
+                my_df = pd.read_excel(io.BytesIO(my_file_data))
+            else:
+                my_df = pd.read_csv(io.BytesIO(my_file_data), encoding='utf-8-sig')
+            my_df = normalize_columns(my_df)
+            my_products = my_df.to_dict('records')
+        except Exception as e:
+            st.error(f"❌ خطأ في قراءة ملف المتجر: {e}")
+            my_products = []
         
         # قراءة ملفات المنافسين من bytes
         comp_products = []
         for comp_file in st.session_state.supplier_files:
-            comp_df = pd.read_csv(io.BytesIO(comp_file['data']))
-            comp_products.extend(comp_df.to_dict('records'))
+            try:
+                comp_file_data = comp_file['data']
+                comp_file_name = comp_file['name']
+                if comp_file_name.endswith('.xlsx'):
+                    comp_df = pd.read_excel(io.BytesIO(comp_file_data))
+                else:
+                    comp_df = pd.read_csv(io.BytesIO(comp_file_data), encoding='utf-8-sig')
+                comp_df = normalize_columns(comp_df)
+                records = comp_df.to_dict('records')
+                # إضافة اسم المنافس
+                for r in records:
+                    r['_competitor_name'] = comp_file_name
+                comp_products.extend(records)
+            except Exception as e:
+                st.warning(f"⚠️ خطأ في قراءة ملف منافس: {e}")
+                continue
         
         update_progress(10, f"✅ تم تحميل {len(my_products)} منتج + {len(comp_products)} منافس")
         
@@ -1194,27 +1239,95 @@ elif section == "📤 رفع الملفات":
                 progress_callback=smart_progress
             )
             
-            # تحويل إلى نفس الشكل القديم
+            # تحويل إلى نفس الشكل القديم (أعمدة عربية)
             import pandas as pd
+            from engine import extract_brand, extract_concentration, extract_size, get_type_label
+            
+            def _v2_to_arabic_row(r, include_recommended=True):
+                """تحويل صف V2 إلى الشكل العربي المتوقع"""
+                row = {
+                    "المقارنة": f"{r.get('my_name', '')} 🆚 {r.get('comp_name', '')}",
+                    "المنتج": r.get("my_name", ""),
+                    "ماركتنا": extract_brand(r.get("my_name", "")),
+                    "تركيزنا": extract_concentration(r.get("my_name", "")),
+                    "حجمنا": extract_size(r.get("my_name", "")),
+                    "اسم المنافس": r.get("comp_name", ""),
+                    "ماركة المنافس": extract_brand(r.get("comp_name", "")) if r.get("comp_name") else "",
+                    "تركيز المنافس": extract_concentration(r.get("comp_name", "")) if r.get("comp_name") else "",
+                    "حجم المنافس": extract_size(r.get("comp_name", "")) if r.get("comp_name") else 0,
+                    "السعر": r.get("my_price", 0),
+                    "أقل سعر منافس": r.get("comp_price", 0),
+                    "سعر المنافس": r.get("comp_price", 0),
+                    "الفرق": round(r.get("diff", 0), 2),
+                    "النسبة %": round(r.get("diff_pct", 0), 1),
+                    "الثقة %": r.get("match_confidence", 0),
+                    "ثقة AI %": r.get("match_confidence", 0),
+                    "حالة التحقق": r.get("match_reason", "✅ مؤكد"),
+                    "تفسير AI": r.get("match_reason", ""),
+                    "عدد المنافسين": 1,
+                    "التفسير": r.get("match_reason", ""),
+                    "نسبة التطابق": r.get("match_confidence", 0),
+                    "pid_my": "",
+                }
+                if include_recommended:
+                    comp_price = r.get("comp_price", 0)
+                    row["السعر الموصى"] = max(comp_price - 1, 1) if comp_price > 0 else 0
+                
+                # تحديد الخطورة
+                abs_pct = abs(r.get("diff_pct", 0))
+                if abs_pct >= 20:
+                    row["الخطورة"] = "حرج"
+                elif abs_pct >= 10:
+                    row["الخطورة"] = "متوسط"
+                else:
+                    row["الخطورة"] = "عادي"
+                
+                return row
+            
+            def _v2_missing_to_arabic(r):
+                """تحويل منتج مفقود V2 إلى الشكل العربي"""
+                return {
+                    "المنتج": r.get("my_name", ""),
+                    "النوع": "ريتيل",
+                    "الحجم": extract_size(r.get("my_name", "")),
+                    "السعر": r.get("my_price", 0),
+                    "المنافس": "غير محدد",
+                }
             
             raise_list = [r for r in raw_results if r["category"] == "raise_price"]
             lower_list = [r for r in raw_results if r["category"] == "lower_price"]
             keep_list = [r for r in raw_results if r["category"] == "keep_price"]
             missing_list = [r for r in raw_results if r["category"] == "missing"]
             
+            # تحويل إلى DataFrames بأعمدة عربية
+            df_raise = pd.DataFrame([_v2_to_arabic_row(r) for r in raise_list]) if raise_list else pd.DataFrame()
+            df_lower = pd.DataFrame([_v2_to_arabic_row(r) for r in lower_list]) if lower_list else pd.DataFrame()
+            df_approved = pd.DataFrame([_v2_to_arabic_row(r, include_recommended=False) for r in keep_list]) if keep_list else pd.DataFrame()
+            df_missing = pd.DataFrame([_v2_missing_to_arabic(r) for r in missing_list]) if missing_list else pd.DataFrame()
+            
+            # دمج جميع النتائج
+            df_all = pd.concat([df_raise, df_lower, df_approved], ignore_index=True) if any(not df.empty for df in [df_raise, df_lower, df_approved]) else pd.DataFrame()
+            
+            # حساب إحصائيات إضافية
+            avg_diff = round(df_all["الفرق"].mean(), 2) if not df_all.empty and "الفرق" in df_all.columns else 0
+            critical_count = len(df_all[df_all["الخطورة"] == "حرج"]) if not df_all.empty and "الخطورة" in df_all.columns else 0
+            
             results = {
-                "raise": pd.DataFrame(raise_list) if raise_list else pd.DataFrame(),
-                "lower": pd.DataFrame(lower_list) if lower_list else pd.DataFrame(),
-                "approved": pd.DataFrame(keep_list) if keep_list else pd.DataFrame(),
-                "missing": pd.DataFrame(missing_list) if missing_list else pd.DataFrame(),
-                "review": pd.DataFrame(),  # لا حاجة له في v2
+                "raise": df_raise,
+                "lower": df_lower,
+                "approved": df_approved,
+                "missing": df_missing,
+                "review": pd.DataFrame(),
+                "all": df_all,
                 "stats": {
-                    "total": len(raw_results),
+                    "total": len(raise_list) + len(lower_list) + len(keep_list),
                     "raise_count": len(raise_list),
                     "lower_count": len(lower_list),
                     "approved_count": len(keep_list),
                     "missing_count": len(missing_list),
                     "competitors": len(st.session_state.supplier_files),
+                    "critical": critical_count,
+                    "avg_diff": avg_diff,
                 },
             }
         else:
@@ -1319,7 +1432,7 @@ elif section == "🟢 موافق عليها":
                 cols = st.columns([0.7, 0.15, 0.15])
                 
                 with cols[0]:
-                    st.write(f"**{row.get('اسم المنتج', row.iloc[0])}**")
+                    st.write(f"**{row.get('المنتج', row.get('اسم المنتج', row.iloc[0]))}**")
                     st.caption(f"السعر: {row.get('السعر', row.iloc[1] if len(row) > 1 else 'N/A')} ريال")
                 
                 with cols[1]:

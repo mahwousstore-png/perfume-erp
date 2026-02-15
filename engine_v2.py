@@ -370,6 +370,22 @@ def run_smart_matching(
                 key = (my_brand, nearby_bucket)
                 candidates.extend(comp_index.get(key, []))
         
+        # Fallback: إذا كان brand فارغ أو لم نجد مرشحين، نبحث في كل المنافسين بنفس الحجم
+        if not candidates:
+            # البحث بدون brand (حسب الحجم فقط)
+            for comp_key, comp_list in comp_index.items():
+                comp_brand_key, comp_size_key = comp_key
+                if abs(comp_size_key - size_bucket) <= 10:
+                    candidates.extend(comp_list)
+        
+        # Fallback 2: إذا لا يزال فارغاً، ابحث في كل المنافسين (بحث شامل)
+        if not candidates and my_brand:
+            # البحث بالـ brand فقط بدون قيد الحجم
+            for comp_key, comp_list in comp_index.items():
+                comp_brand_key, _ = comp_key
+                if comp_brand_key == my_brand:
+                    candidates.extend(comp_list)
+        
         # البحث عن أفضل مطابقة
         best_match = matcher.find_best_match(my_p, candidates)
         
