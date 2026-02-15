@@ -709,18 +709,18 @@ def call_gemini(prompt, api_key=None, max_retries=3):
     return {"success": False, "error": "فشلت كل المحاولات"}
 
 def call_openrouter(prompt, api_key=None):
-    key = api_key or st.session_state.openrouter_key
-    if not key:
-        return {"success": False, "error": "مفتاح OpenRouter غير موجود"}
-    try:
-        response = requests.post("https://openrouter.ai/api/v1/chat/completions",
-            json={"model": "google/gemini-2.0-flash-001", "messages": [{"role": "user", "content": prompt}]},
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"}, timeout=60)
-        if response.status_code == 200:
-            return {"success": True, "text": response.json()["choices"][0]["message"]["content"]}
-        return {"success": False, "error": f"HTTP {response.status_code}"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+key = api_key or st.session_state.openrouter_key
+if not key:
+    return {"success": False, "error": "مفتاح OpenRouter غير موجود"}
+try:
+    response = requests.post("https://openrouter.ai/api/v1/chat/completions",
+        json={"model": "google/gemini-2.0-flash-001", "messages": [{"role": "user", "content": prompt}]},
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"}, timeout=60)
+    if response.status_code == 200:
+        return {"success": True, "text": response.json()["choices"][0]["message"]["content"]}
+    return {"success": False, "error": f"HTTP {response.status_code}"}
+except Exception as e:
+    return {"success": False, "error": str(e)}
 
 def render_approval_section(df, section_key, section_label, send_func, webhook_label):
     """دالة مشتركة لعرض أزرار الموافقة والإرسال لأي قسم."""
@@ -734,7 +734,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
     </div>""", unsafe_allow_html=True)
     
     # أزرار تحديد الكل / إلغاء الكل
-    col_s1, col_s2, col_s3 = st.columns([1, 1, 3])
+    col_s1, col_s2, _ = st.columns([1, 1, 3])
     with col_s1:
         if st.button("✅ تحديد الكل", key=f"sel_all_{section_key}"):
             st.session_state[f"sel_{section_key}"] = [True] * len(df)

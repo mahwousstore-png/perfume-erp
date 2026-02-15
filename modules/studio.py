@@ -227,7 +227,6 @@ def generate_video_luma(analysis, image_bytes):
         
         # إنشاء الفيديو
         product_name = analysis.get("name", "عطر فاخر")
-        brand = analysis.get("brand", "")
         
         video_prompt = f"""Professional product video for {product_name} perfume:
 
@@ -258,7 +257,7 @@ IMPORTANT: The perfume bottle must maintain 100% realistic appearance throughout
         
         # انتظار اكتمال التوليد (polling)
         max_attempts = 60  # 5 دقائق كحد أقصى
-        for attempt in range(max_attempts):
+        for _ in range(max_attempts):
             status_url = f"https://api.lumalabs.ai/dream-machine/v1/generations/{generation_id}"
             status_response = requests.get(status_url, headers=headers, timeout=15)
             
