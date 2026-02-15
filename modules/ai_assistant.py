@@ -27,7 +27,8 @@ class AIAssistant:
         self.context = context
         self.history = []
     
-    def analyze_purchase(self, purchase_data):
+    @staticmethod
+    def analyze_purchase(purchase_data):
         """
         تحليل مشترى جديد وتقديم توصيات
         
@@ -67,7 +68,8 @@ class AIAssistant:
         
         return analysis
     
-    def evaluate_supplier(self, supplier_data):
+    @staticmethod
+    def evaluate_supplier(supplier_data):
         """
         تقييم مورد بناءً على الأداء التاريخي
         
@@ -106,7 +108,8 @@ class AIAssistant:
         
         return evaluation
     
-    def detect_expense_anomaly(self, expense_data):
+    @staticmethod
+    def detect_expense_anomaly(expense_data):
         """
         كشف الشذوذ في المصروفات
         
@@ -137,7 +140,8 @@ class AIAssistant:
         
         return result
     
-    def predict_price_trend(self, product_data):
+    @staticmethod
+    def predict_price_trend(product_data):
         """
         توقع اتجاه السعر للمنتج
         
@@ -168,7 +172,8 @@ class AIAssistant:
         
         return prediction
     
-    def suggest_optimal_price(self, product_data):
+    @staticmethod
+    def suggest_optimal_price(product_data):
         """
         اقتراح السعر الأمثل
         
