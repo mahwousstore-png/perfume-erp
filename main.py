@@ -1052,7 +1052,7 @@ elif section == "📤 رفع الملفات":
     
     if st.button("🚀 بدء المعالجة", type="primary", use_container_width=True,
                  disabled=not (st.session_state.my_file and st.session_state.supplier_files)):
-        from engine_v15 import run_full_analysis  # v15: نظام التصنيف الذكي متعدد المستويات
+        from engine import run_full_analysis  # محرك المطابقة الرئيسي
         import time
         
         # عناصر العرض
