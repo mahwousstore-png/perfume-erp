@@ -38,10 +38,8 @@ class AIAssistant:
         Returns:
             dict: التحليل والتوصيات
         """
-        product = purchase_data.get('product', '')
         supplier = purchase_data.get('supplier', '')
         price = purchase_data.get('price', 0)
-        quantity = purchase_data.get('quantity', 0)
         
         # TODO: استخدام Gemini للتحليل العميق
         analysis = {
@@ -79,8 +77,6 @@ class AIAssistant:
         Returns:
             dict: التقييم والتوصيات
         """
-        name = supplier_data.get('name', '')
-        
         # TODO: تحليل عميق باستخدام Gemini
         evaluation = {
             'score': 0,
@@ -119,8 +115,6 @@ class AIAssistant:
         Returns:
             dict: نتيجة الفحص
         """
-        amount = expense_data.get('amount', 0)
-        category = expense_data.get('category', '')
         
         # TODO: استخدام ML لكشف الشذوذ
         result = {

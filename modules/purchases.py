@@ -337,7 +337,6 @@ def show_purchases_list(start_date: date, end_date: date):
     
     if payment_filter != "الكل":
         purchases = purchases[purchases['payment_method'] == payment_filter]
-    
     # عرض الجدول
     display_df = purchases[['date', 'supplier_name', 'product_name', 'quantity', 'unit_price', 'total', 'payment_method', 'invoice_number']]
     display_df.columns = ['التاريخ', 'المورد', 'المنتج', 'الكمية', 'سعر الوحدة', 'الإجمالي', 'الدفع', 'رقم الفاتورة']
@@ -362,7 +361,7 @@ def show_purchases_list(start_date: date, end_date: date):
         )
     
     with col2:
-        excel = display_df.to_excel(index=False, engine='openpyxl')
+        _ = display_df.to_excel(index=False, engine='openpyxl')
         # TODO: تصدير Excel
 
 def show_add_purchase_form():

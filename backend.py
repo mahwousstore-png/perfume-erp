@@ -190,7 +190,7 @@ async def analyze_products(
         # 3. تحليل مع Gemini
         results = []
         if gemini_enabled:
-            for idx, row in my_df.iterrows():
+            for _, row in my_df.iterrows():
                 product_name = row.get('اسم المنتج') or row.get('name') or row.get('styles_productCard__name__pakbB')
                 
                 # جمع بيانات الموردين
@@ -215,7 +215,6 @@ async def analyze_products(
                     "timestamp": datetime.now().isoformat()
                 }
                 results.append(result)
-        
         # 4. حفظ في Google Drive
         drive_link = None
         if drive_enabled:
