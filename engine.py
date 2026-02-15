@@ -314,40 +314,38 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
         key = (my_type, size_bucket)
         if key in comp_index:
             candidates.extend(comp_index[key])
-        
+
         # البحث في المجموعات المجاورة (±5ml)
         for delta in [-5, 5]:
             adj_key = (my_type, size_bucket + delta)
             if adj_key in comp_index:
                 candidates.extend(comp_index[adj_key])
-        
+
         # البحث في نفس النوع بدون حجم محدد
         no_size_key = (my_type, 0)
         if no_size_key in comp_index:
             candidates.extend(comp_index[no_size_key])
-        
+
         if not candidates:
             continue
-        
+
         # ===== البحث عن جميع المطابقات (بدون early termination) =====
         all_matches = []
         best_score = 0
-        
+
         # استخراج العلامة التجارية والتركيز
         my_brand = extract_brand(my_name)
         my_conc = extract_concentration(my_name)
-        
+
         for cand in candidates:
             # 1. تطابق الحجم المرن (±5ml)
-            if my_size > 0 and cand["size"] > 0:
-                if abs(my_size - cand["size"]) > 5:
-                    continue
+            if my_size > 0 and cand["size"] > 0 and abs(my_size - cand["size"]) > 5:
+                continue
             
             # 2. التحقق من العلامة التجارية (إذا متوفرة)
             cand_brand = extract_brand(cand["name"])
-            if my_brand and cand_brand:
-                if my_brand.lower() != cand_brand.lower():
-                    continue  # علامة تجارية مختلفة → تجاهل
+            if my_brand and cand_brand and my_brand.lower() != cand_brand.lower():
+                continue  # علامة تجارية مختلفة → تجاهل
             
             # 3. التحقق من التركيز (إذا متوفر)
             cand_conc = extract_concentration(cand["name"])
@@ -611,10 +609,9 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
         
         found_similar = False
         for cand in candidates:
-            if cand["size"] > 0 and cp_size > 0:
-                if abs(cand["size"] - cp_size) > 1:
-                    continue
-            
+            if cand["size"] > 0 and cp_size > 0 and abs(cand["size"] - cp_size) > 1:
+                continue
+        
             score = fuzz.token_sort_ratio(cand["normalized"], cp_norm)
             if score >= missing_threshold:
                 found_similar = True

@@ -104,30 +104,29 @@ def match_products_optimized(my_products, comp_products, threshold=60):
         key = (my_type, size_bucket)
         if key in comp_index:
             candidates.extend(comp_index[key])
-        
+
         # البحث في المجموعات المجاورة (±5ml)
         for delta in [-5, 5]:
             adj_key = (my_type, size_bucket + delta)
             if adj_key in comp_index:
                 candidates.extend(comp_index[adj_key])
-        
+
         # البحث في نفس النوع بدون حجم محدد
         no_size_key = (my_type, 0)
         if no_size_key in comp_index:
             candidates.extend(comp_index[no_size_key])
-        
+
         if not candidates:
             continue
-        
+
         # ===== Early termination: إيقاف عند أول تطابق قوي =====
         all_matches = []
         best_score = 0
-        
+
         for cand in candidates:
             # تطابق الحجم الدقيق
-            if my_size > 0 and cand["size"] > 0:
-                if abs(my_size - cand["size"]) > 1:
-                    continue
+            if my_size > 0 and cand["size"] > 0 and abs(my_size - cand["size"]) > 1:
+                continue
             
             # حساب التشابه
             score = fuzz.token_sort_ratio(my_norm, cand["normalized"])
@@ -148,7 +147,7 @@ def match_products_optimized(my_products, comp_products, threshold=60):
                 # Early termination: إذا وجدنا تطابق ممتاز (95%+) → توقف
                 if score >= 95:
                     break
-        
+
         if not all_matches:
             continue
         
@@ -285,9 +284,8 @@ def match_products_optimized(my_products, comp_products, threshold=60):
         
         found_similar = False
         for cand in candidates:
-            if cand["size"] > 0 and cp_size > 0:
-                if abs(cand["size"] - cp_size) > 1:
-                    continue
+            if cand["size"] > 0 and cp_size > 0 and abs(cand["size"] - cp_size) > 1:
+                continue
             
             score = fuzz.token_sort_ratio(cand["normalized"], cp_norm)
             if score >= missing_threshold:
@@ -303,9 +301,9 @@ def match_products_optimized(my_products, comp_products, threshold=60):
                 "comp_price": _get_price(cp),
                 "competitor_name": cp.get("_competitor_name", "غير محدد"),
             })
-    
+
     print(f"✅ تم العثور على {len(results['missing'])} منتج مفقود")
-    
+
     # ترتيب حسب الخطورة
     for key in ["raise", "lower"]:
         results[key].sort(
