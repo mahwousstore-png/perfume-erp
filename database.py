@@ -61,6 +61,21 @@ def init_database():
         )
     """)
     
+    # جدول قرارات المنتجات المفقودة (إضافة/تأجيل/تجاهل)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS missing_decisions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_name TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            decision_date TEXT NOT NULL,
+            competitor_name TEXT,
+            competitor_price REAL,
+            suggested_price REAL,
+            notes TEXT,
+            UNIQUE(product_name, competitor_name)
+        )
+    """)
+    
     conn.commit()
     conn.close()
 
