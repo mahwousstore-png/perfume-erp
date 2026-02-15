@@ -1157,13 +1157,16 @@ elif section == "📤 رفع الملفات":
         
         # تحميل الملفات
         import pandas as pd
+        import io
         
-        my_df = pd.read_csv(st.session_state.my_file['data'])
+        # قراءة ملف المتجر من bytes
+        my_df = pd.read_csv(io.BytesIO(st.session_state.my_file['data']))
         my_products = my_df.to_dict('records')
         
+        # قراءة ملفات المنافسين من bytes
         comp_products = []
         for comp_file in st.session_state.supplier_files:
-            comp_df = pd.read_csv(comp_file['data'])
+            comp_df = pd.read_csv(io.BytesIO(comp_file['data']))
             comp_products.extend(comp_df.to_dict('records'))
         
         update_progress(10, f"✅ تم تحميل {len(my_products)} منتج + {len(comp_products)} منافس")
