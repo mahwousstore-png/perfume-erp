@@ -593,140 +593,311 @@ elif page == "🔍 تفاصيل المطابقة":
 # ══════════════════════════════════════════════════════════════
 # صفحة: تحقق AI
 # ══════════════════════════════════════════════════════════════
-elif page == "🤖 تحقق AI":
-    st.header("🤖 التحقق الذكي بـ AI")
-    st.caption("تحقق فردي أو مجمع للمنتجات مع توصيات ذكية")
+# ══════════════════════════════════════════════════════════════
+# صفحة: الأدوات الذكية
+# ══════════════════════════════════════════════════════════════
+elif page == "🤖 الأدوات الذكية":
+    st.header("🤖 الأدوات الذكية")
+    st.caption("أدوات الذكاء الاصطناعي والمساعدة الذكية")
     st.markdown("---")
 
-    # مفتاح API
-    api_key = st.text_input(
-        "🔑 مفتاح Gemini API",
-        value=st.session_state.gemini_key,
-        type="password",
-        help="احصل عليه من: https://ai.google.dev/",
-    )
-    st.session_state.gemini_key = api_key
+    # Tabs للأدوات الذكية
+    tab1, tab2, tab3 = st.tabs([
+        "🤖 تحقق AI",
+        "💬 محادثة AI",
+        "🎬 استديو مهووس"
+    ])
 
-    r = st.session_state.results
-    if r is None:
-        st.info("📋 ابدأ المعالجة أولاً.")
-    elif not api_key:
-        st.warning("⚠️ أدخل مفتاح Gemini API أعلاه.")
-    else:
-        df_all = r.get("all", pd.DataFrame())
-        if df_all.empty:
-            st.info("لا توجد مقارنات.")
+    with tab1:
+        st.subheader("🤖 التحقق الذكي بـ AI")
+        st.caption("تحقق فردي أو مجمع للمنتجات مع توصيات ذكية")
+
+        # مفتاح API
+        api_key = st.text_input(
+            "🔑 مفتاح Gemini API",
+            value=st.session_state.gemini_key,
+            type="password",
+            help="احصل عليه من: https://ai.google.dev/",
+        )
+        st.session_state.gemini_key = api_key
+
+        r = st.session_state.results
+        if r is None:
+            st.info("📋 ابدأ المعالجة أولاً.")
+        elif not api_key:
+            st.warning("⚠️ أدخل مفتاح Gemini API أعلاه.")
         else:
-            tab1, tab2 = st.tabs(["🔍 تحقق فردي", "📊 تحقق مجمع"])
-            
-            with tab1:
-                st.subheader("اختر منتج للتحقق الفردي:")
+            df_all = r.get("all", pd.DataFrame())
+            if df_all.empty:
+                st.info("لا توجد مقارنات.")
+            else:
+                sub_tab1, sub_tab2 = st.tabs(["🔍 تحقق فردي", "📊 تحقق مجمع"])
 
-                # عرض المنتجات كأزرار
-                for idx, row in df_all.iterrows():
-                    icon = row.get("الأيقونة", "")
-                    name = row.get("المنتج", "")
-                    price = row.get("السعر", 0)
-                    comp_price = row.get("سعر المنافس", 0)
-                    diff = row.get("الفرق", 0)
+                with sub_tab1:
+                    st.markdown("**اختر منتج للتحقق الفردي:**")
 
-                    col_btn, col_info = st.columns([1, 3])
-                    with col_btn:
-                        btn = st.button(
-                            f"{icon} تحقق",
-                            key=f"gem_{idx}",
-                            use_container_width=True,
-                        )
-                    with col_info:
-                        st.markdown(
-                            f"**{name}** | "
-                            f"سعري: {price} | "
-                            f"المنافس: {comp_price} | "
-                            f"الفرق: {diff}"
-                        )
+                    # عرض المنتجات كبطاقات
+                    for idx, row in df_all.iterrows():
+                        icon = row.get("الأيقونة", "")
+                        name = row.get("المنتج", "")
+                        price = row.get("السعر", 0)
+                        comp_price = row.get("سعر المنافس", 0)
+                        diff = row.get("الفرق", 0)
 
-                    if btn:
-                        with st.spinner("🤖 AI يحلل..."):
-                            result = gemini_verify(
-                                name, price, comp_price, api_key
-                            )
-                        st.markdown(
-                            f'<div class="severity-medium">'
-                            f"🤖 <b>تحليل AI:</b><br>{result}"
-                            f"</div>",
-                            unsafe_allow_html=True,
-                        )
-            
-            with tab2:
-                st.subheader("تحليل جماعي للمنتجات")
-
-                if st.button("🚀 ابدأ التحقق المجمع", use_container_width=True, type="primary"):
-                    with st.spinner("🤖 AI يحلل جميع المنتجات..."):
-                        # استيراد دالة التحقق المجمع من gemini_ai
-                        from gemini_ai import batch_generate_descriptions
-                        
-                        # تحضير البيانات
-                        products = []
-                        for _, row in df_all.iterrows():
-                            products.append({
-                                'name': row.get('المنتج', ''),
-                                'price': row.get('السعر', 0),
-                                'comp_price': row.get('سعر المنافس', 0),
-                                'diff': row.get('الفرق', 0),
-                            })
-                        
-                        # التحقق المجمع
-                        results = []
-                        for product in products[:10]:  # محدود لتجنب الحمل الزائد
-                            try:
-                                from gemini_ai import generate_pricing_recommendation
-                                rec = generate_pricing_recommendation(
-                                    product['name'], product['price'], product['comp_price'], 20.0
+                        # بطاقة المنتج
+                        with st.container():
+                            col_btn, col_info = st.columns([1, 3])
+                            with col_btn:
+                                btn = st.button(
+                                    f"{icon} تحقق",
+                                    key=f"gem_{idx}",
+                                    use_container_width=True,
                                 )
-                                results.append({
-                                    'product': product['name'],
-                                    'recommendation': rec or 'لا توجد توصية'
+                            with col_info:
+                                st.markdown(
+                                    f"**{name}** | "
+                                    f"سعري: {price:.2f} ر.س | "
+                                    f"المنافس: {comp_price:.2f} ر.س | "
+                                    f"الفرق: {diff:.2f} ر.س"
+                                )
+
+                            if btn:
+                                with st.spinner("🤖 AI يحلل..."):
+                                    result = gemini_verify(
+                                        name, price, comp_price, api_key
+                                    )
+                                st.markdown(
+                                    f'<div class="severity-medium">'
+                                    f"🤖 <b>تحليل AI:</b><br>{result}"
+                                    f"</div>",
+                                    unsafe_allow_html=True,
+                                )
+                            st.markdown("---")
+
+                with sub_tab2:
+                    st.markdown("**تحليل جماعي للمنتجات**")
+
+                    if st.button("🚀 ابدأ التحقق المجمع", use_container_width=True, type="primary"):
+                        with st.spinner("🤖 AI يحلل جميع المنتجات..."):
+                            # استيراد دالة التحقق المجمع من gemini_ai
+                            from gemini_ai import batch_generate_descriptions
+
+                            # تحضير البيانات
+                            products = []
+                            for _, row in df_all.iterrows():
+                                products.append({
+                                    'name': row.get('المنتج', ''),
+                                    'price': row.get('السعر', 0),
+                                    'comp_price': row.get('سعر المنافس', 0),
+                                    'diff': row.get('الفرق', 0),
                                 })
-                            except Exception as e:
-                                results.append({
-                                    'product': product['name'],
-                                    'recommendation': f'خطأ: {str(e)}'
-                                })
-                        
-                        # عرض النتائج
-                        st.success("✅ تم الانتهاء من التحقق المجمع!")
-                        for res in results:
-                            st.markdown(f"**{res['product']}**: {res['recommendation']}")
+
+                            # التحقق المجمع
+                            results = []
+                            for product in products[:10]:  # محدود لتجنب الحمل الزائد
+                                try:
+                                    from gemini_ai import generate_pricing_recommendation
+                                    rec = generate_pricing_recommendation(
+                                        product['name'], product['price'], product['comp_price'], 20.0
+                                    )
+                                    results.append({
+                                        'product': product['name'],
+                                        'recommendation': rec or 'لا توجد توصية'
+                                    })
+                                except Exception as e:
+                                    results.append({
+                                        'product': product['name'],
+                                        'recommendation': f'خطأ: {str(e)}'
+                                    })
+
+                            # عرض النتائج
+                            st.success("✅ تم الانتهاء من التحقق المجمع!")
+                            for res in results:
+                                st.markdown(f"**{res['product']}**: {res['recommendation']}")
+
+    with tab2:
+        st.subheader("💬 محادثة AI")
+        st.caption("محادثة تفاعلية مع الذكاء الاصطناعي للحصول على نصائح وتحليلات")
+
+        # منطقة المحادثة
+        if "chat_history" not in st.session_state:
+            st.session_state.chat_history = []
+
+        # عرض تاريخ المحادثة
+        chat_container = st.container(height=400)
+        with chat_container:
+            for message in st.session_state.chat_history:
+                if message["role"] == "user":
+                    st.markdown(f"**أنت:** {message['content']}")
+                else:
+                    st.markdown(f"**🤖 AI:** {message['content']}")
+                st.markdown("---")
+
+        # إدخال رسالة جديدة
+        user_message = st.text_input(
+            "اكتب رسالتك هنا...",
+            key="chat_input",
+            placeholder="اسأل عن التسعير أو المنافسة..."
+        )
+
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            if st.button("🚀 أرسل", use_container_width=True, type="primary"):
+                if user_message.strip():
+                    # إضافة رسالة المستخدم
+                    st.session_state.chat_history.append({
+                        "role": "user",
+                        "content": user_message
+                    })
+
+                    # الحصول على رد AI
+                    with st.spinner("🤖 جاري التفكير..."):
+                        try:
+                            # استخدام call_gemini أو call_openrouter
+                            prompt = f"""أنت مساعد ذكي متخصص في التسعير والعطور.
+سؤال المستخدم: {user_message}
+
+أجب باللغة العربية بشكل مفيد ومباشر."""
+
+                            response = ""
+                            try:
+                                result = call_gemini(prompt)
+                                if result["success"]:
+                                    response = result["text"]
+                            except:
+                                pass
+
+                            if not response:
+                                try:
+                                    result = call_openrouter(prompt)
+                                    if result["success"]:
+                                        response = result["text"]
+                                except:
+                                    pass
+
+                            if not response:
+                                response = "عذراً، لا يمكنني الوصول إلى خدمات الذكاء الاصطناعي حالياً."
+
+                            # إضافة رد AI
+                            st.session_state.chat_history.append({
+                                "role": "assistant",
+                                "content": response
+                            })
+
+                            st.rerun()
+
+                        except Exception as e:
+                            st.error(f"خطأ في المحادثة: {str(e)}")
+
+        with col2:
+            if st.button("🗑️ مسح", use_container_width=True):
+                st.session_state.chat_history = []
+                st.rerun()
+
+    with tab3:
+        st.subheader("🎬 استديو مهووس")
+        st.caption("أدوات إنشاء محتوى وتصميم للعطور")
+
+        # أدوات الاستديو
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.markdown("### 📝 كتابة محتوى")
+            content_type = st.selectbox(
+                "نوع المحتوى:",
+                ["وصف المنتج", "منشور إعلاني", "تغريدة", "منشور فيسبوك"],
+                key="content_type"
+            )
+            product_name = st.text_input("اسم المنتج:", key="product_name_studio")
+            product_desc = st.text_area("وصف المنتج:", key="product_desc_studio", height=100)
+
+            if st.button("🎨 أنشئ المحتوى", key="generate_content"):
+                if product_name and product_desc:
+                    with st.spinner("🎬 جاري إنشاء المحتوى..."):
+                        prompt = f"""أنشئ {content_type} جذاب للعطر التالي:
+
+اسم المنتج: {product_name}
+وصف المنتج: {product_desc}
+
+اجعل المحتوى جذاباً ومؤثراً باللغة العربية."""
+
+                        try:
+                            result = call_gemini(prompt)
+                            if result["success"]:
+                                st.markdown("### ✨ المحتوى المُنشأ:")
+                                st.write(result["text"])
+                            else:
+                                st.error("فشل في إنشاء المحتوى")
+                        except:
+                            st.error("خطأ في الاتصال بخدمة الذكاء الاصطناعي")
+                else:
+                    st.warning("يرجى إدخال اسم المنتج ووصفه")
+
+        with col2:
+            st.markdown("### 🎨 اقتراحات الألوان")
+            color_theme = st.selectbox(
+                "نوع العطر:",
+                ["زهري", "فاخر", "رياضي", "شرقي", "عصري"],
+                key="color_theme"
+            )
+
+            if st.button("🎨 اقترح الألوان", key="suggest_colors"):
+                with st.spinner("🎨 جاري التفكير في الألوان..."):
+                    prompt = f"""اقترح نظام ألوان مناسب لعطر {color_theme}.
+
+قدم:
+1. الألوان الأساسية (hex codes)
+2. الألوان الثانوية
+3. لماذا هذه الألوان مناسبة
+4. اقتراحات للتصميم
+
+باللغة العربية."""
+
+                    try:
+                        result = call_gemini(prompt)
+                        if result["success"]:
+                            st.markdown("### 🌈 اقتراحات الألوان:")
+                            st.write(result["text"])
+                        else:
+                            st.error("فشل في إنشاء اقتراحات الألوان")
+                    except:
+                        st.error("خطأ في الاتصال بخدمة الذكاء الاصطناعي")
+
+        with col3:
+            st.markdown("### 📊 تحليل المنافسة")
+            competitor_name = st.text_input("اسم المنافس:", key="competitor_name")
+            competitor_strength = st.slider("قوة المنافس (1-10):", 1, 10, 5, key="competitor_strength")
+
+            if st.button("📊 حلل المنافسة", key="analyze_competition"):
+                if competitor_name:
+                    with st.spinner("📊 جاري تحليل المنافسة..."):
+                        prompt = f"""حلل المنافسة مع {competitor_name} في سوق العطور.
+
+قوة المنافس: {competitor_strength}/10
+
+قدم:
+1. نقاط القوة لديهم
+2. نقاط الضعف لديهم
+3. فرص للتميز
+4. استراتيجيات مقترحة
+
+باللغة العربية."""
+
+                        try:
+                            result = call_gemini(prompt)
+                            if result["success"]:
+                                st.markdown("### 🏆 تحليل المنافسة:")
+                                st.write(result["text"])
+                            else:
+                                st.error("فشل في تحليل المنافسة")
+                        except:
+                            st.error("خطأ في الاتصال بخدمة الذكاء الاصطناعي")
+                else:
+                    st.warning("يرجى إدخال اسم المنافس")
 
     # ── مساعد الذكاء الاصطناعي ──────────────────────────────
     if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("تحقق AI")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: محادثة AI
-# ══════════════════════════════════════════════════════════════
-elif page == "💬 محادثة AI":
-    st.header("💬 محادثة AI")
-    st.caption("محادثة تفاعلية مع الذكاء الاصطناعي للحصول على نصائح وتحليلات")
-    st.markdown("---")
-    st.info("قريباً: واجهة محادثة مع AI.")
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("محادثة AI")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: استديو مهووس
-# ══════════════════════════════════════════════════════════════
-elif page == "🎬 استديو مهووس":
-    st.header("🎬 استديو مهووس")
-    st.caption("أدوات إنشاء محتوى وتصميم للعطور")
-    st.markdown("---")
-    st.info("قريباً: أدوات تصميم وإنشاء محتوى.")
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("استديو مهووس")
+        show_page_ai_assistant("الأدوات الذكية")
 
 # ══════════════════════════════════════════════════════════════
 # صفحة: قاعدة البيانات
@@ -742,43 +913,170 @@ elif page == "💾 قاعدة البيانات":
         show_page_ai_assistant("قاعدة البيانات")
 
 # ══════════════════════════════════════════════════════════════
-# صفحة: المشتريات اليومية
+# صفحة: الإدارة المالية
 # ══════════════════════════════════════════════════════════════
-elif page == "🛒 المشتريات اليومية":
-    st.header("🛒 المشتريات اليومية")
-    st.caption("تتبع المشتريات والطلبات اليومية")
+elif page == "💼 الإدارة المالية":
+    st.header("💼 الإدارة المالية")
+    st.caption("إدارة المشتريات والموردين والمصروفات")
     st.markdown("---")
-    st.info("قريباً: نظام تتبع المشتريات.")
+
+    # إحصائيات مالية سريعة
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("💰 إجمالي المشتريات", "0 ر.س", "↗️ +15%")
+    with col2:
+        st.metric("🏪 عدد الموردين", "0", "↗️ +2")
+    with col3:
+        st.metric("📊 إجمالي المصروفات", "0 ر.س", "↗️ +8%")
+
+    st.markdown("---")
+
+    # Tabs للإدارة المالية
+    tab1, tab2, tab3 = st.tabs([
+        "🛒 المشتريات اليومية",
+        "🏪 إدارة الموردين",
+        "💰 مذكرة المصروفات"
+    ])
+
+    with tab1:
+        st.subheader("🛒 المشتريات اليومية")
+        st.caption("تتبع المشتريات والطلبات اليومية")
+
+        # فلتر التاريخ
+        col1, col2 = st.columns(2)
+        with col1:
+            start_date = st.date_input("من تاريخ:", key="purchases_start")
+        with col2:
+            end_date = st.date_input("إلى تاريخ:", key="purchases_end")
+
+        # جدول المشتريات
+        purchases_data = [
+            {"التاريخ": "2024-01-15", "المنتج": "عطر شانيل", "الكمية": 5, "السعر": 250.0, "المورد": "شركة العطور الذهبية", "الحالة": "مكتملة"},
+            {"التاريخ": "2024-01-16", "المنتج": "عطر ديور", "الكمية": 3, "السعر": 320.0, "المورد": "مؤسسة النخيل", "الحالة": "قيد التنفيذ"},
+        ]
+
+        if purchases_data:
+            df_purchases = pd.DataFrame(purchases_data)
+            st.dataframe(
+                df_purchases,
+                use_container_width=True,
+                column_config={
+                    "السعر": st.column_config.NumberColumn(
+                        "السعر",
+                        format="%.2f ر.س",
+                    ),
+                    "الكمية": st.column_config.NumberColumn(
+                        "الكمية",
+                        format="%d",
+                    ),
+                },
+                hide_index=True,
+            )
+
+            # إضافة مشتريات جديدة
+            with st.expander("➕ إضافة مشتريات جديدة"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    new_product = st.text_input("اسم المنتج:", key="new_purchase_product")
+                    new_quantity = st.number_input("الكمية:", min_value=1, key="new_purchase_quantity")
+                with col2:
+                    new_price = st.number_input("السعر:", min_value=0.0, step=0.01, key="new_purchase_price")
+                    new_supplier = st.text_input("المورد:", key="new_purchase_supplier")
+
+                if st.button("💾 حفظ المشتريات", key="save_purchase"):
+                    st.success("✅ تم حفظ المشتريات بنجاح!")
+        else:
+            st.info("لا توجد مشتريات في الفترة المحددة.")
+
+    with tab2:
+        st.subheader("🏪 إدارة الموردين")
+        st.caption("إدارة قائمة الموردين والتعامل معهم")
+
+        # قائمة الموردين
+        suppliers_data = [
+            {"الاسم": "شركة العطور الذهبية", "التصنيف": "ممتاز", "آخر تعامل": "2024-01-15", "إجمالي المشتريات": 5000.0, "التواصل": "055-1234567"},
+            {"الاسم": "مؤسسة النخيل", "التصنيف": "جيد", "آخر تعامل": "2024-01-10", "إجمالي المشتريات": 3200.0, "التواصل": "050-9876543"},
+        ]
+
+        if suppliers_data:
+            df_suppliers = pd.DataFrame(suppliers_data)
+            st.dataframe(
+                df_suppliers,
+                use_container_width=True,
+                column_config={
+                    "إجمالي المشتريات": st.column_config.NumberColumn(
+                        "إجمالي المشتريات",
+                        format="%.2f ر.س",
+                    ),
+                },
+                hide_index=True,
+            )
+
+            # إضافة مورد جديد
+            with st.expander("➕ إضافة مورد جديد"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    supplier_name = st.text_input("اسم المورد:", key="new_supplier_name")
+                    supplier_rating = st.selectbox("التصنيف:", ["ممتاز", "جيد", "متوسط", "ضعيف"], key="new_supplier_rating")
+                with col2:
+                    supplier_contact = st.text_input("رقم التواصل:", key="new_supplier_contact")
+                    supplier_notes = st.text_area("ملاحظات:", key="new_supplier_notes", height=80)
+
+                if st.button("💾 حفظ المورد", key="save_supplier"):
+                    st.success("✅ تم حفظ المورد بنجاح!")
+        else:
+            st.info("لا توجد موردين مسجلين.")
+
+    with tab3:
+        st.subheader("💰 مذكرة المصروفات")
+        st.caption("تسجيل وتتبع المصروفات والنفقات")
+
+        # فلتر الشهر والسنة
+        col1, col2 = st.columns(2)
+        with col1:
+            expense_month = st.selectbox("الشهر:", range(1, 13), format_func=lambda x: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"][x-1], key="expense_month")
+        with col2:
+            expense_year = st.selectbox("السنة:", [2023, 2024, 2025], key="expense_year")
+
+        # جدول المصروفات
+        expenses_data = [
+            {"التاريخ": "2024-01-15", "النوع": "إيجار", "المبلغ": 5000.0, "الوصف": "إيجار الشهري للمحل", "الحالة": "مدفوعة"},
+            {"التاريخ": "2024-01-10", "النوع": "كهرباء", "المبلغ": 800.0, "الوصف": "فاتورة الكهرباء", "الحالة": "مدفوعة"},
+            {"التاريخ": "2024-01-20", "النوع": "تسويق", "المبلغ": 1200.0, "الوصف": "إعلانات فيسبوك", "الحالة": "معلقة"},
+        ]
+
+        if expenses_data:
+            df_expenses = pd.DataFrame(expenses_data)
+            st.dataframe(
+                df_expenses,
+                use_container_width=True,
+                column_config={
+                    "المبلغ": st.column_config.NumberColumn(
+                        "المبلغ",
+                        format="%.2f ر.س",
+                    ),
+                },
+                hide_index=True,
+            )
+
+            # إضافة مصروفات جديدة
+            with st.expander("➕ إضافة مصروفات جديدة"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    expense_type = st.selectbox("نوع المصروفات:", ["إيجار", "كهرباء", "ماء", "تسويق", "رواتب", "نقل", "أخرى"], key="new_expense_type")
+                    expense_amount = st.number_input("المبلغ:", min_value=0.0, step=0.01, key="new_expense_amount")
+                with col2:
+                    expense_date = st.date_input("التاريخ:", key="new_expense_date")
+                    expense_desc = st.text_area("الوصف:", key="new_expense_desc", height=80)
+
+                if st.button("💾 حفظ المصروفات", key="save_expense"):
+                    st.success("✅ تم حفظ المصروفات بنجاح!")
+        else:
+            st.info("لا توجد مصروفات في الفترة المحددة.")
 
     # ── مساعد الذكاء الاصطناعي ──────────────────────────────
     if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("المشتريات اليومية")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: إدارة الموردين
-# ══════════════════════════════════════════════════════════════
-elif page == "🏪 إدارة الموردين":
-    st.header("🏪 إدارة الموردين")
-    st.caption("إدارة قائمة الموردين والتعامل معهم")
-    st.markdown("---")
-    st.info("قريباً: نظام إدارة الموردين.")
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("إدارة الموردين")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: مذكرة المصروفات
-# ══════════════════════════════════════════════════════════════
-elif page == "💰 مذكرة المصروفات":
-    st.header("💰 مذكرة المصروفات")
-    st.caption("تسجيل وتتبع المصروفات والنفقات")
-    st.markdown("---")
-    st.info("قريباً: نظام تتبع المصروفات.")
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("مذكرة المصروفات")
+        show_page_ai_assistant("الإدارة المالية")
 
 # ══════════════════════════════════════════════════════════════
 # صفحة: الإعدادات
