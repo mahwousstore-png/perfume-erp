@@ -129,9 +129,53 @@ with st.sidebar:
             "💼 الإدارة المالية",
             "🛠️ الأدوات والإعدادات",
         ],
+    )
+    st.caption("الإصدار v14.2 | نظام التسعير الذكي")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: لوحة القيادة
+# ══════════════════════════════════════════════════════════════
+if page == "🏠 لوحة القيادة":
+    st.header("🏠 لوحة القيادة")
+    st.caption("نظرة عامة على أداء نظام التسعير والإحصائيات الرئيسية")
+    st.markdown("---")
+
+    # إحصائيات عامة
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("📊 إجمالي المنتجات", "1,250", "↗️ +5%")
+    with col2:
+        st.metric("🏪 عدد المتاجر", "15", "↗️ +2")
+    with col3:
+        st.metric("💰 إجمالي المبيعات", "500,000 ر.س", "↗️ +12%")
+    with col4:
+        st.metric("📈 معدل الربح", "35%", "↗️ +3%")
 
     st.markdown("---")
-    st.caption("الإصدار v14.2 | نظام التسعير الذكي")
+
+    # آخر التحليلات
+    st.subheader("📈 آخر التحليلات المنجزة")
+    r = st.session_state.results
+    if r is None:
+        st.info("لا توجد تحليلات منجزة بعد. ابدأ من صفحة **التحليل والمقارنة**.")
+    else:
+        stats = r.get("stats", {})
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("🔴 منتجات تحتاج رفع سعر", stats.get("raise_count", 0))
+        with col2:
+            st.metric("🟡 منتجات تحتاج خفض سعر", stats.get("lower_count", 0))
+        with col3:
+            st.metric("🟢 منتجات متوازنة", stats.get("approved_count", 0))
+
+        st.markdown("### 📋 ملخص التحليل الأخير")
+        st.write(f"- إجمالي المنتجات المقارنة: {stats.get('total', 0)}")
+        st.write(f"- منتجات مفقودة عند المنافسين: {stats.get('missing_count', 0)}")
+        st.write(f"- تاريخ التحليل: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("لوحة القيادة")
 
 # ══════════════════════════════════════════════════════════════
 # صفحة: التحليل والمقارنة
