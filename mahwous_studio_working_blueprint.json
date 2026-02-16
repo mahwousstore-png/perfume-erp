@@ -1,0 +1,337 @@
+{
+  "name": "Mahwous Studio - Working Blueprint",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": 1,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 2,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 3,
+              "module": "http:ActionSendData",
+              "version": 3,
+              "parameters": {},
+              "mapper": {
+                "url": "https://graph.facebook.com/v18.0/me/media",
+                "serializeUrl": false,
+                "method": "post",
+                "headers": [],
+                "qs": [
+                  {
+                    "name": "access_token",
+                    "value": "{{YOUR_INSTAGRAM_ACCESS_TOKEN}}"
+                  },
+                  {
+                    "name": "image_url",
+                    "value": "{{1.images.post}}"
+                  },
+                  {
+                    "name": "caption",
+                    "value": "{{1.captions.instagram.caption}}"
+                  }
+                ],
+                "bodyType": "raw",
+                "parseResponse": true,
+                "authPass": false,
+                "timeout": 300,
+                "shareCookies": false,
+                "ca": "",
+                "rejectUnauthorized": true,
+                "followRedirect": true,
+                "useQuerystring": false,
+                "followAllRedirects": false
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": -400,
+                  "name": "Instagram Post"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 4,
+              "module": "http:ActionSendData",
+              "version": 3,
+              "parameters": {},
+              "mapper": {
+                "url": "https://graph.facebook.com/v18.0/{{YOUR_PAGE_ID}}/photos",
+                "serializeUrl": false,
+                "method": "post",
+                "headers": [],
+                "qs": [
+                  {
+                    "name": "access_token",
+                    "value": "{{YOUR_FACEBOOK_ACCESS_TOKEN}}"
+                  },
+                  {
+                    "name": "url",
+                    "value": "{{1.images.post}}"
+                  },
+                  {
+                    "name": "caption",
+                    "value": "{{1.captions.facebook.caption}}"
+                  }
+                ],
+                "bodyType": "raw",
+                "parseResponse": true,
+                "timeout": 300
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": -200,
+                  "name": "Facebook Post"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 5,
+              "module": "http:ActionSendData",
+              "version": 3,
+              "parameters": {},
+              "mapper": {
+                "url": "https://api.twitter.com/2/tweets",
+                "serializeUrl": false,
+                "method": "post",
+                "headers": [
+                  {
+                    "name": "Authorization",
+                    "value": "Bearer {{YOUR_TWITTER_BEARER_TOKEN}}"
+                  },
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": "{\"text\": \"{{1.captions.twitter.caption}}\"}",
+                "bodyType": "raw",
+                "parseResponse": true,
+                "timeout": 300
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 0,
+                  "name": "Twitter Tweet"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 6,
+              "module": "telegram:sendPhoto",
+              "version": 3,
+              "parameters": {
+                "botToken": "{{YOUR_TELEGRAM_BOT_TOKEN}}"
+              },
+              "mapper": {
+                "chatId": "@mahwous_channel",
+                "photo": "{{1.images.post}}",
+                "caption": "{{1.captions.telegram.caption}}",
+                "parseMode": "HTML"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 200,
+                  "name": "Telegram Post"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 7,
+              "module": "http:ActionSendData",
+              "version": 3,
+              "parameters": {},
+              "mapper": {
+                "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+                "serializeUrl": false,
+                "method": "post",
+                "headers": [
+                  {
+                    "name": "Authorization",
+                    "value": "Bearer {{YOUR_TIKTOK_ACCESS_TOKEN}}"
+                  },
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": "{\"post_info\": {\"title\": \"{{1.captions.tiktok.caption}}\", \"privacy_level\": \"PUBLIC_TO_EVERYONE\"}, \"source_info\": {\"source\": \"FILE_URL\", \"video_url\": \"{{1.video}}\"}}",
+                "bodyType": "raw",
+                "parseResponse": true,
+                "timeout": 300
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 400,
+                  "name": "TikTok Video"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 8,
+              "module": "http:ActionSendData",
+              "version": 3,
+              "parameters": {},
+              "mapper": {
+                "url": "https://api.linkedin.com/v2/ugcPosts",
+                "serializeUrl": false,
+                "method": "post",
+                "headers": [
+                  {
+                    "name": "Authorization",
+                    "value": "Bearer {{YOUR_LINKEDIN_ACCESS_TOKEN}}"
+                  },
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "name": "X-Restli-Protocol-Version",
+                    "value": "2.0.0"
+                  }
+                ],
+                "body": "{\"author\": \"urn:li:organization:{{YOUR_ORG_ID}}\", \"lifecycleState\": \"PUBLISHED\", \"specificContent\": {\"com.linkedin.ugc.ShareContent\": {\"shareCommentary\": {\"text\": \"{{1.captions.linkedin.caption}}\"}, \"shareMediaCategory\": \"IMAGE\", \"media\": [{\"status\": \"READY\", \"media\": \"{{1.images.post}}\"}]}}, \"visibility\": {\"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\"}}",
+                "bodyType": "raw",
+                "parseResponse": true,
+                "timeout": 300
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 600,
+                  "name": "LinkedIn Post"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 9,
+              "module": "http:ActionSendData",
+              "version": 3,
+              "parameters": {},
+              "mapper": {
+                "url": "https://api.pinterest.com/v5/pins",
+                "serializeUrl": false,
+                "method": "post",
+                "headers": [
+                  {
+                    "name": "Authorization",
+                    "value": "Bearer {{YOUR_PINTEREST_ACCESS_TOKEN}}"
+                  },
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": "{\"board_id\": \"{{YOUR_BOARD_ID}}\", \"media_source\": {\"source_type\": \"image_url\", \"url\": \"{{1.images.post}}\"}, \"title\": \"{{1.product_name}}\", \"description\": \"{{1.captions.pinterest.caption}}\", \"link\": \"https://mahwous.com\"}",
+                "bodyType": "raw",
+                "parseResponse": true,
+                "timeout": 300
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 800,
+                  "name": "Pinterest Pin"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 10,
+              "module": "http:ActionSendData",
+              "version": 3,
+              "parameters": {},
+              "mapper": {
+                "url": "{{YOUR_DISCORD_WEBHOOK_URL}}",
+                "serializeUrl": false,
+                "method": "post",
+                "headers": [
+                  {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": "{\"content\": \"{{1.captions.instagram.caption}}\", \"embeds\": [{\"title\": \"{{1.product_name}}\", \"description\": \"{{1.descriptions.short}}\", \"image\": {\"url\": \"{{1.images.post}}\"}, \"color\": 3447003}]}",
+                "bodyType": "raw",
+                "parseResponse": true,
+                "timeout": 300
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 1000,
+                  "name": "Discord Message"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "sequential": false
+    }
+  }
+}

@@ -11,9 +11,6 @@ engine.py - محرك المطابقة والتصنيف الذكي v7.0
 import re
 import numpy as np
 from rapidfuzz import fuzz
-from extract_concentration import extract_concentration, concentrations_match
-from semantic_matcher import semantic_verify_match
-from ai_verification import verify_match_with_ai
 
 
 # ===== قوانين التصنيف =====
@@ -83,119 +80,35 @@ def extract_size(name):
 
 
 def extract_brand(name):
-    """استخراج الماركة من اسم المنتج - قاموس موسّع v4.0 (200+ ماركة)."""
+    """استخراج الماركة من اسم المنتج."""
     known_brands = [
-        # ── ماركات عالمية (إنجليزي) ─────────────────────────
-        "Maison Francis Kurkdjian", "Dolce & Gabbana", "Dolce Gabbana",
-        "Acqua di Parma", "Parfums de Marly", "Van Cleef & Arpels",
-        "Van Cleef", "Clive Christian", "Tiziana Terenzi",
-        "Roberto Cavalli", "Antonio Banderas", "Viktor & Rolf",
-        "Viktor Rolf", "Narciso Rodriguez", "Carolina Herrera",
-        "Costume National", "Maison Margiela", "Maison Crivelli",
-        "Juliette Has A Gun", "Clean Reserve", "Elizabeth Arden",
-        "Issey Miyake", "Jean Paul Gaultier", "Thierry Mugler",
-        "Ralph Lauren", "Marc Jacobs", "Oscar de la Renta",
-        "Elie Saab", "Azzaro", "Boucheron", "Chopard",
-        "Missoni", "Ferragamo", "Salvatore Ferragamo",
-        "Bottega Veneta", "Balenciaga", "Loewe", "Celine",
-        "Miu Miu", "Coach", "Michael Kors", "Abercrombie",
-        "Hollister", "Zara", "Guess", "Lacoste", "Dunhill",
-        "Alfred Dunhill", "Bentley", "Jaguar", "Mercedes",
-        "Ferrari", "Porsche", "Maserati", "Aston Martin",
-        "Franck Muller", "Swiss Arabian", "Arabian Oud",
-        "Ibrahim Al Qurashi", "Al Haramain",
-        "Tom Ford", "Calvin Klein", "Hugo Boss", "Jo Malone",
-        "Dior", "Chanel", "Gucci", "Versace", "Armani",
-        "Giorgio Armani", "Emporio Armani",
-        "YSL", "Yves Saint Laurent", "Prada", "Burberry",
-        "Givenchy", "Hermes", "Hermès", "Creed", "Montblanc",
-        "Mont Blanc", "Valentino", "Bvlgari", "Bulgari",
-        "Cartier", "Lancome", "Lancôme", "Amouage",
-        "Rasasi", "Lattafa", "Ajmal", "Afnan", "Armaf",
-        "Nishane", "Xerjoff", "Initio", "Byredo",
-        "Le Labo", "Diptyque", "Mancera", "Montale",
-        "Kilian", "Roja", "Roja Dove", "Penhaligon",
-        "Penhaligons", "Memo", "Aerin", "Davidoff",
-        "Kayali", "Paco Rabanne", "Estee Lauder",
-        "Guerlain", "Chloe", "Chloé", "Dolce",
-        "Mugler", "Angel", "Alien",
-        "Philipp Plein", "Moresque", "Orto Parisi",
-        "Nasomatto", "Nobile 1942", "Nicolai",
-        "Floris", "Atelier Cologne", "Malin Goetz",
-        "Commodity", "D.S. & Durga", "Escentric Molecules",
-        "Histoires de Parfums", "Serge Lutens", "Frederic Malle",
-        "Amouage", "Bond No 9", "Carner Barcelona",
-        "Profumum Roma", "Santa Maria Novella",
-        "Vilhelm Parfumerie", "Zarko",
-        # ── ماركات عربية ─────────────────────────────────────
-        "إبراهيم القرشي", "ابراهيم القرشي",
-        "ميزون فرانسيس كوركدجيان", "ميزون كريفلي",
-        "تيزيانا تيرينزي", "تيزيانا ترينزى",
-        "دولتشي اند غابانا", "دولتشي آند غابانا", "دولتشي غابانا",
-        "فان كليف اند اربلز", "فان كليف",
-        "كلايف كريستيان", "كلايف كرستيان",
-        "روبرتو كافالي", "روبرتو كفالي",
-        "نرسيسو رودريغز", "نارسيسو رودريغيز", "نارسيسو",
-        "كارولينا هيريرا", "كارولينا هريرا",
-        "جان بول غوتييه", "جان بول قوتييه",
-        "ايف سان لوران", "إيف سان لوران",
-        "رالف لورين", "مارك جاكوبس",
-        "إيلي صعب", "ايلي صعب",
-        "فيكتور اند رولف", "فيكتور أند رولف",
-        "انتونيو بانديراس", "أنطونيو بانديراس",
-        "كوستوم ناشونال",
-        "استي لودر", "إستي لودر",
-        "كالفن كلاين", "كالفين كلاين",
-        "هوقو بوس", "هيوغو بوس", "هوغو بوس",
-        "مونت بلانك", "مون بلان", "مونت بلان",
-        "باكو رابان", "باكو ربان",
-        "توم فورد", "ديور", "شانيل",
-        "غوتشي", "قوتشي", "فرزاتشي", "فيرساتشي",
-        "برادا", "أرماني", "ارماني", "جورجيو أرماني",
-        "بربري", "جيفنشي", "هيرميس", "هرمس",
-        "كارتييه", "كارتير", "بولغاري", "بلغاري",
-        "فالنتينو", "لانكوم", "لانكم",
-        "جو مالون", "كريد",
+        "Dior", "Chanel", "Gucci", "Tom Ford",
+        "Versace", "Armani", "YSL", "Prada",
+        "Burberry", "Givenchy", "Hermes", "Creed",
+        "Montblanc", "Calvin Klein", "Hugo Boss",
+        "Dolce & Gabbana", "Valentino", "Bvlgari",
+        "Cartier", "Lancome", "Jo Malone",
+        "Maison Francis Kurkdjian", "Amouage",
+        "Rasasi", "Lattafa", "Arabian Oud",
+        "Swiss Arabian", "Ajmal", "Al Haramain",
+        "Afnan", "Armaf", "Nishane", "Xerjoff",
+        "Parfums de Marly", "Initio", "Byredo",
+        "Le Labo", "Diptyque", "Acqua di Parma",
+        "Mancera", "Montale", "Tiziana Terenzi",
+        "Kilian", "Roja", "Clive Christian",
+        "Penhaligon", "Memo", "Aerin",
+        # ماركات عربية
         "لطافة", "العربية للعود", "رصاصي",
-        "أجمل", "اجمل", "الحرمين",
-        "عفنان", "أفنان", "أرماف", "ارماف",
-        "سويس أربيان", "سويس اربيان",
-        "نيشان", "نيشاني", "زيرجوف",
-        "أمواج", "امواج",
-        "بايريدو", "ميمو",
-        "كيليان", "كليان",
-        "روجا", "روجا دوف",
-        "كايالي", "دافيدوف",
-        "مانسيرا", "مونتال",
-        "إنيشيو", "انيشيو",
-        "لو لابو",
-        "ديبتيك", "ديبتيق",
-        "أكوا دي بارما",
-        "بارفيوم دي مارلي", "بارفيومز دي مارلي",
-        "غيرلان", "جيرلان", "قيرلان",
-        "كلوي", "شلوي",
-        "موقلر", "موغلر", "ميغلر",
-        "فيليب بلين",
-        "بوشرون", "شوبارد",
-        "ميسوني", "فيراغامو", "سلفاتوري فيراغامو",
-        "بوتيغا فينيتا", "بالنسياغا",
-        "لويفي", "سيلين",
-        "ميو ميو", "كوتش", "مايكل كورس",
-        "لاكوست", "دنهل", "دانهل",
-        "بنتلي", "جاكوار", "مرسيدس",
-        "فيراري", "بورشه", "مازيراتي",
-        "أزارو", "ازارو",
-        "إيسي مياكي", "ايسي مياكي",
-        "سيرج لوتان", "فريدريك مال",
-        "نيكولاي", "أورتو باريسي",
-        "ناسوماتو", "نوبيلي",
-        "فلوريس", "أتيليه كولون",
-        "بوند نمبر 9", "بوند نو 9",
+        "أجمل", "الحرمين", "عفنان", "أرماف",
+        "سويس أربيان", "نيشان", "زيرجوف",
+        "أمواج", "كريد", "توم فورد",
+        "فرزاتشي", "ديور", "شانيل",
+        "غوتشي", "برادا", "بربري",
+        "جيفنشي", "هيرميس", "كارتييه",
+        "بولغاري", "فالنتينو",
     ]
     lower = name.lower()
-    # ترتيب حسب الطول (الأطول أولاً) لتجنب المطابقة الجزئية
-    sorted_brands = sorted(known_brands, key=len, reverse=True)
-    for brand in sorted_brands:
+    for brand in known_brands:
         if brand.lower() in lower:
             return brand
     return ""
@@ -215,7 +128,6 @@ def normalize_name(name):
     
     # تطبيع الكلمات الشائعة (عربي → إنجليزي)
     word_replacements = {
-        # التركيزات
         'او دو بارفان': 'edp',
         'أو دو بارفان': 'edp',
         'او دي بارفان': 'edp',
@@ -223,43 +135,26 @@ def normalize_name(name):
         'أو دو برفيوم': 'edp',
         'او دي بارفيوم': 'edp',
         'أو دو بارفيوم': 'edp',
-        'بارفيوم': 'edp',
-        'برفيوم': 'edp',
-        'بارفان': 'edp',
         'او دو تواليت': 'edt',
         'أو دو تواليت': 'edt',
         'او دي تواليت': 'edt',
-        'تواليت': 'edt',
         'او دو كولون': 'edc',
-        'كولون': 'cologne',
-        # أسماء المنتجات
-        'كرستال': 'crystal',
+        'نمبر': 'no',
+        'فايف': '5',
+        'مل': 'ml',
+        'ملي': 'ml',
         'سوفاج': 'sauvage',
-        'بلو': 'blue',
-        'نوار': 'noir',
-        'روز': 'rose',
-        'فانيلا': 'vanilla',
-        'عود': 'oud',
-        'مسك': 'musk',
-        'عنبر': 'amber',
-        # الماركات
         'ديور': 'dior',
         'شانيل': 'chanel',
         'غوتشي': 'gucci',
         'فرزاتشي': 'versace',
-        'برادا': 'prada',
-        'أرماني': 'armani',
-        # أخرى
-        'نمبر': 'no',
-        'فايف': '5',
     }
     for ar, en in word_replacements.items():
         name = name.replace(ar, en)
     
-    # إزالة الحجم (مع تحويل "مل" بأمان - فقط بعد أرقام أو ككلمة مستقلة)
-    name = re.sub(r"(\d+(?:\.\d+)?)\s*مل\b", r"\1 ml", name)
-    name = re.sub(r"\bملي\b", "ml", name)
+    # إزالة الحجم
     name = re.sub(r"\d+(?:\.\d+)?\s*ml", "", name, flags=re.I)
+    name = re.sub(r"\d+(?:\.\d+)?\s*مل", "", name, flags=re.I)
     
     # إزالة كلمات التصنيف
     remove_words = [
@@ -336,17 +231,18 @@ def detect_outliers(prices):
 
 # ===== المطابقة الذكية =====
 
-def match_products(my_products, comp_products, threshold=60, progress_callback=None):
+def match_products(my_products, comp_products, threshold=60):
     """
-    مطابقة محسّنة مع early termination و pre-filtering (v12.0).
-    
-    التحسينات:
-    1. تجميع المنافسين حسب النوع والحجم (index)
-    2. إيقاف المقارنة عند أول تطابق قوي (95%+)
-    3. معالجة دفعات بدلاً من حلقات متداخلة
+    مطابقة المنتجات مع تطبيق القوانين الصارمة.
+
+    القوانين:
+    1. تطابق النوع: retail=retail, tester=tester
+    2. تطابق الحجم: 100ml=100ml فقط
+    3. فيتو العينات: طرد تلقائي
+    4. استراتيجية "أقل بريال": السعر الموصى = أقل منافس - 1
+    5. كشف الشواذ: تجاهل الأسعار الشاذة
+    6. درجة الثقة: بناءً على جودة المطابقة وعدد المنافسين
     """
-    from collections import defaultdict
-    
     results = {
         "raise": [],
         "lower": [],
@@ -354,127 +250,61 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
         "missing": [],
         "review": [],
     }
-    
-    # ===== Pre-filtering: تجميع المنافسين حسب النوع والحجم =====
-    comp_index = defaultdict(list)  # {(type, size): [products]}
-    
-    for idx, cp in enumerate(comp_products):
-        cp_name = _get_name(cp)
-        if not cp_name:
-            continue
-        
-        cp_type = classify_product(cp_name)
-        # لا نرفض منتجات المنافسين - نصنفها فقط
-        # if cp_type == "rejected":
-        #     continue
-        
-        cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
-        cp_price = _get_price(cp)
-        
-        if cp_price <= 0:
-            continue
-        
-        # تجميع حسب النوع والحجم (مع تقريب الحجم لأقرب 5ml)
-        size_bucket = round(cp_size / 5) * 5 if cp_size > 0 else 0
-        key = (cp_type, size_bucket)
-        
-        comp_index[key].append({
-            "index": idx,
-            "product": cp,
-            "name": cp_name,
-            "type": cp_type,
-            "size": cp_size,
-            "price": cp_price,
-            "normalized": normalize_name(cp_name),
-        })
-    
-    # ===== المطابقة مع early termination =====
+
     matched_comp_indices = set()
-    import time
-    start_time = time.time()
-    total_products = len(my_products)
-    processed = 0
-    
-    for idx, my_p in enumerate(my_products):
+
+    for my_p in my_products:
         my_name = _get_name(my_p)
         if not my_name:
             continue
 
         my_type = classify_product(my_name)
-        # لا نرفض أي منتج - نصنفه فقط للمطابقة الدقيقة
-        # if my_type == "rejected":
-        #     continue
-        
         my_size = my_p.get("size_ml", 0) or extract_size(my_name)
         my_price = _get_price(my_p)
         my_norm = normalize_name(my_name)
         my_id = _get_id(my_p)
-        
-        # البحث في المجموعات المناسبة فقط
-        size_bucket = round(my_size / 5) * 5 if my_size > 0 else 0
-        candidates = []
-        
-        # البحث في نفس المجموعة
-        key = (my_type, size_bucket)
-        if key in comp_index:
-            candidates.extend(comp_index[key])
 
-        # البحث في المجموعات المجاورة (±5ml)
-        for delta in [-5, 5]:
-            adj_key = (my_type, size_bucket + delta)
-            if adj_key in comp_index:
-                candidates.extend(comp_index[adj_key])
-
-        # البحث في نفس النوع بدون حجم محدد
-        no_size_key = (my_type, 0)
-        if no_size_key in comp_index:
-            candidates.extend(comp_index[no_size_key])
-
-        if not candidates:
+        if my_type == "rejected":
             continue
 
-        # ===== البحث عن جميع المطابقات (بدون early termination) =====
+        # جمع كل المطابقات المحتملة (ليس فقط الأفضل)
         all_matches = []
-        best_score = 0
 
-        # استخراج العلامة التجارية والتركيز
-        my_brand = extract_brand(my_name)
-        my_conc = extract_concentration(my_name)
-
-        for cand in candidates:
-            # 1. تطابق الحجم المرن (±5ml)
-            if my_size > 0 and cand["size"] > 0 and abs(my_size - cand["size"]) > 5:
+        for idx, cp in enumerate(comp_products):
+            cp_name = _get_name(cp)
+            if not cp_name:
                 continue
-            
-            # 2. التحقق من العلامة التجارية (إذا متوفرة)
-            cand_brand = extract_brand(cand["name"])
-            if my_brand and cand_brand and my_brand.lower() != cand_brand.lower():
-                continue  # علامة تجارية مختلفة → تجاهل
-            
-            # 3. التحقق من التركيز (إذا متوفر)
-            cand_conc = extract_concentration(cand["name"])
-            if not concentrations_match(my_conc, cand_conc):
-                continue  # تركيز غير متطابق → تجاهل
-            
-            # 4. حساب التشابه
-            score = fuzz.token_sort_ratio(my_norm, cand["normalized"])
-            
-            if score >= threshold:
+
+            cp_type = classify_product(cp_name)
+            cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
+            cp_price = _get_price(cp)
+
+            # قانون 1: تطابق النوع
+            if my_type != cp_type:
+                continue
+
+            # قانون 2: تطابق الحجم
+            if my_size > 0 and cp_size > 0 and abs(my_size - cp_size) > 1:
+                continue
+
+            # قانون 3: فيتو العينات
+            if cp_type == "rejected":
+                continue
+
+            # حساب التشابه
+            cp_norm = normalize_name(cp_name)
+            score = fuzz.token_sort_ratio(my_norm, cp_norm)
+
+            if score >= threshold and cp_price > 0:
                 all_matches.append({
-                    "comp_product": cand["product"],
-                    "comp_index": cand["index"],
-                    "comp_name": cand["name"],
-                    "comp_price": cand["price"],
+                    "comp_product": cp,
+                    "comp_index": idx,
+                    "comp_name": cp_name,
+                    "comp_price": cp_price,
                     "match_score": score,
-                    "comp_type": cand["type"],
-                    "comp_size": cand["size"],
+                    "comp_type": cp_type,
+                    "comp_size": cp_size,
                 })
-                
-                best_score = max(best_score, score)
-                
-                # Early termination محسّن: إيقاف عند 98%+ (تطابق شبه تام)
-                if score >= 98:
-                    break
 
         if not all_matches:
             continue
@@ -500,75 +330,6 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
 
         # أفضل مطابقة (أعلى نسبة تشابه)
         best_match = max(valid_matches, key=lambda m: m["match_score"])
-        
-        # ===== التحقق بالذكاء الصناعي (AI Verification) =====
-        # إذا كانت المطابقة النصية < 95%، نتحقق بالذكاء الصناعي
-        ai_verified = False
-        ai_confidence = 0
-        ai_reasoning = ""
-        
-        if best_match["match_score"] < 95:
-            # بناء بيانات المنتجات للذكاء الصناعي
-            my_brand = extract_brand(my_name)
-            my_conc = extract_concentration(my_name)
-            comp_brand = extract_brand(best_match["comp_name"])
-            comp_conc = extract_concentration(best_match["comp_name"])
-            
-            my_product_data = {
-                "name": my_name,
-                "brand": my_brand,
-                "concentration": my_conc,
-                "size": my_size,
-            }
-            
-            comp_product_data = {
-                "name": best_match["comp_name"],
-                "brand": comp_brand,
-                "concentration": comp_conc,
-                "size": best_match["comp_size"],
-            }
-            
-            # عرض مباشر لعمل AI
-            if progress_callback:
-                progress_callback(
-                    30 + int((idx / total_products) * 40),
-                    f"🤖 AI يتحقق من: {my_name[:50]}... 🔍"
-                )
-            
-            # التحقق بالتحليل الدلالي أولاً
-            semantic_result = semantic_verify_match(
-                my_product_data,
-                comp_product_data,
-                best_match["match_score"]
-            )
-            
-            # عرض مباشر: التحقق بالذكاء الصناعي
-            if progress_callback:
-                progress_callback(
-                    30 + int((idx / total_products) * 40),
-                    f"🧠 Gemini AI يحلل: {comp_brand} vs {my_brand} 🔬"
-                )
-            
-            # ثم التحقق بالذكاء الصناعي (Gemini AI)
-            ai_result = verify_match_with_ai(
-                my_product_data,
-                comp_product_data,
-                semantic_result
-            )
-            
-            ai_verified = ai_result.get("verified", False)
-            ai_confidence = ai_result.get("confidence", 0)
-            ai_reasoning = ai_result.get("reasoning", "")
-            ai_status = ai_result.get("status", "")
-            
-            # إذا رفض الذكاء الصناعي المطابقة، نتجاهلها
-            if not ai_verified:
-                continue  # تجاهل هذه المطابقة
-        else:
-            # مطابقة ممتازة (95%+) → قبول مباشر
-            ai_verified = True
-            ai_confidence = best_match["match_score"]
-            ai_reasoning = "مطابقة نصية ممتازة"
 
         # السعر الموصى = أقل منافس - 1 ريال
         recommended_price = min_comp_price - 1
@@ -608,16 +369,6 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
             "num_competitors": len(valid_matches),
             "outliers_removed": len(outlier_indices),
             "my_id": my_id,
-            # معلومات الذكاء الصناعي
-            "ai_verified": ai_verified,
-            "ai_confidence": ai_confidence,
-            "ai_reasoning": ai_reasoning,
-            "ai_status": ai_status if 'ai_status' in locals() else "✅ مؤكد",
-            # تفاصيل المنتجات
-            "my_brand": extract_brand(my_name),
-            "my_concentration": extract_concentration(my_name),
-            "comp_brand": extract_brand(best_match["comp_name"]),
-            "comp_concentration": extract_concentration(best_match["comp_name"]),
         }
 
         # تحديد مستوى الخطورة
@@ -646,92 +397,57 @@ def match_products(my_products, comp_products, threshold=60, progress_callback=N
             result_entry["recommendation"] = "increase"
             result_entry["reasoning"] = f"سعرنا ({my_price} ر.س) أقل من أقل منافس ({min_comp_price} ر.س) بـ {abs(price_diff):.0f} ر.س. الموصى: {recommended_price:.0f} ر.س"
             results["raise"].append(result_entry)
-        
-        # تحديث progress كل منتج
-        processed += 1
-        if progress_callback and processed % 10 == 0:  # تحديث كل 10 منتجات
-            elapsed = time.time() - start_time
-            percent = int(30 + (processed / total_products) * 40)  # 30-70%
-            avg_time_per_product = elapsed / processed
-            remaining_products = total_products - processed
-            estimated_remaining = avg_time_per_product * remaining_products
-            progress_callback(percent, f"⏳ جاري المطابقة: {processed}/{total_products} منتج ({percent}%) | ⏱️ متبقي: ~{estimated_remaining:.0f}ث")
 
-    # ===== كشف المنتجات المفقودة (محسّن) =====
+    # كشف المنتجات المفقودة - مع تحقق ذكي محسّن
+    # نستخدم threshold أقل (45) للتحقق من المنتجات المفقودة
     missing_threshold = 45
     
-    # تجميع منتجاتنا للبحث السريع
-    my_index = defaultdict(list)
-    for my_p in my_products:
-        my_name = _get_name(my_p)
-        if not my_name:
-            continue
-        my_type = classify_product(my_name)
-        # لا نرفض أي منتج - نصنفه فقط للمطابقة الدقيقة
-        # if my_type == "rejected":
-        #     continue
-        my_size = my_p.get("size_ml", 0) or extract_size(my_name)
-        size_bucket = round(my_size / 5) * 5 if my_size > 0 else 0
-        key = (my_type, size_bucket)
-        my_index[key].append({
-            "name": my_name,
-            "normalized": normalize_name(my_name),
-            "type": my_type,
-            "size": my_size,
-        })
-    
     for idx, cp in enumerate(comp_products):
-        if idx in matched_comp_indices:
-            continue
-        
-        cp_name = _get_name(cp)
-        if not cp_name:
-            continue
-        
-        cp_type = classify_product(cp_name)
-        # لا نرفض منتجات المنافسين - نصنفها فقط
-        # if cp_type == "rejected":
-        #     continue
-        
-        cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
-        cp_norm = normalize_name(cp_name)
-        
-        # البحث في المجموعات المناسبة
-        size_bucket = round(cp_size / 5) * 5 if cp_size > 0 else 0
-        candidates = []
-        
-        key = (cp_type, size_bucket)
-        if key in my_index:
-            candidates.extend(my_index[key])
-        
-        for delta in [-5, 5]:
-            adj_key = (cp_type, size_bucket + delta)
-            if adj_key in my_index:
-                candidates.extend(my_index[adj_key])
-        
-        no_size_key = (cp_type, 0)
-        if no_size_key in my_index:
-            candidates.extend(my_index[no_size_key])
-        
-        found_similar = False
-        for cand in candidates:
-            if cand["size"] > 0 and cp_size > 0 and abs(cand["size"] - cp_size) > 1:
+        if idx not in matched_comp_indices:
+            cp_name = _get_name(cp)
+            if not cp_name:
                 continue
-        
-            score = fuzz.token_sort_ratio(cand["normalized"], cp_norm)
-            if score >= missing_threshold:
-                found_similar = True
-                break
-        
-        if not found_similar:
-            results["missing"].append({
-                "comp_product": cp,
-                "comp_name": cp_name,
-                "comp_type": cp_type,
-                "comp_size": cp_size,
-                "comp_price": _get_price(cp),
-                "competitor_name": cp.get("_competitor_name", "غير محدد"),
-            })
+            cp_type = classify_product(cp_name)
+            if cp_type == "rejected":
+                continue
+                
+            # تحقق ذكي: هل المنتج موجود فعلاً بنسبة تشابه أقل؟
+            cp_norm = normalize_name(cp_name)
+            cp_size = cp.get("size_ml", 0) or extract_size(cp_name)
+            
+            found_similar = False
+            for my_p in my_products:
+                my_name = _get_name(my_p)
+                if not my_name:
+                    continue
+                    
+                my_type = classify_product(my_name)
+                my_size = my_p.get("size_ml", 0) or extract_size(my_name)
+                
+                # تطابق النوع والحجم
+                if my_type != cp_type:
+                    continue
+                if my_size > 0 and cp_size > 0 and abs(my_size - cp_size) > 1:
+                    continue
+                
+                # حساب التشابه بنسبة أقل
+                my_norm = normalize_name(my_name)
+                score = fuzz.token_sort_ratio(my_norm, cp_norm)
+                
+                if score >= missing_threshold:
+                    found_similar = True
+                    break
+            
+            # فقط إذا لم نجد أي تشابه → مفقود
+            if not found_similar:
+                results["missing"].append({
+                    "comp_product": cp,
+                    "comp_name": cp_name,
+                    "comp_type": cp_type,
+                    "comp_size": cp_size,
+                    "comp_price": _get_price(cp),
+                    "competitor_name": cp.get("_competitor_name", "غير محدد"),
+                })
 
     # ترتيب حسب الخطورة
     for key in ["raise", "lower"]:
@@ -852,19 +568,10 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
 
     # 1. تحميل ملف المتجر
     try:
-        if isinstance(my_file, str):
-            # مسار ملف
-            if my_file.endswith(".xlsx"):
-                my_data = pd.read_excel(my_file)
-            else:
-                my_data = pd.read_csv(my_file, encoding='utf-8-sig')
+        if my_file["name"].endswith(".xlsx"):
+            my_data = pd.read_excel(BytesIO(my_file["data"]))
         else:
-            # dict مع data
-            if my_file["name"].endswith(".xlsx"):
-                my_data = pd.read_excel(BytesIO(my_file["data"]))
-            else:
-                my_data = pd.read_csv(BytesIO(my_file["data"]), encoding='utf-8-sig')
-        
+            my_data = pd.read_csv(BytesIO(my_file["data"]))
         my_data = normalize_columns(my_data)
         my_products = my_data.to_dict(orient="records")
     except Exception as e:
@@ -875,31 +582,18 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     comp_names = []
     for comp_file in comp_files:
         try:
-            if isinstance(comp_file, str):
-                # مسار ملف
-                if comp_file.endswith(".xlsx"):
-                    comp_data = pd.read_excel(comp_file)
-                else:
-                    comp_data = pd.read_csv(comp_file, encoding='utf-8-sig')
-                comp_name = comp_file.split('/')[-1]
+            if comp_file["name"].endswith(".xlsx"):
+                comp_data = pd.read_excel(BytesIO(comp_file["data"]))
             else:
-                # dict مع data
-                if comp_file["name"].endswith(".xlsx"):
-                    comp_data = pd.read_excel(BytesIO(comp_file["data"]))
-                else:
-                    comp_data = pd.read_csv(BytesIO(comp_file["data"]), encoding='utf-8-sig')
-                comp_name = comp_file["name"]
-            
+                comp_data = pd.read_csv(BytesIO(comp_file["data"]))
             comp_data = normalize_columns(comp_data)
             comp_products = comp_data.to_dict(orient="records")
-            
+            # إضافة اسم المنافس لكل منتج
             for p in comp_products:
-                p["_competitor_name"] = comp_name
-            
+                p["_competitor_name"] = comp_file["name"]
             all_comp_products.extend(comp_products)
-            comp_names.append(comp_name)
-        except Exception as e:
-            print(f"⚠️ خطأ في تحميل ملف منافس: {e}")
+            comp_names.append(comp_file["name"])
+        except Exception:
             continue
 
     if not all_comp_products:
@@ -918,7 +612,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
         progress_callback(30, f"⏳ جاري مطابقة {len(my_products)} منتج مع {len(all_comp_products)} منتج منافس...")
 
     # 4. تشغيل المطابقة
-    match_results = match_products(my_products, all_comp_products, threshold, progress_callback=progress_callback)
+    match_results = match_products(my_products, all_comp_products, threshold)
 
     if progress_callback:
         progress_callback(70, "✅ تمت المطابقة! جاري تصنيف النتائج...")
@@ -926,24 +620,13 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
     # 5. تحويل النتائج إلى DataFrames
     df_raise = pd.DataFrame([
         {
-            "المقارنة": f"{m.get('my_name', '')} 🆚 {m.get('comp_name', '')}",
             "المنتج": m.get("my_name", ""),
-            "ماركتنا": m.get("my_brand", ""),
-            "تركيزنا": m.get("my_concentration", ""),
-            "حجمنا": m.get("my_size", 0),
-            "اسم المنافس": m.get("comp_name", ""),
-            "ماركة المنافس": m.get("comp_brand", ""),
-            "تركيز المنافس": m.get("comp_concentration", ""),
-            "حجم المنافس": m.get("comp_size", 0),
             "السعر": m["my_price"],
             "أقل سعر منافس": m["comp_price"],
             "السعر الموصى": m["recommended_price"],
             "الفرق": m["price_diff"],
             "النسبة %": m["diff_percent"],
             "الثقة %": m["confidence"],
-            "ثقة AI %": m.get("ai_confidence", 0),
-            "حالة التحقق": m.get("ai_status", "✅ مؤكد"),
-            "تفسير AI": m.get("ai_reasoning", ""),
             "عدد المنافسين": m["num_competitors"],
             "التفسير": m.get("reasoning", ""),
             "الخطورة": {"high": "حرج", "medium": "متوسط", "low": "عادي"}.get(m["risk_level"], "عادي"),
@@ -955,24 +638,13 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
 
     df_lower = pd.DataFrame([
         {
-            "المقارنة": f"{m.get('my_name', '')} 🆚 {m.get('comp_name', '')}",
             "المنتج": m.get("my_name", ""),
-            "ماركتنا": m.get("my_brand", ""),
-            "تركيزنا": m.get("my_concentration", ""),
-            "حجمنا": m.get("my_size", 0),
-            "اسم المنافس": m.get("comp_name", ""),
-            "ماركة المنافس": m.get("comp_brand", ""),
-            "تركيز المنافس": m.get("comp_concentration", ""),
-            "حجم المنافس": m.get("comp_size", 0),
             "السعر": m["my_price"],
             "أقل سعر منافس": m["comp_price"],
             "السعر الموصى": m["recommended_price"],
             "الفرق": m["price_diff"],
             "النسبة %": m["diff_percent"],
             "الثقة %": m["confidence"],
-            "ثقة AI %": m.get("ai_confidence", 0),
-            "حالة التحقق": m.get("ai_status", "✅ مؤكد"),
-            "تفسير AI": m.get("ai_reasoning", ""),
             "عدد المنافسين": m["num_competitors"],
             "التفسير": m.get("reasoning", ""),
             "الخطورة": {"high": "حرج", "medium": "متوسط", "low": "عادي"}.get(m["risk_level"], "عادي"),
@@ -984,9 +656,7 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
 
     df_approved = pd.DataFrame([
         {
-            "المقارنة": f"{m.get('my_name', '')} 🆚 {m.get('comp_name', '')}",
             "المنتج": m.get("my_name", ""),
-            "اسم المنافس": m.get("comp_name", ""),
             "السعر": m["my_price"],
             "أقل سعر منافس": m["comp_price"],
             "الفرق": m["price_diff"],
@@ -1018,21 +688,8 @@ def run_full_analysis(my_file, comp_files, threshold=60, progress_callback=None)
 
     # 7. إحصائيات
     stats = {
-        "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "total": len(df_all),
-        "raise_count": len(df_raise),
-        "lower_count": len(df_lower),
-        "approved_count": len(df_approved),
-        "missing_count": len(df_missing),
-        "review_count": 0,
-        "critical": len(df_all[df_all.get("الخطورة", pd.Series()) == "حرج"]) if not df_all.empty and "الخطورة" in df_all.columns else 0,
-        "avg_diff": round(df_all["الفرق"].mean(), 2) if not df_all.empty and "الفرق" in df_all.columns else 0,
-        "competitors": len(comp_files),
-        "my_products_count": len(my_products),
-        "comp_products_count": len(all_comp_products),
         "threshold": threshold,
     }
-
     return {
         "stats": stats,
         "raise": df_raise,

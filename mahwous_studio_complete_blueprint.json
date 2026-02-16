@@ -1,0 +1,973 @@
+{
+  "name": "Mahwous Studio - Complete Auto Publish (All Platforms & Types)",
+  "description": "نشر تلقائي كامل على جميع منصات التواصل مع جميع أنواع المنشورات - فقط ربط الحسابات!",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": 1,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        },
+        "restore": {
+          "parameters": {
+            "hook": {
+              "data": {
+                "editable": "true"
+              },
+              "label": "Mahwous Studio Webhook"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hook",
+            "type": "hook:gateway-webhook",
+            "label": "Webhook",
+            "required": true
+          }
+        ],
+        "interface": [
+          {
+            "name": "product_name",
+            "type": "text",
+            "label": "اسم المنتج"
+          },
+          {
+            "name": "brand",
+            "type": "text",
+            "label": "العلامة التجارية"
+          },
+          {
+            "name": "type",
+            "type": "text",
+            "label": "النوع"
+          },
+          {
+            "name": "size",
+            "type": "text",
+            "label": "الحجم"
+          },
+          {
+            "name": "images",
+            "type": "collection",
+            "label": "الصور",
+            "spec": [
+              {
+                "name": "story",
+                "type": "url",
+                "label": "صورة Story (1080x1920)"
+              },
+              {
+                "name": "post",
+                "type": "url",
+                "label": "صورة Post (1080x1080)"
+              },
+              {
+                "name": "twitter",
+                "type": "url",
+                "label": "صورة Twitter (1200x675)"
+              }
+            ]
+          },
+          {
+            "name": "video",
+            "type": "url",
+            "label": "الفيديو"
+          },
+          {
+            "name": "captions",
+            "type": "collection",
+            "label": "النصوص"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        },
+        "restore": {}
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 3,
+              "module": "instagram:CreateMediaObject",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.instagram}}"
+              },
+              "mapper": {
+                "media_type": "IMAGE",
+                "image_url": "{{1.images.post}}",
+                "caption": "{{1.captions.instagram.caption}}\n\n{{join(1.captions.instagram.hashtags; \" \")}}",
+                "alt_text": "{{1.product_name}}",
+                "location_id": "",
+                "user_tags": []
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": -400,
+                  "name": "Instagram Post"
+                },
+                "restore": {
+                  "expect": {
+                    "media_type": {
+                      "mode": "chose",
+                      "label": "Image"
+                    }
+                  },
+                  "parameters": {
+                    "account": {
+                      "label": "Instagram Business Account",
+                      "data": {
+                        "scoped": "true",
+                        "connection": "instagram"
+                      }
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:instagram",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "media_type",
+                    "type": "select",
+                    "label": "Media Type",
+                    "required": true,
+                    "validate": {
+                      "enum": ["IMAGE", "VIDEO", "CAROUSEL"]
+                    }
+                  },
+                  {
+                    "name": "image_url",
+                    "type": "url",
+                    "label": "Image URL",
+                    "required": true
+                  },
+                  {
+                    "name": "caption",
+                    "type": "text",
+                    "label": "Caption (2200 حرف كحد أقصى)"
+                  },
+                  {
+                    "name": "alt_text",
+                    "type": "text",
+                    "label": "Alt Text"
+                  }
+                ]
+              }
+            },
+            {
+              "id": 4,
+              "module": "instagram:CreateStory",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.instagram}}"
+              },
+              "mapper": {
+                "media_url": "{{1.images.story}}",
+                "media_type": "IMAGE"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": -400,
+                  "name": "Instagram Story"
+                },
+                "restore": {
+                  "expect": {
+                    "media_type": {
+                      "mode": "chose",
+                      "label": "Image"
+                    }
+                  },
+                  "parameters": {
+                    "account": {
+                      "label": "Instagram Business Account"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:instagram",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "media_url",
+                    "type": "url",
+                    "label": "Media URL",
+                    "required": true
+                  },
+                  {
+                    "name": "media_type",
+                    "type": "select",
+                    "label": "Media Type",
+                    "required": true,
+                    "validate": {
+                      "enum": ["IMAGE", "VIDEO"]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": 5,
+              "module": "instagram:CreateMediaObject",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.instagram}}"
+              },
+              "mapper": {
+                "media_type": "VIDEO",
+                "video_url": "{{1.video}}",
+                "caption": "{{1.captions.instagram.caption}}\n\n{{join(1.captions.instagram.hashtags; \" \")}}",
+                "thumbnail_offset": 0,
+                "is_reel": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": -400,
+                  "name": "Instagram Reels"
+                },
+                "restore": {
+                  "expect": {
+                    "media_type": {
+                      "mode": "chose",
+                      "label": "Video"
+                    },
+                    "is_reel": {
+                      "mode": "chose",
+                      "label": "نعم"
+                    }
+                  },
+                  "parameters": {
+                    "account": {
+                      "label": "Instagram Business Account"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:instagram",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "media_type",
+                    "type": "select",
+                    "label": "Media Type",
+                    "required": true
+                  },
+                  {
+                    "name": "video_url",
+                    "type": "url",
+                    "label": "Video URL",
+                    "required": true
+                  },
+                  {
+                    "name": "caption",
+                    "type": "text",
+                    "label": "Caption"
+                  },
+                  {
+                    "name": "is_reel",
+                    "type": "boolean",
+                    "label": "هل هو Reel؟"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 6,
+              "module": "facebook:CreatePagePost",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.facebook}}"
+              },
+              "mapper": {
+                "page": "{{connection.facebook_page}}",
+                "message": "{{1.captions.facebook.caption}}\n\n{{join(1.captions.facebook.hashtags; \" \")}}",
+                "picture": "{{1.images.post}}",
+                "published": true,
+                "targeting": {
+                  "geo_locations": {
+                    "countries": ["SA", "AE", "KW", "QA", "BH", "OM"]
+                  }
+                }
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": -200,
+                  "name": "Facebook Post"
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "Facebook Page"
+                    }
+                  },
+                  "expect": {
+                    "page": {
+                      "label": "صفحتك"
+                    },
+                    "published": {
+                      "mode": "chose",
+                      "label": "منشور"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:facebook",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "page",
+                    "type": "select",
+                    "label": "Page",
+                    "required": true
+                  },
+                  {
+                    "name": "message",
+                    "type": "text",
+                    "label": "Message"
+                  },
+                  {
+                    "name": "picture",
+                    "type": "url",
+                    "label": "Picture URL"
+                  },
+                  {
+                    "name": "published",
+                    "type": "boolean",
+                    "label": "Published"
+                  }
+                ]
+              }
+            },
+            {
+              "id": 7,
+              "module": "facebook:CreatePageStory",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.facebook}}"
+              },
+              "mapper": {
+                "page": "{{connection.facebook_page}}",
+                "photo_url": "{{1.images.story}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": -200,
+                  "name": "Facebook Story"
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "Facebook Page"
+                    }
+                  },
+                  "expect": {
+                    "page": {
+                      "label": "صفحتك"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:facebook",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "page",
+                    "type": "select",
+                    "label": "Page",
+                    "required": true
+                  },
+                  {
+                    "name": "photo_url",
+                    "type": "url",
+                    "label": "Photo URL",
+                    "required": true
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 8,
+              "module": "twitter:PostTweet",
+              "version": 2,
+              "parameters": {
+                "account": "{{connection.twitter}}"
+              },
+              "mapper": {
+                "text": "{{1.captions.twitter.caption}}",
+                "media": [
+                  {
+                    "url": "{{1.images.twitter}}"
+                  }
+                ],
+                "reply_settings": "everyone"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 0,
+                  "name": "Twitter Tweet"
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "Twitter API v2"
+                    }
+                  },
+                  "expect": {
+                    "reply_settings": {
+                      "mode": "chose",
+                      "label": "Everyone"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:twitter",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "text",
+                    "type": "text",
+                    "label": "Text (280 حرف كحد أقصى)",
+                    "required": true
+                  },
+                  {
+                    "name": "media",
+                    "type": "array",
+                    "label": "Media",
+                    "spec": [
+                      {
+                        "name": "url",
+                        "type": "url",
+                        "label": "Media URL"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "reply_settings",
+                    "type": "select",
+                    "label": "من يمكنه الرد؟"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 9,
+              "module": "telegram:SendPhoto",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.telegram}}"
+              },
+              "mapper": {
+                "chat_id": "@mahwous_channel",
+                "photo": "{{1.images.post}}",
+                "caption": "{{1.captions.telegram.caption}}",
+                "parse_mode": "HTML",
+                "disable_notification": false,
+                "protect_content": false
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 200,
+                  "name": "Telegram Post"
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "Telegram Bot"
+                    }
+                  },
+                  "expect": {
+                    "parse_mode": {
+                      "mode": "chose",
+                      "label": "HTML"
+                    },
+                    "disable_notification": {
+                      "mode": "chose",
+                      "label": "لا"
+                    },
+                    "protect_content": {
+                      "mode": "chose",
+                      "label": "لا"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:telegram",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "chat_id",
+                    "type": "text",
+                    "label": "Chat ID (@channel_username أو رقم)",
+                    "required": true
+                  },
+                  {
+                    "name": "photo",
+                    "type": "url",
+                    "label": "Photo URL",
+                    "required": true
+                  },
+                  {
+                    "name": "caption",
+                    "type": "text",
+                    "label": "Caption (1024 حرف كحد أقصى)"
+                  },
+                  {
+                    "name": "parse_mode",
+                    "type": "select",
+                    "label": "Parse Mode"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 10,
+              "module": "tiktok:UploadVideo",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.tiktok}}"
+              },
+              "mapper": {
+                "video_url": "{{1.video}}",
+                "caption": "{{1.captions.tiktok.caption}}",
+                "privacy_level": "PUBLIC_TO_EVERYONE",
+                "disable_duet": false,
+                "disable_stitch": false,
+                "disable_comment": false,
+                "video_cover_timestamp_ms": 1000
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 400,
+                  "name": "TikTok Video"
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "TikTok Business Account"
+                    }
+                  },
+                  "expect": {
+                    "privacy_level": {
+                      "mode": "chose",
+                      "label": "Public"
+                    },
+                    "disable_duet": {
+                      "mode": "chose",
+                      "label": "لا"
+                    },
+                    "disable_stitch": {
+                      "mode": "chose",
+                      "label": "لا"
+                    },
+                    "disable_comment": {
+                      "mode": "chose",
+                      "label": "لا"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:tiktok",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "video_url",
+                    "type": "url",
+                    "label": "Video URL",
+                    "required": true
+                  },
+                  {
+                    "name": "caption",
+                    "type": "text",
+                    "label": "Caption (150 حرف كحد أقصى)"
+                  },
+                  {
+                    "name": "privacy_level",
+                    "type": "select",
+                    "label": "Privacy Level"
+                  },
+                  {
+                    "name": "disable_duet",
+                    "type": "boolean",
+                    "label": "تعطيل Duet؟"
+                  },
+                  {
+                    "name": "disable_stitch",
+                    "type": "boolean",
+                    "label": "تعطيل Stitch؟"
+                  },
+                  {
+                    "name": "disable_comment",
+                    "type": "boolean",
+                    "label": "تعطيل التعليقات؟"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 11,
+              "module": "linkedin:CreatePost",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.linkedin}}"
+              },
+              "mapper": {
+                "account_type": "ORGANIZATION",
+                "organization": "{{connection.linkedin_page}}",
+                "text": "{{1.captions.linkedin.caption}}",
+                "visibility": "PUBLIC",
+                "media": [
+                  {
+                    "url": "{{1.images.post}}",
+                    "alt_text": "{{1.product_name}}"
+                  }
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 600,
+                  "name": "LinkedIn Post"
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "LinkedIn Page"
+                    }
+                  },
+                  "expect": {
+                    "account_type": {
+                      "mode": "chose",
+                      "label": "Organization"
+                    },
+                    "visibility": {
+                      "mode": "chose",
+                      "label": "Public"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:linkedin",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "account_type",
+                    "type": "select",
+                    "label": "Account Type",
+                    "required": true
+                  },
+                  {
+                    "name": "organization",
+                    "type": "select",
+                    "label": "Organization"
+                  },
+                  {
+                    "name": "text",
+                    "type": "text",
+                    "label": "Text (3000 حرف كحد أقصى)",
+                    "required": true
+                  },
+                  {
+                    "name": "visibility",
+                    "type": "select",
+                    "label": "Visibility"
+                  },
+                  {
+                    "name": "media",
+                    "type": "array",
+                    "label": "Media"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 12,
+              "module": "pinterest:CreatePin",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.pinterest}}"
+              },
+              "mapper": {
+                "board": "{{connection.pinterest_board}}",
+                "image_url": "{{1.images.post}}",
+                "title": "{{1.product_name}}",
+                "description": "{{1.captions.pinterest.caption}}",
+                "link": "https://mahwous.com/products/{{1.product_name}}",
+                "alt_text": "{{1.product_name}} - {{1.brand}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 800,
+                  "name": "Pinterest Pin"
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "Pinterest Business Account"
+                    }
+                  },
+                  "expect": {
+                    "board": {
+                      "label": "اللوحة"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:pinterest",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "board",
+                    "type": "select",
+                    "label": "Board",
+                    "required": true
+                  },
+                  {
+                    "name": "image_url",
+                    "type": "url",
+                    "label": "Image URL",
+                    "required": true
+                  },
+                  {
+                    "name": "title",
+                    "type": "text",
+                    "label": "Title (100 حرف كحد أقصى)"
+                  },
+                  {
+                    "name": "description",
+                    "type": "text",
+                    "label": "Description (500 حرف كحد أقصى)"
+                  },
+                  {
+                    "name": "link",
+                    "type": "url",
+                    "label": "Link"
+                  },
+                  {
+                    "name": "alt_text",
+                    "type": "text",
+                    "label": "Alt Text"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 13,
+              "module": "youtube:CreateCommunityPost",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.youtube}}"
+              },
+              "mapper": {
+                "text": "{{1.captions.instagram.caption}}",
+                "image_url": "{{1.images.post}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 1000,
+                  "name": "YouTube Community"
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "YouTube Channel"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:youtube",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "text",
+                    "type": "text",
+                    "label": "Text"
+                  },
+                  {
+                    "name": "image_url",
+                    "type": "url",
+                    "label": "Image URL"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 14,
+              "module": "discord:SendMessage",
+              "version": 1,
+              "parameters": {
+                "webhook": "{{connection.discord_webhook}}"
+              },
+              "mapper": {
+                "content": "{{1.captions.instagram.caption}}",
+                "embeds": [
+                  {
+                    "title": "{{1.product_name}}",
+                    "description": "{{1.descriptions.short}}",
+                    "image": {
+                      "url": "{{1.images.post}}"
+                    },
+                    "color": 3447003
+                  }
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 1200,
+                  "name": "Discord Message"
+                },
+                "restore": {
+                  "parameters": {
+                    "webhook": {
+                      "label": "Discord Webhook URL"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "webhook",
+                    "type": "url",
+                    "label": "Webhook URL",
+                    "required": true
+                  },
+                  {
+                    "name": "content",
+                    "type": "text",
+                    "label": "Content (2000 حرف كحد أقصى)"
+                  },
+                  {
+                    "name": "embeds",
+                    "type": "array",
+                    "label": "Embeds"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "us1.make.com"
+  },
+  "notes": [
+    {
+      "text": "🎯 Mahwous Studio - Complete Auto Publish\n\n✅ Instagram: Post + Story + Reels\n✅ Facebook: Post + Story\n✅ Twitter: Tweet\n✅ Telegram: Photo Message\n✅ TikTok: Video Upload\n✅ LinkedIn: Post\n✅ Pinterest: Pin\n✅ YouTube: Community Post\n✅ Discord: Message\n\n📝 فقط ربط الحسابات - كل الإعدادات جاهزة!",
+      "position": {
+        "x": 0,
+        "y": -200
+      }
+    }
+  ]
+}

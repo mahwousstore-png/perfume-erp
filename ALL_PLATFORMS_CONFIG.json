@@ -1,0 +1,424 @@
+{
+  "webhook_url": "https://hook.eu2.make.com/28v9yfukz2u1yotgsemg8j32jhwegag2",
+  "platforms": {
+    "telegram": {
+      "enabled": true,
+      "priority": 1,
+      "difficulty": "easy",
+      "setup_time": "3 minutes",
+      "api_endpoint": "https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+      "method": "POST",
+      "required_credentials": {
+        "bot_token": "YOUR_TELEGRAM_BOT_TOKEN_HERE"
+      },
+      "setup_instructions": [
+        "1. افتح Telegram وابحث عن @BotFather",
+        "2. أرسل /newbot",
+        "3. اتبع التعليمات وأنشئ Bot",
+        "4. انسخ Bot Token",
+        "5. استبدل YOUR_TELEGRAM_BOT_TOKEN_HERE في هذا الملف",
+        "6. أضف Bot إلى قناتك كـ Administrator",
+        "7. امنحه صلاحية Post Messages"
+      ],
+      "request_config": {
+        "url": "https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "chat_id": "@mahwous_channel",
+          "photo": "{{images.post}}",
+          "caption": "{{captions.telegram.caption}}",
+          "parse_mode": "HTML"
+        }
+      },
+      "make_com_module": {
+        "type": "telegram:sendPhoto",
+        "version": 3,
+        "connection": {
+          "type": "telegram-bot",
+          "token": "YOUR_TELEGRAM_BOT_TOKEN_HERE"
+        },
+        "parameters": {
+          "chatId": "@mahwous_channel",
+          "photo": "{{1.images.post}}",
+          "caption": "{{1.captions.telegram.caption}}",
+          "parseMode": "HTML"
+        }
+      }
+    },
+    "discord": {
+      "enabled": true,
+      "priority": 2,
+      "difficulty": "easy",
+      "setup_time": "1 minute",
+      "api_endpoint": "{WEBHOOK_URL}",
+      "method": "POST",
+      "required_credentials": {
+        "webhook_url": "YOUR_DISCORD_WEBHOOK_URL_HERE"
+      },
+      "setup_instructions": [
+        "1. افتح Discord Server",
+        "2. اذهب إلى Server Settings → Integrations",
+        "3. اضغط Create Webhook",
+        "4. سمّه: Mahwous Studio",
+        "5. اختر القناة",
+        "6. انسخ Webhook URL",
+        "7. استبدل YOUR_DISCORD_WEBHOOK_URL_HERE في هذا الملف"
+      ],
+      "request_config": {
+        "url": "{WEBHOOK_URL}",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "content": "{{captions.instagram.caption}}",
+          "embeds": [
+            {
+              "title": "{{product_name}}",
+              "description": "{{descriptions.short}}",
+              "image": {
+                "url": "{{images.post}}"
+              },
+              "color": 3447003
+            }
+          ]
+        }
+      },
+      "make_com_module": {
+        "type": "http:ActionSendData",
+        "version": 3,
+        "parameters": {
+          "url": "YOUR_DISCORD_WEBHOOK_URL_HERE",
+          "method": "post",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "raw",
+          "body": "{\"content\": \"{{1.captions.instagram.caption}}\", \"embeds\": [{\"title\": \"{{1.product_name}}\", \"description\": \"{{1.descriptions.short}}\", \"image\": {\"url\": \"{{1.images.post}}\"}, \"color\": 3447003}]}"
+        }
+      }
+    },
+    "instagram": {
+      "enabled": true,
+      "priority": 3,
+      "difficulty": "medium",
+      "setup_time": "15 minutes",
+      "api_endpoint": "https://graph.facebook.com/v18.0/{IG_ACCOUNT_ID}/media",
+      "method": "POST",
+      "required_credentials": {
+        "access_token": "YOUR_INSTAGRAM_ACCESS_TOKEN_HERE",
+        "ig_account_id": "YOUR_IG_BUSINESS_ACCOUNT_ID_HERE"
+      },
+      "setup_instructions": [
+        "1. اذهب إلى https://developers.facebook.com",
+        "2. أنشئ App جديد → Business",
+        "3. أضف Instagram Graph API",
+        "4. اذهب إلى Tools → Graph API Explorer",
+        "5. اختر صفحتك",
+        "6. اختر Permissions: instagram_basic, instagram_content_publish, pages_read_engagement",
+        "7. اضغط Generate Access Token",
+        "8. انسخ Token واستبدل YOUR_INSTAGRAM_ACCESS_TOKEN_HERE",
+        "9. أرسل GET /me/accounts للحصول على Page ID",
+        "10. أرسل GET /{page_id}?fields=instagram_business_account",
+        "11. انسخ instagram_business_account.id واستبدل YOUR_IG_BUSINESS_ACCOUNT_ID_HERE"
+      ],
+      "request_config": {
+        "url": "https://graph.facebook.com/v18.0/{IG_ACCOUNT_ID}/media",
+        "method": "POST",
+        "query_params": {
+          "access_token": "{ACCESS_TOKEN}",
+          "image_url": "{{images.post}}",
+          "caption": "{{captions.instagram.caption}}"
+        }
+      },
+      "make_com_module": {
+        "type": "http:ActionSendData",
+        "version": 3,
+        "parameters": {
+          "url": "https://graph.facebook.com/v18.0/YOUR_IG_BUSINESS_ACCOUNT_ID_HERE/media",
+          "method": "post",
+          "qs": [
+            {
+              "name": "access_token",
+              "value": "YOUR_INSTAGRAM_ACCESS_TOKEN_HERE"
+            },
+            {
+              "name": "image_url",
+              "value": "{{1.images.post}}"
+            },
+            {
+              "name": "caption",
+              "value": "{{1.captions.instagram.caption}}"
+            }
+          ]
+        }
+      }
+    },
+    "facebook": {
+      "enabled": true,
+      "priority": 4,
+      "difficulty": "medium",
+      "setup_time": "10 minutes",
+      "api_endpoint": "https://graph.facebook.com/v18.0/{PAGE_ID}/photos",
+      "method": "POST",
+      "required_credentials": {
+        "page_access_token": "YOUR_FACEBOOK_PAGE_ACCESS_TOKEN_HERE",
+        "page_id": "YOUR_FACEBOOK_PAGE_ID_HERE"
+      },
+      "setup_instructions": [
+        "1. اذهب إلى https://developers.facebook.com",
+        "2. في Graph API Explorer، اختر صفحتك",
+        "3. اختر Permissions: pages_manage_posts, pages_read_engagement",
+        "4. اضغط Generate Access Token",
+        "5. انسخ Token واستبدل YOUR_FACEBOOK_PAGE_ACCESS_TOKEN_HERE",
+        "6. أرسل GET /me/accounts للحصول على Page ID",
+        "7. انسخ id واستبدل YOUR_FACEBOOK_PAGE_ID_HERE"
+      ],
+      "request_config": {
+        "url": "https://graph.facebook.com/v18.0/{PAGE_ID}/photos",
+        "method": "POST",
+        "query_params": {
+          "access_token": "{PAGE_ACCESS_TOKEN}",
+          "url": "{{images.post}}",
+          "caption": "{{captions.facebook.caption}}"
+        }
+      },
+      "make_com_module": {
+        "type": "http:ActionSendData",
+        "version": 3,
+        "parameters": {
+          "url": "https://graph.facebook.com/v18.0/YOUR_FACEBOOK_PAGE_ID_HERE/photos",
+          "method": "post",
+          "qs": [
+            {
+              "name": "access_token",
+              "value": "YOUR_FACEBOOK_PAGE_ACCESS_TOKEN_HERE"
+            },
+            {
+              "name": "url",
+              "value": "{{1.images.post}}"
+            },
+            {
+              "name": "caption",
+              "value": "{{1.captions.facebook.caption}}"
+            }
+          ]
+        }
+      }
+    },
+    "twitter": {
+      "enabled": true,
+      "priority": 5,
+      "difficulty": "medium",
+      "setup_time": "10 minutes",
+      "api_endpoint": "https://api.twitter.com/2/tweets",
+      "method": "POST",
+      "required_credentials": {
+        "bearer_token": "YOUR_TWITTER_BEARER_TOKEN_HERE"
+      },
+      "setup_instructions": [
+        "1. اذهب إلى https://developer.twitter.com",
+        "2. أنشئ App جديد",
+        "3. اذهب إلى Keys and tokens",
+        "4. انسخ Bearer Token",
+        "5. استبدل YOUR_TWITTER_BEARER_TOKEN_HERE في هذا الملف"
+      ],
+      "request_config": {
+        "url": "https://api.twitter.com/2/tweets",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {BEARER_TOKEN}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "text": "{{captions.twitter.caption}}"
+        }
+      },
+      "make_com_module": {
+        "type": "http:ActionSendData",
+        "version": 3,
+        "parameters": {
+          "url": "https://api.twitter.com/2/tweets",
+          "method": "post",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_TWITTER_BEARER_TOKEN_HERE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "raw",
+          "body": "{\"text\": \"{{1.captions.twitter.caption}}\"}"
+        }
+      }
+    },
+    "tiktok": {
+      "enabled": false,
+      "priority": 6,
+      "difficulty": "hard",
+      "setup_time": "30 minutes",
+      "api_endpoint": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+      "method": "POST",
+      "required_credentials": {
+        "access_token": "YOUR_TIKTOK_ACCESS_TOKEN_HERE"
+      },
+      "setup_instructions": [
+        "1. اذهب إلى https://developers.tiktok.com",
+        "2. أنشئ App جديد",
+        "3. احصل على Access Token",
+        "4. تأكد من أن حسابك Business Account",
+        "5. استبدل YOUR_TIKTOK_ACCESS_TOKEN_HERE"
+      ],
+      "request_config": {
+        "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {ACCESS_TOKEN}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "post_info": {
+            "title": "{{captions.tiktok.caption}}",
+            "privacy_level": "PUBLIC_TO_EVERYONE"
+          },
+          "source_info": {
+            "source": "FILE_URL",
+            "video_url": "{{video}}"
+          }
+        }
+      },
+      "make_com_module": {
+        "type": "http:ActionSendData",
+        "version": 3,
+        "parameters": {
+          "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+          "method": "post",
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_TIKTOK_ACCESS_TOKEN_HERE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "raw",
+          "body": "{\"post_info\": {\"title\": \"{{1.captions.tiktok.caption}}\", \"privacy_level\": \"PUBLIC_TO_EVERYONE\"}, \"source_info\": {\"source\": \"FILE_URL\", \"video_url\": \"{{1.video}}\"}}"
+        }
+      }
+    },
+    "linkedin": {
+      "enabled": false,
+      "priority": 7,
+      "difficulty": "hard",
+      "setup_time": "20 minutes",
+      "api_endpoint": "https://api.linkedin.com/v2/ugcPosts",
+      "method": "POST",
+      "required_credentials": {
+        "access_token": "YOUR_LINKEDIN_ACCESS_TOKEN_HERE",
+        "organization_id": "YOUR_LINKEDIN_ORG_ID_HERE"
+      },
+      "setup_instructions": [
+        "1. اذهب إلى https://www.linkedin.com/developers",
+        "2. أنشئ App جديد",
+        "3. احصل على Access Token",
+        "4. احصل على Organization ID",
+        "5. استبدل YOUR_LINKEDIN_ACCESS_TOKEN_HERE و YOUR_LINKEDIN_ORG_ID_HERE"
+      ],
+      "request_config": {
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {ACCESS_TOKEN}",
+          "Content-Type": "application/json",
+          "X-Restli-Protocol-Version": "2.0.0"
+        },
+        "body": {
+          "author": "urn:li:organization:{ORG_ID}",
+          "lifecycleState": "PUBLISHED",
+          "specificContent": {
+            "com.linkedin.ugc.ShareContent": {
+              "shareCommentary": {
+                "text": "{{captions.linkedin.caption}}"
+              },
+              "shareMediaCategory": "IMAGE",
+              "media": [
+                {
+                  "status": "READY",
+                  "media": "{{images.post}}"
+                }
+              ]
+            }
+          },
+          "visibility": {
+            "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
+          }
+        }
+      }
+    },
+    "pinterest": {
+      "enabled": false,
+      "priority": 8,
+      "difficulty": "medium",
+      "setup_time": "15 minutes",
+      "api_endpoint": "https://api.pinterest.com/v5/pins",
+      "method": "POST",
+      "required_credentials": {
+        "access_token": "YOUR_PINTEREST_ACCESS_TOKEN_HERE",
+        "board_id": "YOUR_PINTEREST_BOARD_ID_HERE"
+      },
+      "setup_instructions": [
+        "1. اذهب إلى https://developers.pinterest.com",
+        "2. أنشئ App جديد",
+        "3. احصل على Access Token",
+        "4. احصل على Board ID",
+        "5. استبدل YOUR_PINTEREST_ACCESS_TOKEN_HERE و YOUR_PINTEREST_BOARD_ID_HERE"
+      ],
+      "request_config": {
+        "url": "https://api.pinterest.com/v5/pins",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {ACCESS_TOKEN}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "board_id": "{BOARD_ID}",
+          "media_source": {
+            "source_type": "image_url",
+            "url": "{{images.post}}"
+          },
+          "title": "{{product_name}}",
+          "description": "{{captions.pinterest.caption}}",
+          "link": "https://mahwous.com"
+        }
+      }
+    }
+  },
+  "recommended_order": [
+    "telegram",
+    "discord",
+    "facebook",
+    "instagram",
+    "twitter",
+    "tiktok",
+    "linkedin",
+    "pinterest"
+  ],
+  "notes": {
+    "easy_platforms": ["telegram", "discord"],
+    "medium_platforms": ["facebook", "instagram", "twitter", "pinterest"],
+    "hard_platforms": ["tiktok", "linkedin"],
+    "total_setup_time": "~1 hour for all platforms",
+    "minimum_setup_time": "~4 minutes for Telegram + Discord only"
+  }
+}

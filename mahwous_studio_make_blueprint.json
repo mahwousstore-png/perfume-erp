@@ -1,0 +1,636 @@
+{
+  "name": "Mahwous Studio - Auto Publish to All Platforms",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": 1,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        },
+        "restore": {
+          "parameters": {
+            "hook": {
+              "data": {
+                "editable": "true"
+              },
+              "label": "Mahwous Studio Webhook"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hook",
+            "type": "hook:gateway-webhook",
+            "label": "Webhook",
+            "required": true
+          },
+          {
+            "name": "maxResults",
+            "type": "number",
+            "label": "Maximum number of results"
+          }
+        ],
+        "interface": [
+          {
+            "name": "product_name",
+            "type": "text"
+          },
+          {
+            "name": "brand",
+            "type": "text"
+          },
+          {
+            "name": "type",
+            "type": "text"
+          },
+          {
+            "name": "size",
+            "type": "text"
+          },
+          {
+            "name": "images",
+            "type": "collection",
+            "spec": [
+              {
+                "name": "story",
+                "type": "url"
+              },
+              {
+                "name": "post",
+                "type": "url"
+              },
+              {
+                "name": "twitter",
+                "type": "url"
+              }
+            ]
+          },
+          {
+            "name": "video",
+            "type": "url"
+          },
+          {
+            "name": "captions",
+            "type": "collection"
+          },
+          {
+            "name": "descriptions",
+            "type": "collection"
+          },
+          {
+            "name": "hashtags",
+            "type": "collection"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 3,
+              "module": "instagram:CreateMediaObject",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.instagram}}"
+              },
+              "mapper": {
+                "media_type": "IMAGE",
+                "image_url": "{{1.images.post}}",
+                "caption": "{{1.captions.instagram.caption}}\n\n{{join(1.captions.instagram.hashtags; \" \")}}",
+                "alt_text": "{{1.product_name}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": -300
+                },
+                "restore": {
+                  "expect": {
+                    "media_type": {
+                      "label": "Image"
+                    }
+                  },
+                  "parameters": {
+                    "account": {
+                      "label": "Instagram Business Account"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:instagram",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "media_type",
+                    "type": "select",
+                    "label": "Media Type",
+                    "required": true,
+                    "validate": {
+                      "enum": [
+                        "IMAGE",
+                        "VIDEO"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "image_url",
+                    "type": "url",
+                    "label": "Image URL",
+                    "required": true
+                  },
+                  {
+                    "name": "caption",
+                    "type": "text",
+                    "label": "Caption"
+                  },
+                  {
+                    "name": "alt_text",
+                    "type": "text",
+                    "label": "Alt Text"
+                  }
+                ]
+              }
+            },
+            {
+              "id": 4,
+              "module": "instagram:CreateStory",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.instagram}}"
+              },
+              "mapper": {
+                "media_url": "{{1.images.story}}",
+                "media_type": "IMAGE"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": -300
+                },
+                "restore": {
+                  "expect": {
+                    "media_type": {
+                      "label": "Image"
+                    }
+                  },
+                  "parameters": {
+                    "account": {
+                      "label": "Instagram Business Account"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:instagram",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "media_url",
+                    "type": "url",
+                    "label": "Media URL",
+                    "required": true
+                  },
+                  {
+                    "name": "media_type",
+                    "type": "select",
+                    "label": "Media Type",
+                    "required": true
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 5,
+              "module": "facebook:CreatePagePost",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.facebook}}"
+              },
+              "mapper": {
+                "page": "{{connection.facebook_page}}",
+                "message": "{{1.captions.facebook.caption}}\n\n{{join(1.captions.facebook.hashtags; \" \")}}",
+                "picture": "{{1.images.post}}",
+                "published": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": -150
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "Facebook Page"
+                    }
+                  },
+                  "expect": {
+                    "page": {
+                      "label": "Your Page"
+                    },
+                    "published": {
+                      "label": "Published"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:facebook",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "page",
+                    "type": "select",
+                    "label": "Page",
+                    "required": true
+                  },
+                  {
+                    "name": "message",
+                    "type": "text",
+                    "label": "Message"
+                  },
+                  {
+                    "name": "picture",
+                    "type": "url",
+                    "label": "Picture URL"
+                  },
+                  {
+                    "name": "published",
+                    "type": "boolean",
+                    "label": "Published"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 6,
+              "module": "twitter:PostTweet",
+              "version": 2,
+              "parameters": {
+                "account": "{{connection.twitter}}"
+              },
+              "mapper": {
+                "text": "{{1.captions.twitter.caption}}",
+                "media": [
+                  {
+                    "url": "{{1.images.twitter}}"
+                  }
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 0
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "Twitter API v2"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:twitter",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "text",
+                    "type": "text",
+                    "label": "Text",
+                    "required": true
+                  },
+                  {
+                    "name": "media",
+                    "type": "array",
+                    "label": "Media",
+                    "spec": [
+                      {
+                        "name": "url",
+                        "type": "url",
+                        "label": "Media URL"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 7,
+              "module": "telegram:SendMessage",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.telegram}}"
+              },
+              "mapper": {
+                "chat_id": "@mahwous_channel",
+                "text": "{{1.captions.telegram.caption}}",
+                "photo": "{{1.images.post}}",
+                "parse_mode": "HTML"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 150
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "Telegram Bot"
+                    }
+                  },
+                  "expect": {
+                    "parse_mode": {
+                      "label": "HTML"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:telegram",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "chat_id",
+                    "type": "text",
+                    "label": "Chat ID",
+                    "required": true
+                  },
+                  {
+                    "name": "text",
+                    "type": "text",
+                    "label": "Text",
+                    "required": true
+                  },
+                  {
+                    "name": "photo",
+                    "type": "url",
+                    "label": "Photo URL"
+                  },
+                  {
+                    "name": "parse_mode",
+                    "type": "select",
+                    "label": "Parse Mode"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 8,
+              "module": "tiktok:UploadVideo",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.tiktok}}"
+              },
+              "mapper": {
+                "video_url": "{{1.video}}",
+                "caption": "{{1.captions.tiktok.caption}}",
+                "privacy_level": "PUBLIC_TO_EVERYONE"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 300
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "TikTok Business Account"
+                    }
+                  },
+                  "expect": {
+                    "privacy_level": {
+                      "label": "Public"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:tiktok",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "video_url",
+                    "type": "url",
+                    "label": "Video URL",
+                    "required": true
+                  },
+                  {
+                    "name": "caption",
+                    "type": "text",
+                    "label": "Caption"
+                  },
+                  {
+                    "name": "privacy_level",
+                    "type": "select",
+                    "label": "Privacy Level"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 9,
+              "module": "linkedin:CreatePost",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.linkedin}}"
+              },
+              "mapper": {
+                "account_type": "ORGANIZATION",
+                "organization": "{{connection.linkedin_page}}",
+                "text": "{{1.captions.linkedin.caption}}",
+                "image_url": "{{1.images.post}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 450
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "LinkedIn Page"
+                    }
+                  },
+                  "expect": {
+                    "account_type": {
+                      "label": "Organization"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:linkedin",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "account_type",
+                    "type": "select",
+                    "label": "Account Type",
+                    "required": true
+                  },
+                  {
+                    "name": "organization",
+                    "type": "select",
+                    "label": "Organization"
+                  },
+                  {
+                    "name": "text",
+                    "type": "text",
+                    "label": "Text",
+                    "required": true
+                  },
+                  {
+                    "name": "image_url",
+                    "type": "url",
+                    "label": "Image URL"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 10,
+              "module": "pinterest:CreatePin",
+              "version": 1,
+              "parameters": {
+                "account": "{{connection.pinterest}}"
+              },
+              "mapper": {
+                "board": "{{connection.pinterest_board}}",
+                "image_url": "{{1.images.post}}",
+                "description": "{{1.captions.pinterest.caption}}",
+                "link": "https://mahwous.com",
+                "alt_text": "{{1.product_name}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 600
+                },
+                "restore": {
+                  "parameters": {
+                    "account": {
+                      "label": "Pinterest Business Account"
+                    }
+                  }
+                },
+                "expect": [
+                  {
+                    "name": "account",
+                    "type": "account:pinterest",
+                    "label": "Connection",
+                    "required": true
+                  },
+                  {
+                    "name": "board",
+                    "type": "select",
+                    "label": "Board",
+                    "required": true
+                  },
+                  {
+                    "name": "image_url",
+                    "type": "url",
+                    "label": "Image URL",
+                    "required": true
+                  },
+                  {
+                    "name": "description",
+                    "type": "text",
+                    "label": "Description"
+                  },
+                  {
+                    "name": "link",
+                    "type": "url",
+                    "label": "Link"
+                  },
+                  {
+                    "name": "alt_text",
+                    "type": "text",
+                    "label": "Alt Text"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "us1.make.com"
+  }
+}
