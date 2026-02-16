@@ -176,7 +176,7 @@ def test_gemini_connection() -> bool:
             return False
         
         response = model.generate_content("مرحباً")
-        return True if response else False
+        return bool(response)
         
     except Exception as e:
         st.error(f"❌ فشل اختبار Gemini: {str(e)}")

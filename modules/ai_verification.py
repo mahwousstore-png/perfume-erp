@@ -38,7 +38,10 @@ class MultiKeyManager:
         self._load_keys()
     
     def _load_keys(self):
-        """تحميل المفاتيح من Streamlit Secrets أو متغيرات البيئة"""
+        """تحميل المفاتيح من Streamlit Secrets أو متغيرات البيئة أو الملف المحلي"""
+        # تحميل المفاتيح من ملف محلي أولاً
+        self._load_keys_from_file()
+        
         # تحميل مفاتيح Gemini
         gemini_sources = [
             "GEMINI_API_KEY", "GEMINI_API_KEY_1", "GEMINI_API_KEY_2", 
@@ -59,8 +62,32 @@ class MultiKeyManager:
             key_val = self._get_secret(key_name)
             if key_val and key_val.strip() and key_val not in self.openrouter_keys:
                 self.openrouter_keys.append(key_val.strip())
-    
-    def _get_secret(self, name: str) -> str:
+    def _load_keys_from_file(self):
+        """تحميل المفاتيح من ملف محلي"""
+        try:
+            secrets_file = ".secrets/api_keys.json"
+            if os.path.exists(secrets_file):
+                with open(secrets_file, "r") as f:
+                    data = json.load(f)
+                
+                # تحميل مفاتيح Gemini من الملف
+                gemini_keys = data.get("gemini_keys", [])
+                for key in gemini_keys:
+                    if key and key.strip() and key not in self.gemini_keys:
+                        self.gemini_keys.append(key.strip())
+                
+                # تحميل مفاتيح OpenRouter من الملف (إذا كانت موجودة)
+                openrouter_keys = data.get("openrouter_keys", [])
+                for key in openrouter_keys:
+                    if key and key.strip() and key not in self.openrouter_keys:
+                        self.openrouter_keys.append(key.strip())
+                        
+        except Exception as e:
+            # إذا فشل تحميل الملف، نستمر بدون أخطاء
+            pass
+
+    @staticmethod
+    def _get_secret(name: str) -> str:
         """قراءة سر من Streamlit Secrets أو متغيرات البيئة"""
         try:
             if hasattr(st, 'secrets') and name in st.secrets:
@@ -68,7 +95,7 @@ class MultiKeyManager:
         except:
             pass
         return os.getenv(name, "")
-    
+
     def _is_key_failed(self, key: str) -> bool:
         """هل المفتاح فاشل مؤخراً (خلال 5 دقائق)"""
         if key in self.failed_keys:
@@ -77,12 +104,12 @@ class MultiKeyManager:
             else:
                 del self.failed_keys[key]  # انتهت فترة الحظر
         return False
-    
+
     def mark_failed(self, key: str):
         """تسجيل فشل مفتاح"""
         self.failed_keys[key] = time.time()
         self.total_failures += 1
-    
+
     def mark_success(self, key: str):
         """تسجيل نجاح مفتاح"""
         self.call_counts[key] = self.call_counts.get(key, 0) + 1

@@ -150,9 +150,10 @@ class GeminiCache:
     def __init__(self):
         self.cache = {}
     
-    def _make_key(self, p1: str, p2: str) -> str:
+    @staticmethod
+    def _make_key(p1: str, p2: str) -> str:
         a, b = sorted([p1.lower().strip(), p2.lower().strip()])
-        return hashlib.md5(f"{a}|{b}".encode()).hexdigest()
+        return hashlib.sha256(f"{a}|{b}".encode()).hexdigest()
     
     def get(self, p1: str, p2: str) -> Optional[bool]:
         return self.cache.get(self._make_key(p1, p2))
@@ -176,7 +177,8 @@ class SmartMatcher:
             "cache_hits": 0,
         }
     
-    def _compare_names(self, name1: str, name2: str) -> float:
+    @staticmethod
+    def _compare_names(name1: str, name2: str) -> float:
         """
         مقارنة اسمين باستخدام عدة مقاييس وأخذ الأفضل
         """
@@ -191,7 +193,8 @@ class SmartMatcher:
         weighted = (sort_score * 0.5) + (direct_score * 0.2) + (set_score * 0.3)
         return weighted
     
-    def _remove_brand_from_name(self, name: str, brand: str) -> str:
+    @staticmethod
+    def _remove_brand_from_name(name: str, brand: str) -> str:
         """إزالة الماركة وكلمات التركيز/الحجم للحصول على اسم المنتج الفعلي"""
         if not brand:
             result = name.lower()
@@ -210,7 +213,7 @@ class SmartMatcher:
             r'\bاو دو برفيوم\b', r'\bأو دو برفيوم\b',
             r'\bاو دو تواليت\b', r'\bأو دو تواليت\b',
             r'\bبارفيوم\b', r'\bبرفيوم\b', r'\bparfum\b', r'\bedp\b', r'\bedt\b',
-            r'\bعطر\b', r'\bperfume\b', r'\beau de\b',
+            r'\بعطر\b', r'\bperfume\b', r'\beau de\b',
         ]
         for pattern in noise_words:
             result = re.sub(pattern, '', result, flags=re.IGNORECASE)
