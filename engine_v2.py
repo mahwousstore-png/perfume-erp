@@ -153,7 +153,7 @@ class GeminiCache:
     @staticmethod
     def _make_key(p1: str, p2: str) -> str:
         a, b = sorted([p1.lower().strip(), p2.lower().strip()])
-        return hashlib.md5(f"{a}|{b}".encode()).hexdigest()
+        return hashlib.sha256(f"{a}|{b}".encode()).hexdigest()
     
     def get(self, p1: str, p2: str) -> Optional[bool]:
         return self.cache.get(self._make_key(p1, p2))
