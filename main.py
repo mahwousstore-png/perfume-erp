@@ -636,7 +636,7 @@ def send_new_products(products):
         # توليد SKU تلقائي إذا كان فارغاً
         sku = p.get("sku", p.get("رمز المنتج", ""))
         if not sku:
-            sku = f"PERF-{hashlib.md5(name.encode()).hexdigest()[:8].upper()}"
+            sku = f"PERF-{hashlib.sha256(name.encode()).hexdigest()[:8].upper()}"
         # استخراج الماركة تلقائياً إذا كانت فارغة
         brand = p.get("الماركة", p.get("brand", ""))
         if not brand:
