@@ -37,71 +37,6 @@ if V8_MODULES_AVAILABLE:
     init_session()
     apply_custom_styles()
 
-# ── CSS مخصص ─────────────────────────────────────────────────
-st.markdown("""
-<style>
-    .tab-header h1 {
-        font-size: 2.2rem !important;
-        font-weight: 700 !important;
-        margin-bottom: 10px !important;
-        color: #1a1a2e !important;
-    }
-    .tab-header h2 {
-        font-size: 1.6rem !important;
-        font-weight: 600 !important;
-    }
-    .success-box {
-        background: linear-gradient(135deg, #d4edda, #c3e6cb);
-        border: 2px solid #28a745;
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-        margin: 15px 0;
-    }
-    .warning-box {
-        background: linear-gradient(135deg, #fff3cd, #ffeeba);
-        border: 2px solid #ffc107;
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-        margin: 15px 0;
-    }
-    .product-card {
-        background: white;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 12px;
-        margin: 8px 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .status-sent { color: #4caf50; font-weight: bold; }
-    .status-pending { color: #ff9800; font-weight: bold; }
-    .status-rejected { color: #f44336; font-weight: bold; }
-    .connection-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 15px;
-        margin: 5px;
-        text-align: center;
-    }
-    .conn-ok { border-color: #4caf50; background-color: #f1f8e9; }
-    .conn-fail { border-color: #f44336; background-color: #ffebee; }
-    .section-badge {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: bold;
-        margin-left: 8px;
-    }
-    .badge-raise { background: #dc3545; color: white; }
-    .badge-lower { background: #ffc107; color: #333; }
-    .badge-ok { background: #28a745; color: white; }
-    .badge-missing { background: #007bff; color: white; }
-    .badge-review { background: #ff9800; color: white; }
-</style>
-""", unsafe_allow_html=True)
-
 # ── Webhook URLs ─────────────────────────────────────────────
 WEBHOOK_UPDATE_PRICES = "https://hook.eu2.make.com/99oljy0d6r3chwg6bdfsptcf6bk8htsd"
 WEBHOOK_NEW_PRODUCTS = "https://hook.eu2.make.com/xvubj23dmpxu8qzilstd25cnumrwtdxm"
@@ -840,7 +775,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
             sort_by = st.selectbox("↕️ ترتيب حسب", sort_options, key=f"filter_sort_{section_key}")
         
         with fcol8:
-            if st.button("🔄 إعادة تعيين الفلاتر", key=f"reset_filters_{section_key}", use_container_width=True):
+            if st.button("🔄 إعادة تعيين الفلاتر", key=f"reset_filters_{section_key}", width='stretch'):
                 for fk in [f"filter_search_{section_key}", f"filter_comp_{section_key}", f"filter_risk_{section_key}", f"filter_conf_{section_key}"]:
                     if fk in st.session_state:
                         del st.session_state[fk]
@@ -1209,7 +1144,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
     col_b1, col_b2, col_b3 = st.columns(3)
     with col_b1:
         if st.button(f"✅ موافقة وإرسال إلى سلة ({section_label})", 
-                     use_container_width=True, type="primary",
+                     width='stretch', type="primary",
                      disabled=len(all_selected) == 0, key=f"send_{section_key}"):
             with st.spinner(f"⏳ جاري إرسال {len(all_selected)} منتج..."):
                 # استيراد نظام قاعدة البيانات
@@ -1261,7 +1196,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
             st.download_button(f"📥 تحميل المحدد كـ Excel", data=output.getvalue(),
                               file_name=f"{section_key}_{datetime.now():%Y%m%d_%H%M%S}.xlsx",
                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                              use_container_width=True, key=f"dl_{section_key}")
+                              width='stretch', key=f"dl_{section_key}")
     
     with col_b3:
         # تحميل الكل كـ Excel
@@ -1272,7 +1207,7 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
         st.download_button(f"📥 تحميل الكل ({filtered_count})", data=output_all.getvalue(),
                           file_name=f"{section_key}_all_{datetime.now():%Y%m%d_%H%M%S}.xlsx",
                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                          use_container_width=True, key=f"dl_all_{section_key}")
+                          width='stretch', key=f"dl_all_{section_key}")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -1333,7 +1268,7 @@ with st.sidebar:
     # فحص تلقائي للذكاء الاصطناعي
     st.markdown("### 🤖 فحص الذكاء الاصطناعي")
     
-    if st.button("🔄 فحص عمل AI تلقائياً", type="secondary", use_container_width=True):
+    if st.button("🔄 فحص عمل AI تلقائياً", type="secondary", width='stretch'):
         with st.spinner("⏳ جاري فحص الذكاء الاصطناعي..."):
             # فحص Gemini
             try:
@@ -1409,13 +1344,13 @@ if section == "🏠 لوحة القيادة":
                      color_discrete_map={"رفع سعر": "#dc3545", "خفض سعر": "#ffc107",
                                          "موافق": "#28a745", "مفقود": "#007bff"})
         fig.update_layout(font=dict(size=14))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         
         # عينة من النتائج
         st.markdown("### 📋 عينة من النتائج")
         df_all = st.session_state.results.get("all")
         if df_all is not None and not df_all.empty:
-            st.dataframe(df_all.head(20), use_container_width=True)
+            st.dataframe(df_all.head(20), width='stretch')
     else:
         st.info("📤 لا توجد نتائج محفوظة. قم برفع الملفات وبدء المعالجة لعرض لوحة القيادة")
         if st.button("🔄 تحميل آخر نتائج من قاعدة البيانات"):
@@ -1526,7 +1461,7 @@ elif section == "📤 رفع الملفات":
     if st.session_state.supplier_files:
         st.success(f"✅ {len(st.session_state.supplier_files)} ملف منافس محمل")
     
-    if st.button("🚀 بدء المعالجة", type="primary", use_container_width=True,
+    if st.button("🚀 بدء المعالجة", type="primary", width='stretch',
                  disabled=not (st.session_state.my_file and st.session_state.supplier_files)):
         # استيراد المحرك الجديد
         try:
@@ -2081,7 +2016,7 @@ elif section == "🟢 موافق عليها":
             
             # عرض الجدول الكامل
             with st.expander("📊 عرض الجدول الكامل"):
-                st.dataframe(df_approved, use_container_width=True, height=400)
+                st.dataframe(df_approved, width='stretch', height=400)
             
             # تحميل Excel
             output = BytesIO()
@@ -2162,7 +2097,7 @@ elif section == "🔵 منتجات مفقودة":
                 with mf7:
                     m_show_added = st.checkbox("🚫 إخفاء المضافة مسبقاً", value=True, key="hide_added_missing")
                 with mf8:
-                    if st.button("🔄 إعادة تعيين", key="reset_filters_missing", use_container_width=True):
+                    if st.button("🔄 إعادة تعيين", key="reset_filters_missing", width='stretch'):
                         for fk in ["filter_search_missing", "filter_comp_missing", "filter_type_missing", "filter_status_missing"]:
                             if fk in st.session_state:
                                 del st.session_state[fk]
@@ -2477,7 +2412,7 @@ elif section == "🔵 منتجات مفقودة":
             
             col_b1, col_b2, col_b3 = st.columns(3)
             with col_b1:
-                if st.button("✅ موافقة وإضافة إلى سلة", type="primary", use_container_width=True,
+                if st.button("✅ موافقة وإضافة إلى سلة", type="primary", width='stretch',
                              disabled=len(all_selected_missing) == 0, key="send_missing"):
                     with st.spinner(f"⏳ جاري إرسال {len(all_selected_missing)} منتج..."):
                         from database import log_operation, mark_product_added, is_product_added
@@ -2520,7 +2455,7 @@ elif section == "🔵 منتجات مفقودة":
                     st.download_button("📥 تحميل المحدد", data=output.getvalue(),
                                       file_name=f"missing_selected_{datetime.now():%Y%m%d_%H%M%S}.xlsx",
                                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                      use_container_width=True, key="dl_sel_missing")
+                                      width='stretch', key="dl_sel_missing")
             
             with col_b3:
                 output_all = BytesIO()
@@ -2530,11 +2465,11 @@ elif section == "🔵 منتجات مفقودة":
                 st.download_button(f"📥 تحميل الكل ({filtered_count})", data=output_all.getvalue(),
                                   file_name=f"missing_all_{datetime.now():%Y%m%d_%H%M%S}.xlsx",
                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                  use_container_width=True, key="dl_all_missing")
+                                  width='stretch', key="dl_all_missing")
             
             # زر التحقق المجمع
             st.markdown("---")
-            if st.button("🤖 تحقق مجمع للمنتجات المحددة", type="secondary", use_container_width=True,
+            if st.button("🤖 تحقق مجمع للمنتجات المحددة", type="secondary", width='stretch',
                        disabled=len(all_selected_missing) == 0, key="batch_verify_missing"):
                 with st.spinner(f"🔍 جاري التحقق من {len(all_selected_missing)} منتج..."):
                     from modules.ai_verification import batch_verification
@@ -2591,7 +2526,7 @@ elif section == "⚠️ يحتاج مراجعة":
                     df_critical = df_review[df_review["الخطورة"] == "حرج"]
                     if not df_critical.empty:
                         st.error(f"🔴 **{len(df_critical)}** منتج حرج")
-                        st.dataframe(df_critical, use_container_width=True)
+                        st.dataframe(df_critical, width='stretch')
                     else:
                         st.success("✅ لا توجد منتجات حرجة")
                 
@@ -2599,7 +2534,7 @@ elif section == "⚠️ يحتاج مراجعة":
                     df_medium = df_review[df_review["الخطورة"] == "متوسط"]
                     if not df_medium.empty:
                         st.warning(f"🟡 **{len(df_medium)}** منتج متوسط الخطورة")
-                        st.dataframe(df_medium, use_container_width=True)
+                        st.dataframe(df_medium, width='stretch')
                     else:
                         st.success("✅ لا توجد منتجات متوسطة الخطورة")
                 
@@ -2608,7 +2543,7 @@ elif section == "⚠️ يحتاج مراجعة":
                 st.markdown("### ✅ إجراءات جماعية")
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    if st.button("✅ موافقة على الكل وإرسال", type="primary", use_container_width=True):
+                    if st.button("✅ موافقة على الكل وإرسال", type="primary", width='stretch'):
                         products = df_review.to_dict(orient="records")
                         with st.spinner("⏳ جاري الإرسال..."):
                             result = send_price_updates(products)
@@ -2618,7 +2553,7 @@ elif section == "⚠️ يحتاج مراجعة":
                             else:
                                 st.error("❌ فشل الإرسال")
                 with col2:
-                    if st.button("🤖 تحليل بالذكاء الصناعي", use_container_width=True):
+                    if st.button("🤖 تحليل بالذكاء الصناعي", width='stretch'):
                         st.session_state["review_ai_analysis"] = True
                         st.rerun()
                 with col3:
@@ -2629,7 +2564,7 @@ elif section == "⚠️ يحتاج مراجعة":
                     st.download_button("📥 تحميل كـ Excel", data=output.getvalue(),
                                       file_name=f"review_{datetime.now():%Y%m%d}.xlsx",
                                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                      use_container_width=True)
+                                      width='stretch')
                 
                 # تحليل AI إذا طُلب
                 if st.session_state.get("review_ai_analysis"):
@@ -2702,7 +2637,7 @@ elif section == "🤖 تحقق AI":
 
                 sample_size = st.slider("📊 عدد المنتجات للتحليل", 5, 50, 10, key="gemini_sample_size")
 
-                if st.button("🚀 بدء التحليل بـ Gemini", type="primary", use_container_width=True):
+                if st.button("🚀 بدء التحليل بـ Gemini", type="primary", width='stretch'):
                     with st.spinner("⏳ جاري التحليل بالذكاء الصناعي..."):
                         sample = df_all.head(sample_size).to_dict(orient="records")
 
@@ -2837,7 +2772,7 @@ elif section == "🤖 تحقق AI":
                 if len(selected_products) > 0:
                     st.markdown(f"### 🚀 جاهز للتحقق من {len(selected_products)} منتج")
 
-                    if st.button("🤖 بدء التحقق المجمع", type="primary", use_container_width=True):
+                    if st.button("🤖 بدء التحقق المجمع", type="primary", width='stretch'):
                         store_file_path = None
                         if store_file:
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
@@ -2899,7 +2834,7 @@ elif section == "🤖 تحقق AI":
                                     data=results_json,
                                     file_name=f"batch_verification_{datetime.now():%Y%m%d_%H%M%S}.json",
                                     mime="application/json",
-                                    use_container_width=True
+                                    width='stretch'
                                 )
                             else:
                                 st.error(f"❌ فشل التحقق المجمع: {result.get('error', 'غير معروف')}")
@@ -3191,13 +3126,13 @@ elif section == "📁 Google Drive":
     if st.session_state.results:
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("📤 رفع نتائج التحليل", type="primary", use_container_width=True):
+            if st.button("📤 رفع نتائج التحليل", type="primary", width='stretch'):
                 st.info("🔄 جاري الرفع إلى Google Drive...")
                 # محاكاة الرفع
                 time.sleep(1)
                 st.success("✅ تم رفع النتائج بنجاح!")
         with col2:
-            if st.button("📤 رفع نسخة احتياطية", use_container_width=True):
+            if st.button("📤 رفع نسخة احتياطية", width='stretch'):
                 st.info("🔄 جاري إنشاء نسخة احتياطية...")
                 time.sleep(1)
                 st.success("✅ تم إنشاء النسخة الاحتياطية!")
@@ -3255,7 +3190,7 @@ elif section == "⚡ Make أتمتة":
         st.markdown("### 📊 سجل الإرسالات")
         logs = get_send_logs()
         if not logs.empty:
-            st.dataframe(logs, use_container_width=True)
+            st.dataframe(logs, width='stretch')
         else:
             st.info("📋 لا توجد إرسالات سابقة")
     
@@ -3273,7 +3208,7 @@ elif section == "⚡ Make أتمتة":
                 else:
                     df_manual = pd.read_csv(manual_file)
                 
-                st.dataframe(df_manual.head(10), use_container_width=True)
+                st.dataframe(df_manual.head(10), width='stretch')
                 st.info(f"📊 {len(df_manual)} منتج في الملف")
                 
                 if st.button("🚀 إرسال", type="primary"):
@@ -3343,7 +3278,7 @@ elif section == "🔗 ربط الخوارزميات":
     }
     st.table(pd.DataFrame(rules_data))
     
-    if st.button("💾 حفظ الإعدادات", type="primary", use_container_width=True):
+    if st.button("💾 حفظ الإعدادات", type="primary", width='stretch'):
         st.session_state.algorithm_settings = {
             "threshold": threshold,
             "raise_threshold": raise_threshold,
@@ -3408,7 +3343,7 @@ Status: ✅ متصل
             st.success(f"✅ تم تحميل **{len(records)}** سجل")
             
             # عرض الجدول بتنسيق محسّن
-            st.dataframe(records, use_container_width=True, height=500)
+            st.dataframe(records, width='stretch', height=500)
             
             # أزرار التحميل
             col_d1, col_d2, col_d3 = st.columns(3)
@@ -3420,19 +3355,19 @@ Status: ✅ متصل
                 st.download_button("📅 تحميل Excel", data=output.getvalue(),
                                   file_name=f"db_records_{datetime.now():%Y%m%d}.xlsx",
                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                  use_container_width=True)
+                                  width='stretch')
             with col_d2:
                 csv_data = records.to_csv(index=False).encode('utf-8-sig')
                 st.download_button("📄 تحميل CSV", data=csv_data,
                                   file_name=f"db_records_{datetime.now():%Y%m%d}.csv",
                                   mime="text/csv",
-                                  use_container_width=True)
+                                  width='stretch')
             with col_d3:
                 json_data = records.to_json(orient='records', force_ascii=False, indent=2)
                 st.download_button("📦 تحميل JSON", data=json_data,
                                   file_name=f"db_records_{datetime.now():%Y%m%d}.json",
                                   mime="application/json",
-                                  use_container_width=True)
+                                  width='stretch')
         else:
             st.info("📋 لا توجد سجلات")
             st.markdown("""
@@ -3452,7 +3387,7 @@ Status: ✅ متصل
                 logs = logs[logs["status"] == log_filter]
             
             st.success(f"✅ تم تحميل **{len(logs)}** إرسالية")
-            st.dataframe(logs, use_container_width=True, height=400)
+            st.dataframe(logs, width='stretch', height=400)
             
             # تحميل سجل الإرسالات
             output_logs = BytesIO()
@@ -3462,7 +3397,7 @@ Status: ✅ متصل
             st.download_button("📅 تحميل سجل الإرسالات", data=output_logs.getvalue(),
                               file_name=f"send_logs_{datetime.now():%Y%m%d}.xlsx",
                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                              use_container_width=True)
+                              width='stretch')
         else:
             st.info("📋 لا توجد إرسالات")
     
@@ -3535,7 +3470,7 @@ elif section == "🤖 فحص AI":
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("🔄 فحص Gemini AI", use_container_width=True):
+        if st.button("🔄 فحص Gemini AI", width='stretch'):
             with st.spinner("⏳ جاري فحص Gemini..."):
                 gemini_result = verify_gemini_connection(update_session=False)
                 if gemini_result["connected"]:
@@ -3545,7 +3480,7 @@ elif section == "🤖 فحص AI":
                     st.error(f"❌ Gemini AI غير متصل: {gemini_result['message']}")
     
     with col2:
-        if st.button("🔄 فحص OpenRouter", use_container_width=True):
+        if st.button("🔄 فحص OpenRouter", width='stretch'):
             with st.spinner("⏳ جاري فحص OpenRouter..."):
                 try:
                     from modules.ai_verification import get_ai_status
@@ -3559,7 +3494,7 @@ elif section == "🤖 فحص AI":
                     st.error("❌ خطأ في فحص OpenRouter")
     
     with col3:
-        if st.button("🔄 فحص شامل", type="primary", use_container_width=True):
+        if st.button("🔄 فحص شامل", type="primary", width='stretch'):
             with st.spinner("⏳ جاري الفحص الشامل..."):
                 # فحص Gemini
                 gemini_result = verify_gemini_connection(update_session=False)
@@ -3609,7 +3544,7 @@ elif section == "🤖 فحص AI":
     col_test1, col_test2 = st.columns(2)
     
     with col_test1:
-        if st.button("🤖 اختبار Gemini", use_container_width=True, disabled=not test_prompt):
+        if st.button("🤖 اختبار Gemini", width='stretch', disabled=not test_prompt):
             with st.spinner("⏳ جاري الاختبار..."):
                 result = call_gemini(test_prompt)
                 if result["success"]:
@@ -3620,7 +3555,7 @@ elif section == "🤖 فحص AI":
                     st.error(f"❌ فشل الاختبار: {result['error']}")
     
     with col_test2:
-        if st.button("🧠 اختبار OpenRouter", use_container_width=True, disabled=not test_prompt):
+        if st.button("🧠 اختبار OpenRouter", width='stretch', disabled=not test_prompt):
             with st.spinner("⏳ جاري الاختبار..."):
                 result = call_openrouter(test_prompt)
                 if result["success"]:

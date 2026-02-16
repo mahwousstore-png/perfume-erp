@@ -104,7 +104,7 @@ def show_batch_verification_section():
             if len(selected_products) > 0:
                 st.markdown(f"### 🚀 جاهز للتحقق من {len(selected_products)} منتج")
                 
-                if st.button("🤖 بدء التحقق المجمع", type="primary", use_container_width=True):
+                if st.button("🤖 بدء التحقق المجمع", type="primary", width='stretch'):
                     # حفظ ملف المتجر مؤقتاً إذا تم رفعه
                     store_file_path = None
                     if store_file:
@@ -200,7 +200,7 @@ def show_batch_verification_section():
                                 data=results_json,
                                 file_name=f"batch_verification_{datetime.now():%Y%m%d_%H%M%S}.json",
                                 mime="application/json",
-                                use_container_width=True
+                                width='stretch'
                             )
                         
                         else:

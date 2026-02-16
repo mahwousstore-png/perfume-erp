@@ -56,6 +56,65 @@ st.markdown("""
         border-right: 4px solid #66bb6a;
         padding: 8px; margin: 4px 0; border-radius: 4px;
     }
+    .tab-header h1 {
+        font-size: 2.2rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 10px !important;
+        color: #1a1a2e !important;
+    }
+    .tab-header h2 {
+        font-size: 1.6rem !important;
+        font-weight: 600 !important;
+    }
+    .success-box {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        border: 2px solid #28a745;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        margin: 15px 0;
+    }
+    .warning-box {
+        background: linear-gradient(135deg, #fff3cd, #ffeeba);
+        border: 2px solid #ffc107;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        margin: 15px 0;
+    }
+    .product-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 12px;
+        margin: 8px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .status-sent { color: #4caf50; font-weight: bold; }
+    .status-pending { color: #ff9800; font-weight: bold; }
+    .status-rejected { color: #f44336; font-weight: bold; }
+    .connection-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 5px;
+        text-align: center;
+    }
+    .conn-ok { border-color: #4caf50; background-color: #f1f8e9; }
+    .conn-fail { border-color: #f44336; background-color: #ffebee; }
+    .section-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        margin-left: 8px;
+    }
+    .badge-raise { background: #dc3545; color: white; }
+    .badge-lower { background: #ffc107; color: #333; }
+    .badge-ok { background: #28a745; color: white; }
+    .badge-missing { background: #007bff; color: white; }
+    .badge-review { background: #ff9800; color: white; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -90,7 +149,7 @@ def show_table(df, title="", height=400):
         ]
         st.dataframe(
             df[display_cols],
-            use_container_width=True,
+            width='stretch',
             height=height,
             hide_index=True,
         )
@@ -109,7 +168,7 @@ def download_btn(df, label, filename):
                 "application/vnd.openxmlformats-"
                 "officedocument.spreadsheetml.sheet"
             ),
-            use_container_width=True,
+            width='stretch',
         )
 
 
@@ -265,7 +324,7 @@ elif page == "📊 التحليل والمقارنة":
 
             if st.button(
                 "🚀 ابدأ المعالجة الآن",
-                use_container_width=True,
+                width='stretch',
                 type="primary",
             ):
                 if st.session_state.my_file is None:
@@ -322,7 +381,7 @@ elif page == "📊 التحليل والمقارنة":
                 # تحسين عرض الجدول
                 st.dataframe(
                     filtered,
-                    use_container_width=True,
+                    width='stretch',
                     column_config={
                         "السعر": st.column_config.NumberColumn(
                             "السعر",
@@ -373,7 +432,7 @@ elif page == "📊 التحليل والمقارنة":
                 # تحسين عرض الجدول
                 st.dataframe(
                     filtered,
-                    use_container_width=True,
+                    width='stretch',
                     column_config={
                         "السعر": st.column_config.NumberColumn(
                             "السعر",
@@ -410,7 +469,7 @@ elif page == "📊 التحليل والمقارنة":
                 # تحسين عرض الجدول
                 st.dataframe(
                     df,
-                    use_container_width=True,
+                    width='stretch',
                     column_config={
                         "السعر": st.column_config.NumberColumn(
                             "السعر",
@@ -461,7 +520,7 @@ elif page == "📊 التحليل والمقارنة":
                 # تحسين عرض الجدول
                 st.dataframe(
                     filtered,
-                    use_container_width=True,
+                    width='stretch',
                     column_config={
                         "سعر المنافس": st.column_config.NumberColumn(
                             "سعر المنافس",
@@ -568,7 +627,7 @@ elif page == "🤖 الأدوات الذكية":
                                 btn = st.button(
                                     f"{icon} تحقق",
                                     key=f"gem_{idx}",
-                                    use_container_width=True,
+                                    width='stretch',
                                 )
                             with col_info:
                                 st.markdown(
@@ -594,7 +653,7 @@ elif page == "🤖 الأدوات الذكية":
                 with sub_tab2:
                     st.markdown("**تحليل جماعي للمنتجات**")
 
-                    if st.button("🚀 ابدأ التحقق المجمع", use_container_width=True, type="primary"):
+                    if st.button("🚀 ابدأ التحقق المجمع", width='stretch', type="primary"):
                         with st.spinner("🤖 AI يحلل جميع المنتجات..."):
                             # استيراد دالة التحقق المجمع من gemini_ai
                             from gemini_ai import batch_generate_descriptions
@@ -659,7 +718,7 @@ elif page == "🤖 الأدوات الذكية":
 
         col1, col2 = st.columns([4, 1])
         with col1:
-            if st.button("🚀 أرسل", use_container_width=True, type="primary"):
+            if st.button("🚀 أرسل", width='stretch', type="primary"):
                 if user_message.strip():
                     # إضافة رسالة المستخدم
                     st.session_state.chat_history.append({
@@ -707,7 +766,7 @@ elif page == "🤖 الأدوات الذكية":
                             st.error(f"خطأ في المحادثة: {str(e)}")
 
         with col2:
-            if st.button("🗑️ مسح", use_container_width=True):
+            if st.button("🗑️ مسح", width='stretch'):
                 st.session_state.chat_history = []
                 st.rerun()
 
@@ -863,7 +922,7 @@ elif page == "💼 الإدارة المالية":
             df_purchases = pd.DataFrame(purchases_data)
             st.dataframe(
                 df_purchases,
-                use_container_width=True,
+                width='stretch',
                 column_config={
                     "السعر": st.column_config.NumberColumn(
                         "السعر",
@@ -906,7 +965,7 @@ elif page == "💼 الإدارة المالية":
             df_suppliers = pd.DataFrame(suppliers_data)
             st.dataframe(
                 df_suppliers,
-                use_container_width=True,
+                width='stretch',
                 column_config={
                     "إجمالي المشتريات": st.column_config.NumberColumn(
                         "إجمالي المشتريات",
@@ -953,7 +1012,7 @@ elif page == "💼 الإدارة المالية":
             df_expenses = pd.DataFrame(expenses_data)
             st.dataframe(
                 df_expenses,
-                use_container_width=True,
+                width='stretch',
                 column_config={
                     "المبلغ": st.column_config.NumberColumn(
                         "المبلغ",
@@ -1038,7 +1097,7 @@ elif page == "🛠️ الأدوات والإعدادات":
             with col1:
                 if st.button(
                     "🔴 إرسال رفع سعر",
-                    use_container_width=True,
+                    width='stretch',
                     key="send_raise"
                 ):
                     df = r.get("raise", pd.DataFrame())
@@ -1056,7 +1115,7 @@ elif page == "🛠️ الأدوات والإعدادات":
             with col2:
                 if st.button(
                     "🟡 إرسال خفض سعر",
-                    use_container_width=True,
+                    width='stretch',
                     key="send_lower"
                 ):
                     df = r.get("lower", pd.DataFrame())
@@ -1074,7 +1133,7 @@ elif page == "🛠️ الأدوات والإعدادات":
             with col3:
                 if st.button(
                     "🆕 إرسال المفقودة",
-                    use_container_width=True,
+                    width='stretch',
                     key="send_missing"
                 ):
                     df = r.get("missing", pd.DataFrame())
@@ -1093,7 +1152,7 @@ elif page == "🛠️ الأدوات والإعدادات":
 
             if st.button(
                 "📤 إرسال الكل دفعة واحدة",
-                use_container_width=True,
+                width='stretch',
                 type="primary",
                 key="send_all"
             ):
@@ -1161,7 +1220,7 @@ elif page == "🛠️ الأدوات والإعدادات":
         df_sample = pd.DataFrame(sample_data)
         st.dataframe(
             df_sample,
-            use_container_width=True,
+            width='stretch',
             column_config={
                 "السعر": st.column_config.NumberColumn(
                     "السعر",
@@ -1203,7 +1262,7 @@ elif page == "🛠️ الأدوات والإعدادات":
         df_logs = pd.DataFrame(log_data)
         st.dataframe(
             df_logs,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
         )
 

@@ -109,7 +109,7 @@ def show_error_report(errors: Dict[str, Any]):
         st.markdown("### ⚠️ المطابقات المشبوهة")
         
         df_suspicious = pd.DataFrame(errors['suspicious_matches'])
-        st.dataframe(df_suspicious, use_container_width=True, height=300)
+        st.dataframe(df_suspicious, width='stretch', height=300)
         
         # تحميل CSV
         csv = df_suspicious.to_csv(index=False, encoding='utf-8-sig')
@@ -129,7 +129,7 @@ def show_error_report(errors: Dict[str, Any]):
         st.markdown("### 💰 فروقات الأسعار الغريبة")
         
         df_anomalies = pd.DataFrame(errors['price_anomalies'])
-        st.dataframe(df_anomalies, use_container_width=True, height=300)
+        st.dataframe(df_anomalies, width='stretch', height=300)
         
         # رسم بياني
         import plotly.express as px
@@ -140,7 +140,7 @@ def show_error_report(errors: Dict[str, Any]):
             title='أكبر 20 فرق سعر',
             labels={'my_product': 'المنتج', 'difference_pct': 'نسبة الفرق (%)'}
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         
         # تحميل CSV
         csv = df_anomalies.to_csv(index=False, encoding='utf-8-sig')

@@ -94,7 +94,7 @@ def show_operations_log():
             
             st.dataframe(
                 df_display.style.apply(highlight_status, axis=1),
-                use_container_width=True,
+                width='stretch',
                 height=500
             )
             
@@ -131,7 +131,7 @@ def show_operations_log():
             
             df_display = df.rename(columns=column_names)
             
-            st.dataframe(df_display, use_container_width=True, height=500)
+            st.dataframe(df_display, width='stretch', height=500)
             
             # إحصائيات
             st.markdown("---")
@@ -174,7 +174,7 @@ def show_operations_log():
             
             df_display = df.rename(columns=column_names)
             
-            st.dataframe(df_display, use_container_width=True, height=500)
+            st.dataframe(df_display, width='stretch', height=500)
             
             # إحصائيات
             st.markdown("---")
