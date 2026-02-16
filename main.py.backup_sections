@@ -1105,48 +1105,38 @@ def render_approval_section(df, section_key, section_label, send_func, webhook_l
                     if match_correct:
                         bg_color = "#e8f5e9"
                         border_color = "#4caf50"
-                        match_icon = "&#x2705;"
+                        match_icon = "✅"
                     else:
                         bg_color = "#ffebee"
                         border_color = "#f44336"
-                        match_icon = "&#x274C;"
+                        match_icon = "❌"
                     
                     # لون الاستعجال
                     urgency_colors = {'عاجل': '#f44336', 'متوسط': '#ff9800', 'منخفض': '#4caf50'}
                     urgency_color = urgency_colors.get(urgency, '#999')
                     
-                    match_text = 'صحيحة' if match_correct else 'خاطئة - ' + match_reason
-                    
-                    # بناء صف السعر المقترح
-                    suggested_row = ""
-                    if suggested_price:
-                        try:
-                            suggested_row = f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F3AF; السعر المقترح:</b></td><td style="padding:6px;"><b style="color:#1565c0;font-size:1.1em;">{float(suggested_price):.2f} ر.س</b></td></tr>'
-                        except: pass
-                    
-                    reason_html = f'<p style="margin:4px 0 0 0; color:#666;"><small>{reason}</small></p>' if reason else ''
-                    
-                    ai_html = f"""<div style="background: linear-gradient(135deg, {bg_color}, #fff); border-radius: 12px; padding: 18px; margin: 10px 0; border-right: 5px solid {border_color}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <h4 style="margin:0 0 12px 0; color: #1a237e;">&#x1F916; تحليل الذكاء الاصطناعي</h4>
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, {bg_color}, #fff); border-radius: 12px; padding: 18px; margin: 10px 0; border-right: 5px solid {border_color}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <h4 style="margin:0 0 12px 0; color: #1a237e;">🤖 تحليل الذكاء الاصطناعي</h4>
                         <table style="width:100%; border-collapse: collapse;">
-                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F4E6; منتجنا:</b></td><td style="padding:6px;">{product_name}</td></tr>
-                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F3EA; منتج المنافس:</b></td><td style="padding:6px;">{comp_product_name}</td></tr>
-                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>{match_icon} المطابقة:</b></td><td style="padding:6px;">{match_text}</td></tr>
-                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F4B0; سعرنا:</b></td><td style="padding:6px;">{our_price_val:.2f} ر.س</td></tr>
-                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F3F7; سعر المنافس:</b></td><td style="padding:6px;">{comp_price_val:.2f} ر.س</td></tr>
-                            {suggested_row}
-                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x23F0; الاستعجال:</b></td><td style="padding:6px;"><span style="color:{urgency_color};font-weight:bold;">{urgency}</span></td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>📦 منتجنا:</b></td><td style="padding:6px;">{product_name}</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🏪 منتج المنافس:</b></td><td style="padding:6px;">{comp_product_name}</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>{match_icon} المطابقة:</b></td><td style="padding:6px;">{'صحيحة' if match_correct else 'خاطئة - ' + match_reason}</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>💰 سعرنا:</b></td><td style="padding:6px;">{our_price_val:.2f} ر.س</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🏷️ سعر المنافس:</b></td><td style="padding:6px;">{comp_price_val:.2f} ر.س</td></tr>
+                            {f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🎯 السعر المقترح:</b></td><td style="padding:6px;"><b style="color:#1565c0;font-size:1.1em;">{float(suggested_price):.2f} ر.س</b></td></tr>' if suggested_price else ''}
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>⏰ الاستعجال:</b></td><td style="padding:6px;"><span style="color:{urgency_color};font-weight:bold;">{urgency}</span></td></tr>
                         </table>
                         <div style="margin-top:12px; padding:10px; background:#f5f5f5; border-radius:8px;">
-                            <p style="margin:0 0 5px 0;"><b>&#x1F3AF; التوصية:</b></p>
+                            <p style="margin:0 0 5px 0;"><b>🎯 التوصية:</b></p>
                             <p style="margin:0; color:#333; line-height:1.6;">{recommendation}</p>
                         </div>
                         <div style="margin-top:8px; padding:8px; background:#e3f2fd; border-radius:8px;">
-                            <p style="margin:0;"><b>&#x1F4CB; الاجراء المقترح:</b> <span style="color:#1565c0; font-weight:bold;">{action}</span></p>
-                            {reason_html}
+                            <p style="margin:0;"><b>📋 الإجراء المقترح:</b> <span style="color:#1565c0; font-weight:bold;">{action}</span></p>
+                            {f'<p style="margin:4px 0 0 0; color:#666;"><small>{reason}</small></p>' if reason else ''}
                         </div>
-                    </div>"""
-                    st.markdown(ai_html, unsafe_allow_html=True)
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     # أزرار القرار المحسنة
                     col_modify, col_delay, col_remove, col_close = st.columns(4)
@@ -1315,10 +1305,14 @@ with st.sidebar:
         "🔵 منتجات مفقودة",
         "⚠️ يحتاج مراجعة",
         "🔍 تفاصيل المطابقة",
-        "🤖 تحقق AI",
+        "🤖 Gemini تحقق",
+        "🔍 تحقق مجمع AI",
+        "🔬 كشف الأخطاء الذكي",
         "💬 محادثة AI",
         "🎬 استديو مهووس",
+        "📁 Google Drive",
         "⚡ Make أتمتة",
+        "🔗 ربط الخوارزميات",
         "💾 قاعدة البيانات",
         "🛒 المشتريات اليومية",
         "🏪 إدارة الموردين",
@@ -1984,37 +1978,28 @@ elif section == "🟢 موافق عليها":
                             
                             bg_color = "#e8f5e9" if match_correct else "#ffebee"
                             border_color = "#4caf50" if match_correct else "#f44336"
-                            match_icon_a = "&#x2705;" if match_correct else "&#x274C;"
-                            match_text_a = "صحيحة" if match_correct else "خاطئة"
                             
-                            suggested_row_a = ""
-                            if suggested_price:
-                                try:
-                                    suggested_row_a = f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F3AF; السعر المقترح:</b></td><td style="padding:6px;"><b style="color:#1565c0;">{float(suggested_price):.2f} ر.س</b></td></tr>'
-                                except: pass
-                            
-                            reason_html_a = f'<p style="margin:4px 0 0 0; color:#666;"><small>{reason}</small></p>' if reason else ''
-                            
-                            ai_html_a = f"""<div style="background: linear-gradient(135deg, {bg_color}, #fff); border-radius: 12px; padding: 18px; margin: 10px 0; border-right: 5px solid {border_color}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                                <h4 style="margin:0 0 12px 0; color: #1a237e;">&#x1F916; تحليل الذكاء الاصطناعي</h4>
+                            st.markdown(f"""
+                            <div style="background: linear-gradient(135deg, {bg_color}, #fff); border-radius: 12px; padding: 18px; margin: 10px 0; border-right: 5px solid {border_color}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <h4 style="margin:0 0 12px 0; color: #1a237e;">🤖 تحليل الذكاء الاصطناعي</h4>
                                 <table style="width:100%; border-collapse: collapse;">
-                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F4E6; منتجنا:</b></td><td style="padding:6px;">{product_name}</td></tr>
-                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F3EA; منتج المنافس:</b></td><td style="padding:6px;">{comp_product_name}</td></tr>
-                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>{match_icon_a} المطابقة:</b></td><td style="padding:6px;">{match_text_a}</td></tr>
-                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F4B0; سعرنا:</b></td><td style="padding:6px;">{our_price_val:.2f} ر.س</td></tr>
-                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F3F7; سعر المنافس:</b></td><td style="padding:6px;">{comp_price_val:.2f} ر.س</td></tr>
-                                    {suggested_row_a}
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>📦 منتجنا:</b></td><td style="padding:6px;">{product_name}</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🏪 منتج المنافس:</b></td><td style="padding:6px;">{comp_product_name}</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>{'✅' if match_correct else '❌'} المطابقة:</b></td><td style="padding:6px;">{'صحيحة' if match_correct else 'خاطئة'}</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>💰 سعرنا:</b></td><td style="padding:6px;">{our_price_val:.2f} ر.س</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🏷️ سعر المنافس:</b></td><td style="padding:6px;">{comp_price_val:.2f} ر.س</td></tr>
+                                    {f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🎯 السعر المقترح:</b></td><td style="padding:6px;"><b style="color:#1565c0;">{float(suggested_price):.2f} ر.س</b></td></tr>' if suggested_price else ''}
                                 </table>
                                 <div style="margin-top:12px; padding:10px; background:#f5f5f5; border-radius:8px;">
-                                    <p style="margin:0 0 5px 0;"><b>&#x1F3AF; التوصية:</b></p>
+                                    <p style="margin:0 0 5px 0;"><b>🎯 التوصية:</b></p>
                                     <p style="margin:0; color:#333; line-height:1.6;">{recommendation}</p>
                                 </div>
                                 <div style="margin-top:8px; padding:8px; background:#e3f2fd; border-radius:8px;">
-                                    <p style="margin:0;"><b>&#x1F4CB; الاجراء:</b> <span style="color:#1565c0; font-weight:bold;">{action}</span></p>
-                                    {reason_html_a}
+                                    <p style="margin:0;"><b>📋 الإجراء:</b> <span style="color:#1565c0; font-weight:bold;">{action}</span></p>
+                                    {f'<p style="margin:4px 0 0 0; color:#666;"><small>{reason}</small></p>' if reason else ''}
                                 </div>
-                            </div>"""
-                            st.markdown(ai_html_a, unsafe_allow_html=True)
+                            </div>
+                            """, unsafe_allow_html=True)
                         else:
                             st.error(f"❌ {result.get('error', 'فشل الاتصال')}")
                         
@@ -2336,45 +2321,30 @@ elif section == "🔵 منتجات مفقودة":
                             
                             bg_color = "#e8f5e9" if worth_adding else "#fff3e0"
                             border_color = "#4caf50" if worth_adding else "#ff9800"
-                            worth_icon = "&#x2705;" if worth_adding else "&#x26A0;&#xFE0F;"
-                            worth_text = "نعم" if worth_adding else "لا"
-                            worth_color = "#4caf50" if worth_adding else "#ff9800"
                             
-                            # بناء صفوف إضافية
-                            extra_rows = ""
-                            if suggested_sell:
-                                try:
-                                    extra_rows += f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F4B5; سعر البيع المقترح:</b></td><td style="padding:6px;"><b style="color:#1565c0;font-size:1.1em;">{float(suggested_sell):.2f} ر.س</b></td></tr>'
-                                except: pass
-                            if estimated_cost:
-                                try:
-                                    extra_rows += f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F4B8; التكلفة المتوقعة:</b></td><td style="padding:6px;">{float(estimated_cost):.2f} ر.س</td></tr>'
-                                except: pass
-                            if profit_margin:
-                                extra_rows += f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F4C8; هامش الربح:</b></td><td style="padding:6px;">{profit_margin}</td></tr>'
-                            
-                            reason_html = f'<p style="margin:4px 0 0 0; color:#666;"><small>{reason}</small></p>' if reason else ''
-                            
-                            ai_html = f"""<div style="background: linear-gradient(135deg, {bg_color}, #fff); border-radius: 12px; padding: 18px; margin: 10px 0; border-right: 5px solid {border_color}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                                <h4 style="margin:0 0 12px 0; color: #1a237e;">&#x1F916; تحليل الذكاء الاصطناعي - منتج مفقود</h4>
+                            st.markdown(f"""
+                            <div style="background: linear-gradient(135deg, {bg_color}, #fff); border-radius: 12px; padding: 18px; margin: 10px 0; border-right: 5px solid {border_color}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <h4 style="margin:0 0 12px 0; color: #1a237e;">🤖 تحليل الذكاء الاصطناعي - منتج مفقود</h4>
                                 <table style="width:100%; border-collapse: collapse;">
-                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F4E6; المنتج:</b></td><td style="padding:6px;">{product_name}</td></tr>
-                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F3AF; النوع:</b></td><td style="padding:6px;">{product_type}</td></tr>
-                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F3F7; الماركة:</b></td><td style="padding:6px;">{brand}</td></tr>
-                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>&#x1F4B0; سعر المنافس:</b></td><td style="padding:6px;">{comp_price_val:.2f} ر.س</td></tr>
-                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>{worth_icon} يستحق الاضافة:</b></td><td style="padding:6px;"><b style="color:{worth_color};">{worth_text}</b></td></tr>
-                                    {extra_rows}
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>📦 المنتج:</b></td><td style="padding:6px;">{product_name}</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🎯 النوع:</b></td><td style="padding:6px;">{product_type}</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>🏷️ الماركة:</b></td><td style="padding:6px;">{brand}</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>💰 سعر المنافس:</b></td><td style="padding:6px;">{comp_price_val:.2f} ر.س</td></tr>
+                                    <tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>{'\u2705' if worth_adding else '\u26a0\ufe0f'} يستحق الإضافة:</b></td><td style="padding:6px;"><b style="color:{'#4caf50' if worth_adding else '#ff9800'};">{'\u0646\u0639\u0645' if worth_adding else '\u0644\u0627'}</b></td></tr>
+                                    {f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>\ud83d\udcb5 \u0633\u0639\u0631 \u0627\u0644\u0628\u064a\u0639 \u0627\u0644\u0645\u0642\u062a\u0631\u062d:</b></td><td style="padding:6px;"><b style="color:#1565c0;font-size:1.1em;">{float(suggested_sell):.2f} \u0631.\u0633</b></td></tr>' if suggested_sell else ''}
+                                    {f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>\ud83d\udcb8 \u0627\u0644\u062a\u0643\u0644\u0641\u0629 \u0627\u0644\u0645\u062a\u0648\u0642\u0639\u0629:</b></td><td style="padding:6px;">{float(estimated_cost):.2f} \u0631.\u0633</td></tr>' if estimated_cost else ''}
+                                    {f'<tr style="border-bottom: 1px solid #eee;"><td style="padding:6px;"><b>\ud83d\udcc8 \u0647\u0627\u0645\u0634 \u0627\u0644\u0631\u0628\u062d:</b></td><td style="padding:6px;">{profit_margin}</td></tr>' if profit_margin else ''}
                                 </table>
                                 <div style="margin-top:12px; padding:10px; background:#f5f5f5; border-radius:8px;">
-                                    <p style="margin:0 0 5px 0;"><b>&#x1F3AF; التوصية:</b></p>
+                                    <p style="margin:0 0 5px 0;"><b>🎯 التوصية:</b></p>
                                     <p style="margin:0; color:#333; line-height:1.6;">{recommendation}</p>
                                 </div>
                                 <div style="margin-top:8px; padding:8px; background:#e3f2fd; border-radius:8px;">
-                                    <p style="margin:0;"><b>&#x1F4CB; الاجراء المقترح:</b> <span style="color:#1565c0; font-weight:bold;">{action}</span></p>
-                                    {reason_html}
+                                    <p style="margin:0;"><b>📋 الإجراء المقترح:</b> <span style="color:#1565c0; font-weight:bold;">{action}</span></p>
+                                    {f'<p style="margin:4px 0 0 0; color:#666;"><small>{reason}</small></p>' if reason else ''}
                                 </div>
-                            </div>"""
-                            st.markdown(ai_html, unsafe_allow_html=True)
+                            </div>
+                            """, unsafe_allow_html=True)
                             
                             # أزرار القرار
                             dc1, dc2, dc3, dc4 = st.columns(4)
