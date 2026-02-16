@@ -24,12 +24,13 @@ except ImportError:
     print("⚠️ وحدات v8.0 غير متوفرة - التشغيل بالوضع v7.4")
 
 # ── إعدادات الصفحة ─────────────────────────────────────────
-st.set_page_config(
-    page_title="نظام التسعير الذكي v15.0",
-    page_icon="💎",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# تم نقل إعدادات الصفحة إلى app.py لتجنب التضارب
+# st.set_page_config(
+#     page_title="نظام التسعير الذكي v15.0",
+#     page_icon="💎",
+#     layout="wide",
+#     initial_sidebar_state="expanded"
+# )
 
 # ── تهيئة الجلسة v8.0 ──────────────────────────────────────────
 if V8_MODULES_AVAILABLE:
