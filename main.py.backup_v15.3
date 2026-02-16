@@ -14,14 +14,6 @@ import os
 from datetime import datetime
 from io import BytesIO
 
-# ── استيراد styles المحسن v17.0 ──────────────────────────────
-try:
-    from styles import get_styles, stat_card, vs_card
-    STYLES_AVAILABLE = True
-except ImportError:
-    STYLES_AVAILABLE = False
-    print("⚠️ styles.py غير متوفر - استخدام CSS القديم")
-
 # ── استيراد الوحدات الجديدة v8.0 ──────────────────────────────
 try:
     from modules.auth import init_session, show_login_page, show_logout_button, check_permission, log_action
@@ -44,12 +36,8 @@ if V8_MODULES_AVAILABLE:
     init_session()
     apply_custom_styles()
 
-# ── CSS محسن v17.0 ─────────────────────────────────────────────
-if STYLES_AVAILABLE:
-    st.markdown(get_styles(), unsafe_allow_html=True)
-else:
-    # CSS القديم كـ fallback
-    st.markdown("""
+# ── CSS مخصص ─────────────────────────────────────────────────
+st.markdown("""
 <style>
     .tab-header h1 {
         font-size: 2.2rem !important;
