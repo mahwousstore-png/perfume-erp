@@ -3720,7 +3720,7 @@ elif section == "⚙️ الإعدادات":
         
         # عرض حالة المفاتيح المتعددة
         st.info("🔑 **نظام مفاتيح متعددة** - تبديل تلقائي عند الفشل (Gemini + OpenRouter)")
-        
+
         try:
             from modules.ai_verification import get_ai_status
             ai_status = get_ai_status()
@@ -3743,16 +3743,16 @@ elif section == "⚙️ الإعدادات":
             st.metric("إجمالي الطلبات", ai_status.get('total_calls', 0))
             
             # تحذير إذا لم تكن هناك مفاتيح متاحة
-            if ai_status.get('available', False) == False:
+            if ai_status.get('available', False) is False:
                 st.error("❌ **جميع مفاتيح الذكاء الاصطناعي غير متاحة!**")
-                st.warning("⚠️ يرجى إدخال مفاتيح API صحيحة في قسم إدارة المفاتيح أدناه")
+                st.warning("⚠️ يرجى إدخال مفاتيح API صحيحة في قسم إدارة المفاتيحات أدناه")
                 
         except Exception:
             if DEFAULT_GEMINI_KEY:
                 st.success(f"✅ مفتاح Gemini موجود وجاهز")
             else:
                 st.warning("⚠️ مفتاح Gemini غير موجود في Streamlit Secrets")
-        
+
         if st.button("🔄 اختبار اتصال Gemini", key="test_gemini_settings"):
             with st.spinner("⏳ جاري الاختبار..."):
                 result = verify_gemini_connection()  # يستخدم المفتاح المدمج
@@ -3761,14 +3761,14 @@ elif section == "⚙️ الإعدادات":
                     st.balloons()
                 else:
                     st.error(f"❌ فشل الاتصال: {result['message']}")
-        
+
         st.markdown("---")
-        
+
         # إدارة مفاتيح API
         st.markdown("#### 🔑 إدارة مفاتيح API")
-        
+
         # زر عرض الدليل
-        if st.button("📋 عرض دليل إعداد المفاتيح", key="show_api_guide"):
+        if st.button("📋 عرض دليل إعداد المفاتيحات", key="show_api_guide"):
             with st.expander("📖 دليل إعداد مفاتيح API", expanded=True):
                 st.markdown("""
 **🔑 Gemini AI Keys:**
