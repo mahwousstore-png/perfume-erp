@@ -125,23 +125,10 @@ with st.sidebar:
         "📑 الصفحات",
         [
             "🏠 لوحة القيادة",
-            "📤 رفع الملفات",
-            "📊 سجل العمليات",
-            "🔴 رفع سعر",
-            "🟡 خفض سعر",
-            "🟢 موافق عليها",
-            "🔵 منتجات مفقودة",
-            "⚠️ يحتاج مراجعة",
-            "🔍 تفاصيل المطابقة",
-            "🤖 تحقق AI",
-            "💬 محادثة AI",
-            "🎬 استديو مهووس",
-            "⚡ Make أتمتة",
-            "💾 قاعدة البيانات",
-            "🛒 المشتريات اليومية",
-            "🏪 إدارة الموردين",
-            "💰 مذكرة المصروفات",
-            "⚙️ الإعدادات",
+            "� التحليل والمقارنة",
+            "🤖 الأدوات الذكية",
+            "💼 الإدارة المالية",
+            "⚙️ الأدوات والإعدادات",
         ],
         label_visibility="collapsed",
     )
@@ -150,294 +137,305 @@ with st.sidebar:
     st.caption("الإصدار v14.2 | نظام التسعير الذكي")
 
 # ══════════════════════════════════════════════════════════════
-# صفحة: رفع الملفات
+# صفحة: التحليل والمقارنة
 # ══════════════════════════════════════════════════════════════
-if page == "📤 رفع الملفات":
-    st.header("📤 رفع ملفات البيانات والمعالجة")
+elif page == "📊 التحليل والمقارنة":
+    st.header("📊 التحليل والمقارنة")
+    st.caption("تحليل شامل للأسعار ومقارنتها مع المنافسين")
     st.markdown("---")
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("🏪 ملف متجرك")
-        up_my = st.file_uploader(
-            "ارفع ملف Excel أو CSV",
-            type=["xlsx", "csv"],
-            key="upload_my",
-        )
-        if up_my is not None:
-            st.session_state.my_file = {
-                "name": up_my.name,
-                "data": up_my.getvalue(),
-            }
-            st.success(f"✅ {up_my.name}")
-
-    with col2:
-        st.subheader("🏢 ملفات المنافسين")
-        up_comp = st.file_uploader(
-            "ارفع ملفات المنافسين",
-            type=["xlsx", "csv"],
-            accept_multiple_files=True,
-            key="upload_comp",
-        )
-        if up_comp:
-            st.session_state.comp_files = [
-                {"name": f.name, "data": f.getvalue()}
-                for f in up_comp
-            ]
-            st.success(f"✅ {len(up_comp)} ملف منافس")
-
-    st.markdown("---")
-
-    # إعدادات المعالجة
-    col_s1, col_s2 = st.columns(2)
-    with col_s1:
-        min_score = st.slider(
-            "الحد الأدنى لنسبة التطابق",
-            50, 100, 75, 5,
-        )
-    with col_s2:
-        st.info(
-            f"**{min_score}%** - "
-            + ("دقة عالية" if min_score >= 80 else "تغطية أوسع")
-        )
-
-    if st.button(
-        "🚀 ابدأ المعالجة الآن",
-        use_container_width=True,
-        type="primary",
-    ):
-        if st.session_state.my_file is None:
-            st.error("❌ ارفع ملف متجرك أولاً.")
-        elif not st.session_state.comp_files:
-            st.error("❌ ارفع ملف منافس واحد على الأقل.")
-        else:
-            with st.spinner("⏳ جاري التحليل الذكي..."):
-                try:
-                    results = run_full_analysis(
-                        st.session_state.my_file,
-                        st.session_state.comp_files,
-                        min_score,
-                    )
-                    st.session_state.results = results
-                    stats = results.get("stats", {})
-                    if stats:
-                        st.success(
-                            f"🎉 اكتملت المعالجة! "
-                            f"{stats['total']} مقارنة | "
-                            f"{stats['missing_count']} منتج مفقود"
-                        )
-                        st.balloons()
-                    else:
-                        st.warning("⚠️ لم يتم العثور على مطابقات.")
-                except Exception as exc:
-                    st.error(f"❌ خطأ: {exc}")
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("رفع الملفات")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: لوحة القيادة
-# ══════════════════════════════════════════════════════════════
-elif page == "🏠 لوحة القيادة":
-    st.header("🏠 لوحة القيادة الرئيسية")
-    st.markdown("---")
-
+    # التحقق من وجود نتائج
     r = st.session_state.results
     if r is None:
         st.info("📋 ارفع الملفات وابدأ المعالجة أولاً من صفحة **رفع الملفات**.")
     else:
+        # إحصائيات سريعة
         stats = r.get("stats", {})
-
-        # صف المقاييس الرئيسية
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("📊 إجمالي المقارنات", stats.get("total", 0))
-        c2.metric("🔴 رفع سعر", stats.get("raise_count", 0))
-        c3.metric("🟡 خفض سعر", stats.get("lower_count", 0))
-        c4.metric("🟢 موافق", stats.get("approved_count", 0))
-        c5.metric("🆕 مفقودة", stats.get("missing_count", 0))
+        col1, col2, col3, col4, col5 = st.columns(5)
+        col1.metric("🔴 رفع سعر", stats.get("raise_count", 0))
+        col2.metric("🟡 خفض سعر", stats.get("lower_count", 0))
+        col3.metric("🟢 موافق", stats.get("approved_count", 0))
+        col4.metric("🆕 مفقودة", stats.get("missing_count", 0))
+        col5.metric("📊 إجمالي", stats.get("total", 0))
 
         st.markdown("---")
 
-        # صف ثانوي
-        c6, c7, c8 = st.columns(3)
-        c6.metric("⚠️ حالات حرجة", stats.get("critical", 0))
-        c7.metric("📈 متوسط الفرق", f"{stats.get('avg_diff', 0)} ر.س")
-        c8.metric("🏢 عدد المنافسين", stats.get("competitors", 0))
+        # Tabs للتحليل المختلف
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            "📤 رفع الملفات",
+            "🔴 رفع سعر",
+            "🟡 خفض سعر",
+            "🟢 موافق عليها",
+            "🔵 منتجات مفقودة"
+        ])
 
-        st.markdown("---")
-        st.caption(f"آخر تحديث: {stats.get('timestamp', '-')}")
+        with tab1:
+            st.subheader("📤 رفع ملفات البيانات والمعالجة")
 
-        # ملخص سريع
-        df_all = r.get("all", pd.DataFrame())
-        if not df_all.empty:
-            st.subheader("📋 ملخص سريع - أهم 10 مقارنات")
-            top10 = df_all.sort_values(
-                "الفرق", key=abs, ascending=False
-            ).head(10)
-            show_table(top10, height=350)
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**🏪 ملف متجرك**")
+                up_my = st.file_uploader(
+                    "ارفع ملف Excel أو CSV",
+                    type=["xlsx", "csv"],
+                    key="upload_my_analysis",
+                )
+                if up_my is not None:
+                    st.session_state.my_file = {
+                        "name": up_my.name,
+                        "data": up_my.getvalue(),
+                    }
+                    st.success(f"✅ {up_my.name}")
+
+            with col2:
+                st.markdown("**🏢 ملفات المنافسين**")
+                up_comp = st.file_uploader(
+                    "ارفع ملفات المنافسين",
+                    type=["xlsx", "csv"],
+                    accept_multiple_files=True,
+                    key="upload_comp_analysis",
+                )
+                if up_comp:
+                    st.session_state.comp_files = [
+                        {"name": f.name, "data": f.getvalue()}
+                        for f in up_comp
+                    ]
+                    st.success(f"✅ {len(up_comp)} ملف منافس")
+
+            st.markdown("---")
+
+            # إعدادات المعالجة
+            col_s1, col_s2 = st.columns(2)
+            with col_s1:
+                min_score = st.slider(
+                    "الحد الأدنى لنسبة التطابق",
+                    50, 100, 75, 5,
+                    key="min_score_analysis",
+                )
+            with col_s2:
+                st.info(
+                    f"**{min_score}%** - "
+                    + ("دقة عالية" if min_score >= 80 else "تغطية أوسع")
+                )
+
+            if st.button(
+                "🚀 ابدأ المعالجة الآن",
+                use_container_width=True,
+                type="primary",
+            ):
+                if st.session_state.my_file is None:
+                    st.error("❌ ارفع ملف متجرك أولاً.")
+                elif not st.session_state.comp_files:
+                    st.error("❌ ارفع ملف منافس واحد على الأقل.")
+                else:
+                    with st.spinner("⏳ جاري التحليل الذكي..."):
+                        try:
+                            results = run_full_analysis(
+                                st.session_state.my_file,
+                                st.session_state.comp_files,
+                                min_score,
+                            )
+                            st.session_state.results = results
+                            stats = results.get("stats", {})
+                            if stats:
+                                st.success(
+                                    f"🎉 اكتملت المعالجة! "
+                                    f"{stats['total']} مقارنة | "
+                                    f"{stats['missing_count']} منتج مفقود"
+                                )
+                                st.balloons()
+                            else:
+                                st.warning("⚠️ لم يتم العثور على مطابقات.")
+                        except Exception as exc:
+                            st.error(f"❌ خطأ: {exc}")
+
+        with tab2:
+            st.subheader("🔴 منتجات تحتاج رفع سعر")
+            st.caption("سعرك أقل من المنافس - فرصة لزيادة الأرباح")
+
+            df = r.get("raise", pd.DataFrame())
+            if df.empty:
+                st.success("🎉 لا توجد منتجات تحتاج رفع سعر!")
+            else:
+                # فلتر الخطورة
+                sev = st.multiselect(
+                    "تصفية حسب الخطورة:",
+                    ["حرج", "متوسط", "عادي"],
+                    default=["حرج", "متوسط", "عادي"],
+                    key="raise_sev",
+                )
+                filtered = df[df["الخطورة"].isin(sev)]
+
+                col1, col2 = st.columns([1, 4])
+                with col1:
+                    st.metric("عدد المنتجات", len(filtered))
+                with col2:
+                    if not filtered.empty:
+                        avg = round(filtered["الفرق"].mean(), 2)
+                        st.metric("متوسط الفرق", f"{avg} ر.س")
+
+                # تحسين عرض الجدول
+                st.dataframe(
+                    filtered,
+                    use_container_width=True,
+                    column_config={
+                        "السعر": st.column_config.NumberColumn(
+                            "السعر",
+                            format="%.2f ر.س",
+                        ),
+                        "سعر المنافس": st.column_config.NumberColumn(
+                            "سعر المنافس",
+                            format="%.2f ر.س",
+                        ),
+                        "الفرق": st.column_config.NumberColumn(
+                            "الفرق",
+                            format="%.2f ر.س",
+                        ),
+                    },
+                    hide_index=True,
+                )
+
+                download_btn(
+                    filtered,
+                    "📥 تحميل قائمة رفع السعر",
+                    f"raise_price_{datetime.now():%Y%m%d}.xlsx",
+                )
+
+        with tab3:
+            st.subheader("🟡 منتجات تحتاج خفض سعر")
+            st.caption("سعرك أعلى من المنافس - خطر خسارة عملاء")
+
+            df = r.get("lower", pd.DataFrame())
+            if df.empty:
+                st.success("🎉 لا توجد منتجات تحتاج خفض سعر!")
+            else:
+                sev = st.multiselect(
+                    "تصفية حسب الخطورة:",
+                    ["حرج", "متوسط", "عادي"],
+                    default=["حرج", "متوسط", "عادي"],
+                    key="lower_sev_tab",
+                )
+                filtered = df[df["الخطورة"].isin(sev)]
+
+                col1, col2 = st.columns([1, 4])
+                with col1:
+                    st.metric("عدد المنتجات", len(filtered))
+                with col2:
+                    if not filtered.empty:
+                        avg = round(filtered["الفرق"].mean(), 2)
+                        st.metric("متوسط الفرق", f"{avg} ر.س")
+
+                # تحسين عرض الجدول
+                st.dataframe(
+                    filtered,
+                    use_container_width=True,
+                    column_config={
+                        "السعر": st.column_config.NumberColumn(
+                            "السعر",
+                            format="%.2f ر.س",
+                        ),
+                        "سعر المنافس": st.column_config.NumberColumn(
+                            "سعر المنافس",
+                            format="%.2f ر.س",
+                        ),
+                        "الفرق": st.column_config.NumberColumn(
+                            "الفرق",
+                            format="%.2f ر.س",
+                        ),
+                    },
+                    hide_index=True,
+                )
+
+                download_btn(
+                    filtered,
+                    "📥 تحميل قائمة خفض السعر",
+                    f"lower_price_{datetime.now():%Y%m%d}.xlsx",
+                )
+
+        with tab4:
+            st.subheader("🟢 أسعار موافق عليها")
+            st.caption("أسعارك متوازنة مع السوق")
+
+            df = r.get("approved", pd.DataFrame())
+            if df.empty:
+                st.info("لا توجد منتجات متطابقة السعر.")
+            else:
+                st.metric("عدد المنتجات الموافق عليها", len(df))
+
+                # تحسين عرض الجدول
+                st.dataframe(
+                    df,
+                    use_container_width=True,
+                    column_config={
+                        "السعر": st.column_config.NumberColumn(
+                            "السعر",
+                            format="%.2f ر.س",
+                        ),
+                        "سعر المنافس": st.column_config.NumberColumn(
+                            "سعر المنافس",
+                            format="%.2f ر.س",
+                        ),
+                        "الفرق": st.column_config.NumberColumn(
+                            "الفرق",
+                            format="%.2f ر.س",
+                        ),
+                    },
+                    hide_index=True,
+                )
+
+                download_btn(
+                    df,
+                    "📥 تحميل القائمة الموافق عليها",
+                    f"approved_{datetime.now():%Y%m%d}.xlsx",
+                )
+
+        with tab5:
+            st.subheader("🔵 منتجات مفقودة - موجودة عند المنافسين فقط")
+            st.caption("فرص جديدة لتوسيع تشكيلتك")
+
+            df = r.get("missing", pd.DataFrame())
+            if df.empty:
+                st.success("🎉 تشكيلتك شاملة! لا توجد منتجات مفقودة.")
+            else:
+                # فلتر حسب المنافس
+                comps = df["المنافس"].unique().tolist()
+                sel = st.multiselect(
+                    "تصفية حسب المنافس:",
+                    comps, default=comps,
+                    key="missing_comp_tab",
+                )
+                filtered = df[df["المنافس"].isin(sel)]
+
+                col1, col2 = st.columns([1, 4])
+                with col1:
+                    st.metric("منتجات مفقودة", len(filtered))
+                with col2:
+                    types = filtered["نوع_المنتج"].value_counts()
+                    st.write("التوزيع حسب النوع:", types.to_dict())
+
+                # تحسين عرض الجدول
+                st.dataframe(
+                    filtered,
+                    use_container_width=True,
+                    column_config={
+                        "سعر المنافس": st.column_config.NumberColumn(
+                            "سعر المنافس",
+                            format="%.2f ر.س",
+                        ),
+                    },
+                    hide_index=True,
+                )
+
+                download_btn(
+                    filtered,
+                    "📥 تحميل المنتجات المفقودة",
+                    f"missing_{datetime.now():%Y%m%d}.xlsx",
+                )
 
     # ── مساعد الذكاء الاصطناعي ──────────────────────────────
     if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("لوحة القيادة")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: رفع سعر
-# ══════════════════════════════════════════════════════════════
-elif page == "🔴 رفع سعر":
-    st.header("🔴 منتجات تحتاج رفع سعر")
-    st.caption("سعرك أقل من المنافس - فرصة لزيادة الأرباح")
-    st.markdown("---")
-
-    r = st.session_state.results
-    if r is None:
-        st.info("📋 ابدأ المعالجة أولاً.")
-    else:
-        df = r.get("raise", pd.DataFrame())
-        if df.empty:
-            st.success("🎉 لا توجد منتجات تحتاج رفع سعر!")
-        else:
-            # فلتر الخطورة
-            sev = st.multiselect(
-                "تصفية حسب الخطورة:",
-                ["حرج", "متوسط", "عادي"],
-                default=["حرج", "متوسط", "عادي"],
-            )
-            filtered = df[df["الخطورة"].isin(sev)]
-
-            c1, c2 = st.columns([1, 4])
-            with c1:
-                st.metric("عدد المنتجات", len(filtered))
-            with c2:
-                if not filtered.empty:
-                    avg = round(filtered["الفرق"].mean(), 2)
-                    st.metric("متوسط الفرق", f"{avg} ر.س")
-
-            show_table(filtered)
-            download_btn(
-                filtered,
-                "📥 تحميل قائمة رفع السعر",
-                f"raise_price_{datetime.now():%Y%m%d}.xlsx",
-            )
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("رفع سعر")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: خفض سعر
-# ══════════════════════════════════════════════════════════════
-elif page == "🟡 خفض سعر":
-    st.header("🟡 منتجات تحتاج خفض سعر")
-    st.caption("سعرك أعلى من المنافس - خطر خسارة عملاء")
-    st.markdown("---")
-
-    r = st.session_state.results
-    if r is None:
-        st.info("📋 ابدأ المعالجة أولاً.")
-    else:
-        df = r.get("lower", pd.DataFrame())
-        if df.empty:
-            st.success("🎉 لا توجد منتجات تحتاج خفض سعر!")
-        else:
-            sev = st.multiselect(
-                "تصفية حسب الخطورة:",
-                ["حرج", "متوسط", "عادي"],
-                default=["حرج", "متوسط", "عادي"],
-                key="lower_sev",
-            )
-            filtered = df[df["الخطورة"].isin(sev)]
-
-            c1, c2 = st.columns([1, 4])
-            with c1:
-                st.metric("عدد المنتجات", len(filtered))
-            with c2:
-                if not filtered.empty:
-                    avg = round(filtered["الفرق"].mean(), 2)
-                    st.metric("متوسط الفرق", f"{avg} ر.س")
-
-            show_table(filtered)
-            download_btn(
-                filtered,
-                "📥 تحميل قائمة خفض السعر",
-                f"lower_price_{datetime.now():%Y%m%d}.xlsx",
-            )
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("خفض سعر")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: موافق عليها
-# ══════════════════════════════════════════════════════════════
-elif page == "🟢 موافق عليها":
-    st.header("🟢 أسعار موافق عليها")
-    st.caption("أسعارك متوازنة مع السوق")
-    st.markdown("---")
-
-    r = st.session_state.results
-    if r is None:
-        st.info("📋 ابدأ المعالجة أولاً.")
-    else:
-        df = r.get("approved", pd.DataFrame())
-        if df.empty:
-            st.info("لا توجد منتجات متطابقة السعر.")
-        else:
-            st.metric("عدد المنتجات الموافق عليها", len(df))
-            show_table(df)
-            download_btn(
-                df,
-                "📥 تحميل القائمة الموافق عليها",
-                f"approved_{datetime.now():%Y%m%d}.xlsx",
-            )
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("موافق عليها")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: منتجات مفقودة
-# ══════════════════════════════════════════════════════════════
-elif page == "🔵 منتجات مفقودة":
-    st.header("🔵 منتجات مفقودة - موجودة عند المنافسين فقط")
-    st.caption("فرص جديدة لتوسيع تشكيلتك")
-    st.markdown("---")
-
-    r = st.session_state.results
-    if r is None:
-        st.info("📋 ابدأ المعالجة أولاً.")
-    else:
-        df = r.get("missing", pd.DataFrame())
-        if df.empty:
-            st.success("🎉 تشكيلتك شاملة! لا توجد منتجات مفقودة.")
-        else:
-            # فلتر حسب المنافس
-            comps = df["المنافس"].unique().tolist()
-            sel = st.multiselect(
-                "تصفية حسب المنافس:",
-                comps, default=comps,
-                key="missing_comp",
-            )
-            filtered = df[df["المنافس"].isin(sel)]
-
-            c1, c2 = st.columns([1, 4])
-            with c1:
-                st.metric("منتجات مفقودة", len(filtered))
-            with c2:
-                types = filtered["نوع_المنتج"].value_counts()
-                st.write("التوزيع حسب النوع:", types.to_dict())
-
-            show_table(filtered)
-            download_btn(
-                filtered,
-                "📥 تحميل المنتجات المفقودة",
-                f"missing_{datetime.now():%Y%m%d}.xlsx",
-            )
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("منتجات مفقودة")
+        show_page_ai_assistant("التحليل والمقارنة")
 
 # ══════════════════════════════════════════════════════════════
 # صفحة: أتمتة Make
