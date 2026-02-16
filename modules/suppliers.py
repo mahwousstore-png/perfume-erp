@@ -200,7 +200,7 @@ def get_supplier_stats() -> Dict:
         
         return {
             'total_suppliers': len(suppliers),
-            'active_suppliers': len(suppliers[suppliers['is_active'] == True]),
+            'active_suppliers': len(suppliers[suppliers['is_active'] is True]),
             'total_purchases': suppliers['total_purchases'].sum(),
             'total_amount': suppliers['total_amount'].sum(),
             'avg_rating': suppliers['rating'].mean()
@@ -288,22 +288,22 @@ def show_suppliers_list():
     عرض قائمة الموردين
     """
     st.markdown("### 📋 قائمة الموردين")
-    
+
     suppliers = get_all_suppliers()
-    
+
     if suppliers.empty:
         st.info("📭 لا يوجد موردين حالياً")
         return
-    
+
     # فلترة
     col1, col2 = st.columns(2)
-    
+
     with col1:
         search = st.text_input("🔍 بحث", placeholder="اسم المورد، رقم الهاتف، البريد...")
-    
+
     with col2:
         status_filter = st.selectbox("الحالة", ["الكل", "نشط", "غير نشط"])
-    
+
     # تطبيق الفلاتر
     if search:
         suppliers = suppliers[
@@ -311,12 +311,12 @@ def show_suppliers_list():
             suppliers['phone'].str.contains(search, case=False, na=False) |
             suppliers['email'].str.contains(search, case=False, na=False)
         ]
-    
+
     if status_filter == "نشط":
-        suppliers = suppliers[suppliers['is_active'] == True]
+        suppliers = suppliers[suppliers['is_active'] is True]
     elif status_filter == "غير نشط":
-        suppliers = suppliers[suppliers['is_active'] == False]
-    
+        suppliers = suppliers[suppliers['is_active'] is False]
+
     # عرض البطاقات
     for _, supplier in suppliers.iterrows():
         with st.expander(f"🏪 {supplier['name']} - ⭐ {supplier['rating']:.1f}"):
@@ -338,7 +338,7 @@ def show_suppliers_list():
             - 💰 المبلغ: {supplier['total_amount']:,.0f} SAR
             - 💳 الدفع: {supplier['payment_terms']}
             - 📅 تاريخ الإضافة: {supplier['created_at']}
-            """)
+                """)
         
         if supplier['notes']:
             st.info(f"📝 **ملاحظات:** {supplier['notes']}")
