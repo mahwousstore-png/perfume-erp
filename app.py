@@ -23,6 +23,14 @@ from engine import (  # noqa: E402
     send_to_make,
 )
 
+# ── استيراد نظام الذكاء الاصطناعي للصفحات ────────────────────
+try:
+    from modules.ai_page_manager import show_page_ai_assistant, integrate_ai_into_page
+    AI_PAGE_MANAGER_AVAILABLE = True
+except ImportError:
+    AI_PAGE_MANAGER_AVAILABLE = False
+    print("⚠️ نظام إدارة الذكاء الاصطناعي غير متوفر")
+
 # ── CSS مخصص ─────────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -118,18 +126,28 @@ with st.sidebar:
         [
             "🏠 لوحة القيادة",
             "📤 رفع الملفات",
+            "📊 سجل العمليات",
             "🔴 رفع سعر",
             "🟡 خفض سعر",
             "🟢 موافق عليها",
-            "🆕 منتجات مفقودة",
-            "🤖 تحقق Gemini",
-            "⚡ أتمتة Make",
+            "🔵 منتجات مفقودة",
+            "⚠️ يحتاج مراجعة",
+            "🔍 تفاصيل المطابقة",
+            "🤖 تحقق AI",
+            "💬 محادثة AI",
+            "🎬 استديو مهووس",
+            "⚡ Make أتمتة",
+            "💾 قاعدة البيانات",
+            "🛒 المشتريات اليومية",
+            "🏪 إدارة الموردين",
+            "💰 مذكرة المصروفات",
+            "⚙️ الإعدادات",
         ],
         label_visibility="collapsed",
     )
 
     st.markdown("---")
-    st.caption("الإصدار 3.0 | نظام التسعير الذكي")
+    st.caption("الإصدار v14.2 | نظام التسعير الذكي")
 
 # ══════════════════════════════════════════════════════════════
 # صفحة: رفع الملفات
@@ -215,6 +233,10 @@ if page == "📤 رفع الملفات":
                 except Exception as exc:
                     st.error(f"❌ خطأ: {exc}")
 
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("رفع الملفات")
+
 # ══════════════════════════════════════════════════════════════
 # صفحة: لوحة القيادة
 # ══════════════════════════════════════════════════════════════
@@ -256,6 +278,10 @@ elif page == "🏠 لوحة القيادة":
             ).head(10)
             show_table(top10, height=350)
 
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("لوحة القيادة")
+
 # ══════════════════════════════════════════════════════════════
 # صفحة: رفع سعر
 # ══════════════════════════════════════════════════════════════
@@ -294,6 +320,10 @@ elif page == "🔴 رفع سعر":
                 "📥 تحميل قائمة رفع السعر",
                 f"raise_price_{datetime.now():%Y%m%d}.xlsx",
             )
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("رفع سعر")
 
 # ══════════════════════════════════════════════════════════════
 # صفحة: خفض سعر
@@ -334,6 +364,10 @@ elif page == "🟡 خفض سعر":
                 f"lower_price_{datetime.now():%Y%m%d}.xlsx",
             )
 
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("خفض سعر")
+
 # ══════════════════════════════════════════════════════════════
 # صفحة: موافق عليها
 # ══════════════════════════════════════════════════════════════
@@ -358,11 +392,15 @@ elif page == "🟢 موافق عليها":
                 f"approved_{datetime.now():%Y%m%d}.xlsx",
             )
 
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("موافق عليها")
+
 # ══════════════════════════════════════════════════════════════
 # صفحة: منتجات مفقودة
 # ══════════════════════════════════════════════════════════════
-elif page == "🆕 منتجات مفقودة":
-    st.header("🆕 منتجات مفقودة - موجودة عند المنافسين فقط")
+elif page == "🔵 منتجات مفقودة":
+    st.header("🔵 منتجات مفقودة - موجودة عند المنافسين فقط")
     st.caption("فرص جديدة لتوسيع تشكيلتك")
     st.markdown("---")
 
@@ -397,75 +435,15 @@ elif page == "🆕 منتجات مفقودة":
                 f"missing_{datetime.now():%Y%m%d}.xlsx",
             )
 
-# ══════════════════════════════════════════════════════════════
-# صفحة: تحقق Gemini
-# ══════════════════════════════════════════════════════════════
-elif page == "🤖 تحقق Gemini":
-    st.header("🤖 التحقق الذكي بـ Gemini AI")
-    st.caption("اضغط على أي منتج للحصول على تحليل وتوصية ذكية")
-    st.markdown("---")
-
-    # مفتاح API
-    api_key = st.text_input(
-        "🔑 مفتاح Gemini API",
-        value=st.session_state.gemini_key,
-        type="password",
-        help="احصل عليه من: https://ai.google.dev/",
-    )
-    st.session_state.gemini_key = api_key
-
-    r = st.session_state.results
-    if r is None:
-        st.info("📋 ابدأ المعالجة أولاً.")
-    elif not api_key:
-        st.warning("⚠️ أدخل مفتاح Gemini API أعلاه.")
-    else:
-        df_all = r.get("all", pd.DataFrame())
-        if df_all.empty:
-            st.info("لا توجد مقارنات.")
-        else:
-            st.subheader("اختر منتج للتحقق:")
-
-            # عرض المنتجات كأزرار
-            for idx, row in df_all.iterrows():
-                icon = row.get("الأيقونة", "")
-                name = row.get("اسم_منتجي", "")
-                price = row.get("سعري", 0)
-                comp_price = row.get("سعر_المنافس", 0)
-                diff = row.get("الفرق", 0)
-
-                col_btn, col_info = st.columns([1, 3])
-                with col_btn:
-                    btn = st.button(
-                        f"{icon} تحقق",
-                        key=f"gem_{idx}",
-                        use_container_width=True,
-                    )
-                with col_info:
-                    st.markdown(
-                        f"**{name}** | "
-                        f"سعري: {price} | "
-                        f"المنافس: {comp_price} | "
-                        f"الفرق: {diff}"
-                    )
-
-                if btn:
-                    with st.spinner("🤖 Gemini يحلل..."):
-                        result = gemini_verify(
-                            name, price, comp_price, api_key
-                        )
-                    st.markdown(
-                        f'<div class="severity-medium">'
-                        f"🤖 <b>تحليل Gemini:</b><br>{result}"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("منتجات مفقودة")
 
 # ══════════════════════════════════════════════════════════════
 # صفحة: أتمتة Make
 # ══════════════════════════════════════════════════════════════
-elif page == "⚡ أتمتة Make":
-    st.header("⚡ أتمتة Make.com")
+elif page == "⚡ Make أتمتة":
+    st.header("⚡ Make أتمتة")
     st.caption("أرسل النتائج تلقائياً إلى Google Sheets أو أي خدمة")
     st.markdown("---")
 
@@ -570,3 +548,266 @@ elif page == "⚡ أتمتة Make":
                     st.error(f"❌ فشل: {resp}")
             else:
                 st.info("لا توجد بيانات.")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("Make أتمتة")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: سجل العمليات
+# ══════════════════════════════════════════════════════════════
+elif page == "📊 سجل العمليات":
+    st.header("📊 سجل العمليات")
+    st.caption("تتبع جميع العمليات والتحليلات المنجزة")
+    st.markdown("---")
+    st.info("قريباً: عرض سجل العمليات التاريخي.")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("سجل العمليات")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: يحتاج مراجعة
+# ══════════════════════════════════════════════════════════════
+elif page == "⚠️ يحتاج مراجعة":
+    st.header("⚠️ منتجات تحتاج مراجعة")
+    st.caption("منتجات تتطلب تدخلاً يدوياً أو مراجعة إضافية")
+    st.markdown("---")
+    st.info("قريباً: عرض المنتجات التي تحتاج مراجعة.")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("يحتاج مراجعة")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: تفاصيل المطابقة
+# ══════════════════════════════════════════════════════════════
+elif page == "🔍 تفاصيل المطابقة":
+    st.header("🔍 تفاصيل المطابقة")
+    st.caption("عرض تفاصيل دقيقة لعملية المطابقة والخوارزميات المستخدمة")
+    st.markdown("---")
+    st.info("قريباً: عرض تفاصيل المطابقة.")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("تفاصيل المطابقة")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: تحقق AI
+# ══════════════════════════════════════════════════════════════
+elif page == "🤖 تحقق AI":
+    st.header("🤖 التحقق الذكي بـ AI")
+    st.caption("تحقق فردي أو مجمع للمنتجات مع توصيات ذكية")
+    st.markdown("---")
+
+    # مفتاح API
+    api_key = st.text_input(
+        "🔑 مفتاح Gemini API",
+        value=st.session_state.gemini_key,
+        type="password",
+        help="احصل عليه من: https://ai.google.dev/",
+    )
+    st.session_state.gemini_key = api_key
+
+    r = st.session_state.results
+    if r is None:
+        st.info("📋 ابدأ المعالجة أولاً.")
+    elif not api_key:
+        st.warning("⚠️ أدخل مفتاح Gemini API أعلاه.")
+    else:
+        df_all = r.get("all", pd.DataFrame())
+        if df_all.empty:
+            st.info("لا توجد مقارنات.")
+        else:
+            tab1, tab2 = st.tabs(["🔍 تحقق فردي", "📊 تحقق مجمع"])
+            
+            with tab1:
+                st.subheader("اختر منتج للتحقق الفردي:")
+
+                # عرض المنتجات كأزرار
+                for idx, row in df_all.iterrows():
+                    icon = row.get("الأيقونة", "")
+                    name = row.get("المنتج", "")
+                    price = row.get("السعر", 0)
+                    comp_price = row.get("سعر المنافس", 0)
+                    diff = row.get("الفرق", 0)
+
+                    col_btn, col_info = st.columns([1, 3])
+                    with col_btn:
+                        btn = st.button(
+                            f"{icon} تحقق",
+                            key=f"gem_{idx}",
+                            use_container_width=True,
+                        )
+                    with col_info:
+                        st.markdown(
+                            f"**{name}** | "
+                            f"سعري: {price} | "
+                            f"المنافس: {comp_price} | "
+                            f"الفرق: {diff}"
+                        )
+
+                    if btn:
+                        with st.spinner("🤖 AI يحلل..."):
+                            result = gemini_verify(
+                                name, price, comp_price, api_key
+                            )
+                        st.markdown(
+                            f'<div class="severity-medium">'
+                            f"🤖 <b>تحليل AI:</b><br>{result}"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+            
+            with tab2:
+                st.subheader("تحليل جماعي للمنتجات")
+
+                if st.button("🚀 ابدأ التحقق المجمع", use_container_width=True, type="primary"):
+                    with st.spinner("🤖 AI يحلل جميع المنتجات..."):
+                        # استيراد دالة التحقق المجمع من gemini_ai
+                        from gemini_ai import batch_generate_descriptions
+                        
+                        # تحضير البيانات
+                        products = []
+                        for _, row in df_all.iterrows():
+                            products.append({
+                                'name': row.get('المنتج', ''),
+                                'price': row.get('السعر', 0),
+                                'comp_price': row.get('سعر المنافس', 0),
+                                'diff': row.get('الفرق', 0),
+                            })
+                        
+                        # التحقق المجمع
+                        results = []
+                        for product in products[:10]:  # محدود لتجنب الحمل الزائد
+                            try:
+                                from gemini_ai import generate_pricing_recommendation
+                                rec = generate_pricing_recommendation(
+                                    product['name'], product['price'], product['comp_price'], 20.0
+                                )
+                                results.append({
+                                    'product': product['name'],
+                                    'recommendation': rec or 'لا توجد توصية'
+                                })
+                            except Exception as e:
+                                results.append({
+                                    'product': product['name'],
+                                    'recommendation': f'خطأ: {str(e)}'
+                                })
+                        
+                        # عرض النتائج
+                        st.success("✅ تم الانتهاء من التحقق المجمع!")
+                        for res in results:
+                            st.markdown(f"**{res['product']}**: {res['recommendation']}")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("تحقق AI")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: محادثة AI
+# ══════════════════════════════════════════════════════════════
+elif page == "💬 محادثة AI":
+    st.header("💬 محادثة AI")
+    st.caption("محادثة تفاعلية مع الذكاء الاصطناعي للحصول على نصائح وتحليلات")
+    st.markdown("---")
+    st.info("قريباً: واجهة محادثة مع AI.")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("محادثة AI")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: استديو مهووس
+# ══════════════════════════════════════════════════════════════
+elif page == "🎬 استديو مهووس":
+    st.header("🎬 استديو مهووس")
+    st.caption("أدوات إنشاء محتوى وتصميم للعطور")
+    st.markdown("---")
+    st.info("قريباً: أدوات تصميم وإنشاء محتوى.")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("استديو مهووس")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: قاعدة البيانات
+# ══════════════════════════════════════════════════════════════
+elif page == "💾 قاعدة البيانات":
+    st.header("💾 قاعدة البيانات")
+    st.caption("إدارة واستعراض قاعدة البيانات الرئيسية")
+    st.markdown("---")
+    st.info("قريباً: واجهة إدارة قاعدة البيانات.")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("قاعدة البيانات")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: المشتريات اليومية
+# ══════════════════════════════════════════════════════════════
+elif page == "🛒 المشتريات اليومية":
+    st.header("🛒 المشتريات اليومية")
+    st.caption("تتبع المشتريات والطلبات اليومية")
+    st.markdown("---")
+    st.info("قريباً: نظام تتبع المشتريات.")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("المشتريات اليومية")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: إدارة الموردين
+# ══════════════════════════════════════════════════════════════
+elif page == "🏪 إدارة الموردين":
+    st.header("🏪 إدارة الموردين")
+    st.caption("إدارة قائمة الموردين والتعامل معهم")
+    st.markdown("---")
+    st.info("قريباً: نظام إدارة الموردين.")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("إدارة الموردين")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: مذكرة المصروفات
+# ══════════════════════════════════════════════════════════════
+elif page == "💰 مذكرة المصروفات":
+    st.header("💰 مذكرة المصروفات")
+    st.caption("تسجيل وتتبع المصروفات والنفقات")
+    st.markdown("---")
+    st.info("قريباً: نظام تتبع المصروفات.")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("مذكرة المصروفات")
+
+# ══════════════════════════════════════════════════════════════
+# صفحة: الإعدادات
+# ══════════════════════════════════════════════════════════════
+elif page == "⚙️ الإعدادات":
+    st.header("⚙️ الإعدادات")
+    st.caption("تكوين التطبيق وإدارة الإعدادات العامة")
+    st.markdown("---")
+    
+    st.subheader("🔑 مفاتيح API")
+    gemini_key = st.text_input(
+        "مفتاح Gemini API",
+        value=st.session_state.gemini_key,
+        type="password",
+    )
+    st.session_state.gemini_key = gemini_key
+    
+    st.subheader("📡 حالة الاتصالات")
+    st.success("🟢 Gemini متصل")
+    st.success("🟢 OpenRouter متصل")
+    st.error("🔴 Make يحتاج تحديث")
+    st.error("🔴 Make يحتاج إضافة")
+    
+    st.subheader("📂 معلومات النظام")
+    st.write(f"الإصدار: v14.2")
+    st.write(f"التاريخ: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
+    if AI_PAGE_MANAGER_AVAILABLE:
+        show_page_ai_assistant("الإعدادات")

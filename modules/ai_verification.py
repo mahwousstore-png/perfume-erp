@@ -38,7 +38,10 @@ class MultiKeyManager:
         self._load_keys()
     
     def _load_keys(self):
-        """تحميل المفاتيح من Streamlit Secrets أو متغيرات البيئة"""
+        """تحميل المفاتيح من Streamlit Secrets أو متغيرات البيئة أو الملف المحلي"""
+        # تحميل المفاتيح من ملف محلي أولاً
+        self._load_keys_from_file()
+        
         # تحميل مفاتيح Gemini
         gemini_sources = [
             "GEMINI_API_KEY", "GEMINI_API_KEY_1", "GEMINI_API_KEY_2", 
@@ -59,6 +62,30 @@ class MultiKeyManager:
             key_val = self._get_secret(key_name)
             if key_val and key_val.strip() and key_val not in self.openrouter_keys:
                 self.openrouter_keys.append(key_val.strip())
+    
+    def _load_keys_from_file(self):
+        """تحميل المفاتيح من ملف محلي"""
+        try:
+            secrets_file = ".secrets/api_keys.json"
+            if os.path.exists(secrets_file):
+                with open(secrets_file, "r") as f:
+                    data = json.load(f)
+                
+                # تحميل مفاتيح Gemini من الملف
+                gemini_keys = data.get("gemini_keys", [])
+                for key in gemini_keys:
+                    if key and key.strip() and key not in self.gemini_keys:
+                        self.gemini_keys.append(key.strip())
+                
+                # تحميل مفاتيح OpenRouter من الملف (إذا كانت موجودة)
+                openrouter_keys = data.get("openrouter_keys", [])
+                for key in openrouter_keys:
+                    if key and key.strip() and key not in self.openrouter_keys:
+                        self.openrouter_keys.append(key.strip())
+                        
+        except Exception as e:
+            # إذا فشل تحميل الملف، نستمر بدون أخطاء
+            pass
     
     def _get_secret(self, name: str) -> str:
         """قراءة سر من Streamlit Secrets أو متغيرات البيئة"""

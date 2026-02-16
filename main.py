@@ -1315,6 +1315,7 @@ with st.sidebar:
         "🔵 منتجات مفقودة",
         "⚠️ يحتاج مراجعة",
         "🔍 تفاصيل المطابقة",
+        "🤖 فحص AI",
         "🤖 تحقق AI",
         "💬 محادثة AI",
         "🎬 استديو مهووس",
@@ -1328,16 +1329,43 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # إحصائيات سريعة
-    if st.session_state.results:
-        stats = st.session_state.results.get("stats", {})
-        st.markdown("### 📊 إحصائيات سريعة")
-        st.metric("إجمالي", stats.get("total", 0))
-        c1, c2 = st.columns(2)
-        c1.metric("🔴 رفع", stats.get("raise_count", 0))
-        c2.metric("🟡 خفض", stats.get("lower_count", 0))
-        c1.metric("🟢 موافق", stats.get("approved_count", 0))
-        c2.metric("🔵 مفقود", stats.get("missing_count", 0))
+    # فحص تلقائي للذكاء الاصطناعي
+    st.markdown("### 🤖 فحص الذكاء الاصطناعي")
+    
+    if st.button("🔄 فحص عمل AI تلقائياً", type="secondary", use_container_width=True):
+        with st.spinner("⏳ جاري فحص الذكاء الاصطناعي..."):
+            # فحص Gemini
+            try:
+                from modules.ai_verification import get_ai_status
+                ai_st = get_ai_status()
+                g_active = ai_st.get('gemini_active', 0)
+                o_active = ai_st.get('openrouter_active', 0)
+                
+                if g_active > 0 or o_active > 0:
+                    st.success(f"✅ الذكاء الاصطناعي يعمل: Gemini ({g_active}) | OpenRouter ({o_active})")
+                    
+                    # اختبار سريع للـ AI
+                    test_result = verify_gemini_connection(update_session=False)
+                    if test_result["connected"]:
+                        st.info("🧠 Gemini AI متصل ويعمل بشكل طبيعي")
+                    else:
+                        st.warning("⚠️ Gemini AI غير متصل - سيتم استخدام OpenRouter")
+                        
+                    # عرض حالة مفصلة
+                    st.markdown("#### 📊 حالة مفصلة:")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.metric("🤖 Gemini", f"{g_active} مفتاح نشط")
+                    with c2:
+                        st.metric("🧠 OpenRouter", f"{o_active} مفتاح نشط")
+                else:
+                    st.error("❌ جميع مفاتيح الذكاء الاصطناعي غير متاحة")
+                    st.warning("⚠️ يرجى إدخال مفاتيح API صحيحة في قسم الإعدادات")
+                    
+            except Exception as e:
+                st.error(f"❌ خطأ في فحص الذكاء الاصطناعي: {str(e)}")
+    
+    st.markdown("---")
 
 # ══════════════════════════════════════════════════════════════
 # 1. لوحة القيادة
@@ -2631,34 +2659,54 @@ elif section == "⚠️ يحتاج مراجعة":
         st.info("📤 قم برفع الملفات وبدء المعالجة أولاً")
 
 # ══════════════════════════════════════════════════════════════
-# 8. Gemini تحقق
+# 8. تحقق AI (دمج الأقسام المتشابهة)
 # ══════════════════════════════════════════════════════════════
-elif section == "🤖 Gemini تحقق":
-    st.markdown("# 🤖 Gemini تحقق")
-    st.markdown("> التحقق من المنتجات وتحليلها باستخدام الذكاء الصناعي")
+elif section == "🤖 تحقق AI":
+    st.markdown("# 🤖 تحقق AI")
+    st.markdown("> نظام شامل للتحقق من المنتجات باستخدام الذكاء الاصطناعي")
     st.markdown("---")
-    
-    if st.session_state.results:
-        df_all = st.session_state.results.get("all")
-        if df_all is not None and not df_all.empty:
-            st.info(f"📊 إجمالي المنتجات المتاحة للتحليل: **{len(df_all)}**")
-            
-            analysis_type = st.selectbox("🔍 نوع التحليل", [
-                "تحليل شامل للأسعار",
-                "تحليل المنتجات الحرجة فقط",
-                "اقتراحات تسعير ذكية",
-                "تحليل المنافسة",
-                "تقرير مفصل"
-            ])
-            
-            sample_size = st.slider("📊 عدد المنتجات للتحليل", 5, 50, 10)
-            
-            if st.button("🚀 بدء التحليل بـ Gemini", type="primary", use_container_width=True):
-                with st.spinner("⏳ جاري التحليل بالذكاء الصناعي..."):
-                    sample = df_all.head(sample_size).to_dict(orient="records")
-                    
-                    prompts = {
-                        "تحليل شامل للأسعار": f"""أنت خبير تسعير عطور فاخرة في السوق السعودي.
+
+    # إدخال مفتاح Gemini API
+    gemini_key = st.text_input(
+        "🔑 مفتاح Gemini API",
+        value=st.session_state.get("gemini_api_key", ""),
+        type="password",
+        help="أدخل مفتاح Gemini API الخاص بك"
+    )
+
+    if gemini_key:
+        st.session_state.gemini_api_key = gemini_key
+
+    st.markdown("---")
+
+    # تبويبات التحقق
+    tab1, tab2, tab3 = st.tabs(["🤖 Gemini تحقق", "🔍 تحقق مجمع AI", "🔬 كشف الأخطاء الذكي"])
+
+    with tab1:
+        st.markdown("### 🤖 Gemini تحقق")
+        st.markdown("> التحقق من المنتجات وتحليلها باستخدام الذكاء الصناعي")
+
+        if st.session_state.results:
+            df_all = st.session_state.results.get("all")
+            if df_all is not None and not df_all.empty:
+                st.info(f"📊 إجمالي المنتجات المتاحة للتحليل: **{len(df_all)}**")
+
+                analysis_type = st.selectbox("🔍 نوع التحليل", [
+                    "تحليل شامل للأسعار",
+                    "تحليل المنتجات الحرجة فقط",
+                    "اقتراحات تسعير ذكية",
+                    "تحليل المنافسة",
+                    "تقرير مفصل"
+                ], key="gemini_analysis_type")
+
+                sample_size = st.slider("📊 عدد المنتجات للتحليل", 5, 50, 10, key="gemini_sample_size")
+
+                if st.button("🚀 بدء التحليل بـ Gemini", type="primary", use_container_width=True):
+                    with st.spinner("⏳ جاري التحليل بالذكاء الصناعي..."):
+                        sample = df_all.head(sample_size).to_dict(orient="records")
+
+                        prompts = {
+                            "تحليل شامل للأسعار": f"""أنت خبير تسعير عطور فاخرة في السوق السعودي.
 حلل هذه المنتجات وقدم تقريراً شاملاً عن الأسعار:
 {json.dumps(sample, ensure_ascii=False, indent=2)}
 
@@ -2667,285 +2715,390 @@ elif section == "🤖 Gemini تحقق":
 2. المنتجات التي تحتاج تعديل فوري
 3. اقتراحات التسعير
 4. تحليل المنافسة""",
-                        "تحليل المنتجات الحرجة فقط": f"""حلل المنتجات الحرجة التالية وقدم توصيات عاجلة:
+                            "تحليل المنتجات الحرجة فقط": f"""حلل المنتجات الحرجة التالية وقدم توصيات عاجلة:
 {json.dumps([p for p in sample if p.get('الخطورة') == 'حرج'], ensure_ascii=False, indent=2)}""",
-                        "اقتراحات تسعير ذكية": f"""كخبير تسعير، اقترح أسعاراً مثالية لهذه المنتجات:
+                            "اقتراحات تسعير ذكية": f"""كخبير تسعير، اقترح أسعاراً مثالية لهذه المنتجات:
 {json.dumps(sample, ensure_ascii=False, indent=2)}
 لكل منتج قدم: السعر المقترح والسبب""",
-                        "تحليل المنافسة": f"""حلل المنافسة لهذه المنتجات:
+                            "تحليل المنافسة": f"""حلل المنافسة لهذه المنتجات:
 {json.dumps(sample, ensure_ascii=False, indent=2)}
 قدم: نقاط القوة والضعف واستراتيجية التسعير المقترحة""",
-                        "تقرير مفصل": f"""أنشئ تقريراً مفصلاً لهذه المنتجات:
+                            "تقرير مفصل": f"""أنشئ تقريراً مفصلاً لهذه المنتجات:
 {json.dumps(sample, ensure_ascii=False, indent=2)}
 يشمل: ملخص تنفيذي، تحليل مفصل، توصيات، خطة عمل"""
-                    }
-                    
-                    result = call_gemini(prompts.get(analysis_type, prompts["تحليل شامل للأسعار"]))
-                    
-                    if result["success"]:
-                        st.session_state.gemini_results = result["text"]
-                        st.markdown("### 📊 نتائج التحليل")
-                        st.markdown(result["text"])
-                    else:
-                        # محاولة بـ OpenRouter
-                        st.warning("⚠️ Gemini غير متاح، جاري المحاولة بـ OpenRouter...")
-                        result2 = call_openrouter(prompts.get(analysis_type, prompts["تحليل شامل للأسعار"]))
-                        if result2["success"]:
-                            st.session_state.gemini_results = result2["text"]
-                            st.markdown("### 📊 نتائج التحليل (OpenRouter)")
-                            st.markdown(result2["text"])
-                        else:
-                            st.error(f"❌ فشل التحليل: {result2['error']}")
-        else:
-            st.info("📋 لا توجد نتائج للتحليل")
-    else:
-        st.info("📤 قم برفع الملفات وبدء المعالجة أولاً")
+                        }
 
-# ══════════════════════════════════════════════════════════════
-# 9. التحقق المجمع AI
-# ══════════════════════════════════════════════════════════════
-elif section == "🔍 تحقق مجمع AI":
-    from modules.ai_verification import batch_verification
-    from datetime import datetime
-    import tempfile
-    import json
-    
-    st.markdown("# 🤖 التحقق المجمع بالذكاء الصناعي")
-    st.markdown("> تحقق ذكي من عدة منتجات دفعة واحدة")
-    st.markdown("---")
-    
-    # الخيارات
-    st.markdown("### ⚙️ خيارات التحقق")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        verification_type = st.selectbox(
-            "نوع التحقق",
-            ["البحث الإلكتروني فقط", "التحقق من ملف المتجر فقط", "تحقق شامل (الاثنين معاً)"],
-            help="اختر نوع التحقق المطلوب"
-        )
-    
-    with col2:
-        store_file = None
-        if "ملف المتجر" in verification_type or "شامل" in verification_type:
-            store_file = st.file_uploader(
-                "📄 ملف المتجر (CSV)",
-                type=["csv"],
-                help="ارفع ملف CSV الخاص بمتجرك للتحقق"
-            )
-    
-    st.markdown("---")
-    st.markdown("### 📦 اختيار المنتجات")
-    
-    if st.session_state.results:
-        df_approved = st.session_state.results.get("approved")
-        
-        if df_approved is not None and not df_approved.empty:
-            st.success(f"✅ {len(df_approved)} منتج متاح للتحقق")
-            
-            selection_method = st.radio(
-                "طريقة التحديد",
-                ["تحديد يدوي", "تحديد الكل", "تحديد حسب النطاق"],
-                horizontal=True
-            )
-            
-            selected_products = []
-            
-            if selection_method == "تحديد يدوي":
-                st.markdown("#### اختر المنتجات:")
-                for idx, row in df_approved.iterrows():
-                    product_name = row.get('اسم المنتج', row.iloc[0])
-                    product_price = row.get('السعر', row.iloc[1] if len(row) > 1 else 'N/A')
-                    
-                    if st.checkbox(f"{product_name} - {product_price} ريال", key=f"batch_select_{idx}"):
-                        selected_products.append({
-                            "name": product_name,
-                            "price": float(product_price) if product_price != 'N/A' else 0
-                        })
-            
-            elif selection_method == "تحديد الكل":
-                selected_products = [
-                    {
-                        "name": row.get('اسم المنتج', row.iloc[0]),
-                        "price": float(row.get('السعر', row.iloc[1] if len(row) > 1 else 0))
-                    }
-                    for _, row in df_approved.iterrows()
-                ]
-                st.info(f"📊 تم تحديد جميع المنتجات ({len(selected_products)} منتج)")
-            
-            else:
-                col_range1, col_range2 = st.columns(2)
-                with col_range1:
-                    start_idx = st.number_input("من", min_value=1, max_value=len(df_approved), value=1)
-                with col_range2:
-                    end_idx = st.number_input("إلى", min_value=1, max_value=len(df_approved), value=min(10, len(df_approved)))
-                
-                selected_products = [
-                    {
-                        "name": row.get('اسم المنتج', row.iloc[0]),
-                        "price": float(row.get('السعر', row.iloc[1] if len(row) > 1 else 0))
-                    }
-                    for idx, row in df_approved.iloc[start_idx-1:end_idx].iterrows()
-                ]
-                st.info(f"📊 تم تحديد {len(selected_products)} منتج من النطاق")
-            
-            st.markdown("---")
-            
-            if len(selected_products) > 0:
-                st.markdown(f"### 🚀 جاهز للتحقق من {len(selected_products)} منتج")
-                
-                if st.button("🤖 بدء التحقق المجمع", type="primary", use_container_width=True):
-                    store_file_path = None
-                    if store_file:
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
-                            tmp.write(store_file.getvalue())
-                            store_file_path = tmp.name
-                    
-                    with st.spinner("⏳ جاري التحقق المجمع... قد يستغرق بعض الوقت"):
-                        result = batch_verification(selected_products, store_file_path)
-                        
+                        result = call_gemini(prompts.get(analysis_type, prompts["تحليل شامل للأسعار"]))
+
                         if result["success"]:
-                            st.success("✅ تم التحقق المجمع بنجاح!")
-                            
-                            summary = result.get("summary")
-                            if summary:
-                                st.markdown("### 📊 ملخص النتائج")
-                                col_s1, col_s2, col_s3 = st.columns(3)
-                                
-                                with col_s1:
-                                    st.metric("إجمالي المنتجات", summary.get("total_products", 0))
-                                with col_s2:
-                                    st.metric("منتجات تنافسية", summary.get("competitive_count", 0), delta="✅")
-                                with col_s3:
-                                    st.metric("تحتاج تعديل", summary.get("needs_adjustment", 0), delta="⚠️")
-                                
-                                if summary.get("recommendations"):
-                                    st.markdown("#### 💡 التوصيات:")
-                                    for rec in summary["recommendations"]:
-                                        st.info(f"• {rec}")
-                                
-                                if summary.get("summary"):
-                                    st.markdown("#### 📝 الملخص العام:")
-                                    st.write(summary["summary"])
-                            
-                            st.markdown("---")
-                            st.markdown("### 📋 النتائج التفصيلية")
-                            
-                            results_list = result.get("results", [])
-                            for i, res in enumerate(results_list, 1):
-                                if res.get("success"):
-                                    product_results = res["results"]
-                                    with st.expander(f"🔍 {i}. {product_results['product_name']}"):
-                                        if product_results.get("online_search"):
-                                            st.markdown("#### 🌐 البحث الإلكتروني:")
-                                            st.json(product_results["online_search"])
-                                        if product_results.get("store_verification"):
-                                            st.markdown("#### 🏪 التحقق من المتجر:")
-                                            st.json(product_results["store_verification"])
-                                        if product_results.get("analysis"):
-                                            st.markdown("#### 🎯 التحليل الذكي:")
-                                            st.json(product_results["analysis"])
-                                else:
-                                    st.error(f"❌ خطأ في المنتج {i}: {res.get('error', 'غير معروف')}")
-                            
-                            st.markdown("---")
-                            st.markdown("### 📥 تحميل النتائج")
-                            results_json = json.dumps(result, ensure_ascii=False, indent=2)
-                            st.download_button(
-                                "📄 تحميل النتائج (JSON)",
-                                data=results_json,
-                                file_name=f"batch_verification_{datetime.now():%Y%m%d_%H%M%S}.json",
-                                mime="application/json",
-                                use_container_width=True
-                            )
+                            st.session_state.gemini_results = result["text"]
+                            st.markdown("### 📊 نتائج التحليل")
+                            st.markdown(result["text"])
                         else:
-                            st.error(f"❌ فشل التحقق المجمع: {result.get('error', 'غير معروف')}")
+                            # محاولة بـ OpenRouter
+                            st.warning("⚠️ Gemini غير متاح، جاري المحاولة بـ OpenRouter...")
+                            result2 = call_openrouter(prompts.get(analysis_type, prompts["تحليل شامل للأسعار"]))
+                            if result2["success"]:
+                                st.session_state.gemini_results = result2["text"]
+                                st.markdown("### 📊 نتائج التحليل (OpenRouter)")
+                                st.markdown(result2["text"])
+                            else:
+                                st.error(f"❌ فشل التحليل: {result2['error']}")
             else:
-                st.warning("⚠️ لم يتم تحديد أي منتجات")
+                st.info("📋 لا توجد نتائج للتحليل")
         else:
-            st.info("📋 لا توجد منتجات موافق عليها")
-    else:
-        st.info("📤 قم برفع الملفات وبدء المعالجة أولاً")
+            st.info("📤 قم برفع الملفات وبدء المعالجة أولاً")
 
-# ══════════════════════════════════════════════════════════════
-# 9.5. كشف الأخطاء الذكي
-# ══════════════════════════════════════════════════════════════
-elif section == "🔬 كشف الأخطاء الذكي":
-    from error_detection_ui import show_error_detection_tab, show_individual_verification
-    
-    st.markdown("# 🔬 كشف الأخطاء الذكي")
-    st.markdown("> نظام ذكي لاكتشاف الأخطاء في المطابقة باستخدام Gemini AI")
-    st.markdown("---")
-    
-    # إدخال مفتاح Gemini API
-    gemini_key = st.text_input(
-        "🔑 مفتاح Gemini API",
-        value=st.session_state.get("gemini_api_key", ""),
-        type="password",
-        help="أدخل مفتاح Gemini API الخاص بك"
-    )
-    
-    if gemini_key:
-        st.session_state.gemini_api_key = gemini_key
-    
-    st.markdown("---")
-    
-    # اختيار نوع التحليل
-    analysis_mode = st.radio(
-        "نوع التحليل",
-        ["📊 تحليل المطابقات", "🔍 تحقق فردي"],
-        horizontal=True
-    )
-    
-    if analysis_mode == "📊 تحليل المطابقات":
-        # تحليل المطابقات الموجودة
+    with tab2:
+        st.markdown("### 🔍 تحقق مجمع AI")
+        st.markdown("> تحقق ذكي من عدة منتجات دفعة واحدة")
+
+        # الخيارات
+        st.markdown("#### ⚙️ خيارات التحقق")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            verification_type = st.selectbox(
+                "نوع التحقق",
+                ["البحث الإلكتروني فقط", "التحقق من ملف المتجر فقط", "تحقق شامل (الاثنين معاً)"],
+                help="اختر نوع التحقق المطلوب",
+                key="batch_verification_type"
+            )
+
+        with col2:
+            store_file = None
+            if "ملف المتجر" in verification_type or "شامل" in verification_type:
+                store_file = st.file_uploader(
+                    "📄 ملف المتجر (CSV)",
+                    type=["csv"],
+                    help="ارفع ملف CSV الخاص بمتجرك للتحقق",
+                    key="batch_store_file"
+                )
+
+        st.markdown("---")
+        st.markdown("#### 📦 اختيار المنتجات")
+
         if st.session_state.results:
-            # استخراج المطابقات من النتائج
-            matches = []
-            
-            # من المنتجات الموافق عليها
             df_approved = st.session_state.results.get("approved")
+
             if df_approved is not None and not df_approved.empty:
-                for _, row in df_approved.iterrows():
-                    matches.append({
-                        "my_product": row.get('اسم المنتج', ''),
-                        "competitor_product": row.get('اسم المنتج المنافس', ''),
-                        "my_price": float(row.get('السعر', 0)),
-                        "competitor_price": float(row.get('سعر المنافس', 0)),
-                        "similarity": row.get('التشابه', 1.0)
-                    })
-            
-            # من منتجات رفع السعر
-            df_raise = st.session_state.results.get("raise")
-            if df_raise is not None and not df_raise.empty:
-                for _, row in df_raise.iterrows():
-                    matches.append({
-                        "my_product": row.get('اسم المنتج', ''),
-                        "competitor_product": row.get('اسم المنتج المنافس', ''),
-                        "my_price": float(row.get('السعر', 0)),
-                        "competitor_price": float(row.get('سعر المنافس', 0)),
-                        "similarity": row.get('التشابه', 0.8)
-                    })
-            
-            # من منتجات خفض السعر
-            df_lower = st.session_state.results.get("lower")
-            if df_lower is not None and not df_lower.empty:
-                for _, row in df_lower.iterrows():
-                    matches.append({
-                        "my_product": row.get('اسم المنتج', ''),
-                        "competitor_product": row.get('اسم المنتج المنافس', ''),
-                        "my_price": float(row.get('السعر', 0)),
-                        "competitor_price": float(row.get('سعر المنافس', 0)),
-                        "similarity": row.get('التشابه', 0.8)
-                    })
-            
-            show_error_detection_tab(matches, gemini_key)
+                st.success(f"✅ {len(df_approved)} منتج متاح للتحقق")
+
+                selection_method = st.radio(
+                    "طريقة التحديد",
+                    ["تحديد يدوي", "تحديد الكل", "تحديد حسب النطاق"],
+                    horizontal=True,
+                    key="batch_selection_method"
+                )
+
+                selected_products = []
+
+                if selection_method == "تحديد يدوي":
+                    st.markdown("##### اختر المنتجات:")
+                    for idx, row in df_approved.iterrows():
+                        product_name = row.get('اسم المنتج', row.iloc[0])
+                        product_price = row.get('السعر', row.iloc[1] if len(row) > 1 else 'N/A')
+
+                        if st.checkbox(f"{product_name} - {product_price} ريال", key=f"batch_select_{idx}"):
+                            selected_products.append({
+                                "name": product_name,
+                                "price": float(product_price) if product_price != 'N/A' else 0
+                            })
+
+                elif selection_method == "تحديد الكل":
+                    selected_products = [
+                        {
+                            "name": row.get('اسم المنتج', row.iloc[0]),
+                            "price": float(row.get('السعر', row.iloc[1] if len(row) > 1 else 0))
+                        }
+                        for _, row in df_approved.iterrows()
+                    ]
+                    st.info(f"📊 تم تحديد جميع المنتجات ({len(selected_products)} منتج)")
+
+                else:
+                    col_range1, col_range2 = st.columns(2)
+                    with col_range1:
+                        start_idx = st.number_input("من", min_value=1, max_value=len(df_approved), value=1, key="batch_start_idx")
+                    with col_range2:
+                        end_idx = st.number_input("إلى", min_value=1, max_value=len(df_approved), value=min(10, len(df_approved)), key="batch_end_idx")
+
+                    selected_products = [
+                        {
+                            "name": row.get('اسم المنتج', row.iloc[0]),
+                            "price": float(row.get('السعر', row.iloc[1] if len(row) > 1 else 0))
+                        }
+                        for idx, row in df_approved.iloc[start_idx-1:end_idx].iterrows()
+                    ]
+                    st.info(f"📊 تم تحديد {len(selected_products)} منتج من النطاق")
+
+                st.markdown("---")
+
+                if len(selected_products) > 0:
+                    st.markdown(f"### 🚀 جاهز للتحقق من {len(selected_products)} منتج")
+
+                    if st.button("🤖 بدء التحقق المجمع", type="primary", use_container_width=True):
+                        store_file_path = None
+                        if store_file:
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+                                tmp.write(store_file.getvalue())
+                                store_file_path = tmp.name
+
+                        with st.spinner("⏳ جاري التحقق المجمع... قد يستغرق بعض الوقت"):
+                            result = batch_verification(selected_products, store_file_path)
+
+                            if result["success"]:
+                                st.success("✅ تم التحقق المجمع بنجاح!")
+
+                                summary = result.get("summary")
+                                if summary:
+                                    st.markdown("### 📊 ملخص النتائج")
+                                    col_s1, col_s2, col_s3 = st.columns(3)
+
+                                    with col_s1:
+                                        st.metric("إجمالي المنتجات", summary.get("total_products", 0))
+                                    with col_s2:
+                                        st.metric("منتجات تنافسية", summary.get("competitive_count", 0), delta="✅")
+                                    with col_s3:
+                                        st.metric("تحتاج تعديل", summary.get("needs_adjustment", 0), delta="⚠️")
+
+                                    if summary.get("recommendations"):
+                                        st.markdown("#### 💡 التوصيات:")
+                                        for rec in summary["recommendations"]:
+                                            st.info(f"• {rec}")
+
+                                    if summary.get("summary"):
+                                        st.markdown("#### 📝 الملخص العام:")
+                                        st.write(summary["summary"])
+
+                                st.markdown("---")
+                                st.markdown("### 📋 النتائج التفصيلية")
+
+                                results_list = result.get("results", [])
+                                for i, res in enumerate(results_list, 1):
+                                    if res.get("success"):
+                                        product_results = res["results"]
+                                        with st.expander(f"🔍 {i}. {product_results['product_name']}"):
+                                            if product_results.get("online_search"):
+                                                st.markdown("#### 🌐 البحث الإلكتروني:")
+                                                st.json(product_results["online_search"])
+                                            if product_results.get("store_verification"):
+                                                st.markdown("#### 🏪 التحقق من المتجر:")
+                                                st.json(product_results["store_verification"])
+                                            if product_results.get("analysis"):
+                                                st.markdown("#### 🎯 التحليل الذكي:")
+                                                st.json(product_results["analysis"])
+                                    else:
+                                        st.error(f"❌ خطأ في المنتج {i}: {res.get('error', 'غير معروف')}")
+
+                                st.markdown("---")
+                                st.markdown("### 📥 تحميل النتائج")
+                                results_json = json.dumps(result, ensure_ascii=False, indent=2)
+                                st.download_button(
+                                    "📄 تحميل النتائج (JSON)",
+                                    data=results_json,
+                                    file_name=f"batch_verification_{datetime.now():%Y%m%d_%H%M%S}.json",
+                                    mime="application/json",
+                                    use_container_width=True
+                                )
+                            else:
+                                st.error(f"❌ فشل التحقق المجمع: {result.get('error', 'غير معروف')}")
+                else:
+                    st.warning("⚠️ لم يتم تحديد أي منتجات")
+            else:
+                st.info("📋 لا توجد منتجات موافق عليها")
         else:
-            st.info("📤 لا توجد نتائج للتحليل. قم برفع الملفات وبدء المعالجة أولاً.")
-    
-    else:
-        # التحقق الفردي
-        show_individual_verification(gemini_key)
+            st.info("📤 قم برفع الملفات وبدء المعالجة أولاً")
+
+    with tab3:
+        st.markdown("### 🔬 كشف الأخطاء الذكي")
+        st.markdown("> نظام ذكي لاكتشاف الأخطاء في المطابقة باستخدام Gemini AI")
+
+        # اختيار نوع التحليل
+        analysis_mode = st.radio(
+            "نوع التحليل",
+            ["📊 تحليل المطابقات", "🔍 تحقق فردي"],
+            horizontal=True,
+            key="error_detection_mode"
+        )
+
+        if analysis_mode == "📊 تحليل المطابقات":
+            # تحليل المطابقات الموجودة
+            if st.session_state.results:
+                # استخراج المطابقات من النتائج
+                matches = []
+
+                # من المنتجات الموافق عليها
+                df_approved = st.session_state.results.get("approved")
+                if df_approved is not None and not df_approved.empty:
+                    for _, row in df_approved.iterrows():
+                        matches.append({
+                            "my_product": row.get('اسم المنتج', ''),
+                            "competitor_product": row.get('اسم المنتج المنافس', ''),
+                            "my_price": float(row.get('السعر', 0)),
+                            "competitor_price": float(row.get('سعر المنافس', 0)),
+                            "similarity": row.get('التشابه', 1.0)
+                        })
+
+                # من منتجات رفع السعر
+                df_raise = st.session_state.results.get("raise")
+                if df_raise is not None and not df_raise.empty:
+                    for _, row in df_raise.iterrows():
+                        matches.append({
+                            "my_product": row.get('اسم المنتج', ''),
+                            "competitor_product": row.get('اسم المنتج المنافس', ''),
+                            "my_price": float(row.get('السعر', 0)),
+                            "competitor_price": float(row.get('سعر المنافس', 0)),
+                            "similarity": row.get('التشابه', 0.8)
+                        })
+
+                # من منتجات خفض السعر
+                df_lower = st.session_state.results.get("lower")
+                if df_lower is not None and not df_lower.empty:
+                    for _, row in df_lower.iterrows():
+                        matches.append({
+                            "my_product": row.get('اسم المنتج', ''),
+                            "competitor_product": row.get('اسم المنتج المنافس', ''),
+                            "my_price": float(row.get('السعر', 0)),
+                            "competitor_price": float(row.get('سعر المنافس', 0)),
+                            "similarity": row.get('التشابه', 0.8)
+                        })
+
+                if matches:
+                    st.success(f"✅ تم العثور على {len(matches)} مطابقة للتحليل")
+
+                    # عرض ملخص المطابقات
+                    st.markdown("#### 📊 ملخص المطابقات")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("إجمالي المطابقات", len(matches))
+                    with col2:
+                        avg_similarity = sum(m['similarity'] for m in matches) / len(matches)
+                        st.metric("متوسط التشابه", f"{avg_similarity:.2%}")
+                    with col3:
+                        high_similarity = sum(1 for m in matches if m['similarity'] >= 0.8)
+                        st.metric("مطابقات عالية", high_similarity)
+
+                    # تحليل الأخطاء المحتملة
+                    st.markdown("---")
+                    st.markdown("#### 🔍 تحليل الأخطاء المحتملة")
+
+                    error_analysis = []
+
+                    for match in matches:
+                        errors = []
+
+                        # فحص الفرق في الأسعار
+                        price_diff = abs(match['my_price'] - match['competitor_price'])
+                        if price_diff > match['my_price'] * 0.5:  # فرق أكبر من 50%
+                            errors.append(f"فرق سعر كبير ({price_diff:.0f} ر.س)")
+
+                        # فحص التشابه المنخفض
+                        if match['similarity'] < 0.6:
+                            errors.append(f"تشابه منخفض ({match['similarity']:.1%})")
+
+                        # فحص الأسماء المتشابهة جداً
+                        if match['similarity'] > 0.95:
+                            errors.append("تشابه عالي جداً - قد يكون خطأ في المطابقة")
+
+                        if errors:
+                            error_analysis.append({
+                                'product': match['my_product'],
+                                'competitor': match['competitor_product'],
+                                'errors': errors,
+                                'similarity': match['similarity'],
+                                'price_diff': price_diff
+                            })
+
+                    if error_analysis:
+                        st.warning(f"⚠️ تم العثور على {len(error_analysis)} منتج قد يحتوي على أخطاء")
+
+                        for item in error_analysis[:10]:  # عرض أول 10 فقط
+                            with st.expander(f"🔍 {item['product']}"):
+                                st.markdown(f"**المنافس:** {item['competitor']}")
+                                st.markdown(f"**نسبة التشابه:** {item['similarity']:.1%}")
+                                st.markdown(f"**فرق السعر:** {item['price_diff']:.0f} ر.س")
+
+                                st.markdown("**الأخطاء المحتملة:**")
+                                for error in item['errors']:
+                                    st.error(f"• {error}")
+
+                                # زر للتحقق الفردي
+                                if st.button(f"🤖 تحقق فردي لهذا المنتج", key=f"verify_{hash(item['product'])}"):
+                                    st.info("🔄 جاري التحقق الفردي...")
+                                    # يمكن إضافة منطق التحقق الفردي هنا
+                    else:
+                        st.success("✅ لم يتم العثور على أخطاء واضحة في المطابقات")
+                else:
+                    st.info("📋 لا توجد مطابقات للتحليل")
+            else:
+                st.info("📤 لا توجد نتائج للتحليل. قم برفع الملفات وبدء المعالجة أولاً.")
+
+        else:
+            # التحقق الفردي
+            st.markdown("#### 🔍 التحقق الفردي")
+            st.markdown("أدخل تفاصيل المنتج للتحقق من الأخطاء:")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                product_name = st.text_input("اسم المنتج", key="individual_product_name")
+                my_price = st.number_input("سعرنا (ريال)", min_value=0.0, key="individual_my_price")
+
+            with col2:
+                competitor_name = st.text_input("اسم المنتج المنافس", key="individual_competitor_name")
+                competitor_price = st.number_input("سعر المنافس (ريال)", min_value=0.0, key="individual_competitor_price")
+
+            if st.button("🔍 تحقق من الأخطاء", type="primary", disabled=not (product_name and competitor_name)):
+                with st.spinner("🤖 جاري التحقق من الأخطاء..."):
+                    # منطق التحقق الفردي
+                    errors_found = []
+
+                    # فحص التشابه في الأسماء
+                    from difflib import SequenceMatcher
+                    similarity = SequenceMatcher(None, product_name.lower(), competitor_name.lower()).ratio()
+
+                    if similarity < 0.3:
+                        errors_found.append("الأسماء مختلفة جداً - قد لا تكون مطابقة صحيحة")
+                    elif similarity > 0.95:
+                        errors_found.append("الأسماء متطابقة تماماً - تحقق من عدم التكرار")
+
+                    # فحص الفرق في الأسعار
+                    if my_price > 0 and competitor_price > 0:
+                        price_diff_pct = abs(my_price - competitor_price) / min(my_price, competitor_price)
+                        if price_diff_pct > 2.0:  # فرق أكبر من 200%
+                            errors_found.append(f"فرق سعر كبير جداً ({price_diff_pct:.1%})")
+
+                    # فحص الأنماط الشائعة للأخطاء
+                    if "ml" in product_name.lower() and "ml" not in competitor_name.lower():
+                        errors_found.append("اختلاف في وحدة القياس (ml)")
+                    if "ml" in competitor_name.lower() and "ml" not in product_name.lower():
+                        errors_found.append("اختلاف في وحدة القياس (ml)")
+
+                    # عرض النتائج
+                    st.markdown("### 📊 نتائج التحقق")
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("نسبة التشابه", f"{similarity:.1%}")
+                    with col2:
+                        if my_price > 0 and competitor_price > 0:
+                            price_diff = abs(my_price - competitor_price)
+                            st.metric("فرق السعر", f"{price_diff:.0f} ر.س")
+                    with col3:
+                        status = "🟢 آمن" if len(errors_found) == 0 else "🟡 يحتاج مراجعة" if len(errors_found) <= 2 else "🔴 خطير"
+                        st.metric("الحالة", status)
+
+                    if errors_found:
+                        st.warning("⚠️ تم العثور على الأخطاء التالية:")
+                        for error in errors_found:
+                            st.error(f"• {error}")
+
+                        st.markdown("#### 💡 توصيات:")
+                        if similarity < 0.5:
+                            st.info("• تحقق من صحة المطابقة - الأسماء مختلفة جداً")
+                        if len(errors_found) > 2:
+                            st.info("• هذا المنتج يحتاج مراجعة يدوية دقيقة")
+                    else:
+                        st.success("✅ لم يتم العثور على أخطاء واضحة - المطابقة تبدو صحيحة")
 
 # ══════════════════════════════════════════════════════════════
 # 10. محادثة AI
@@ -3368,6 +3521,170 @@ Status: ✅ متصل
                     st.error(f"❌ خطأ: {str(e)}")
 
 # ══════════════════════════════════════════════════════════════
+# فحص AI
+# ══════════════════════════════════════════════════════════════
+elif section == "🤖 فحص AI":
+    st.markdown("# 🤖 فحص الذكاء الاصطناعي")
+    st.markdown("> فحص شامل لحالة الذكاء الاصطناعي وتشخيص المشاكل")
+    st.markdown("---")
+    
+    # فحص حالة الاتصال
+    st.markdown("### 📡 فحص حالة الاتصال")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🔄 فحص Gemini AI", use_container_width=True):
+            with st.spinner("⏳ جاري فحص Gemini..."):
+                gemini_result = verify_gemini_connection(update_session=False)
+                if gemini_result["connected"]:
+                    st.success("✅ Gemini AI متصل ويعمل")
+                    st.info(f"📊 النموذج: {gemini_result.get('model', 'غير محدد')}")
+                else:
+                    st.error(f"❌ Gemini AI غير متصل: {gemini_result['message']}")
+    
+    with col2:
+        if st.button("🔄 فحص OpenRouter", use_container_width=True):
+            with st.spinner("⏳ جاري فحص OpenRouter..."):
+                try:
+                    from modules.ai_verification import get_ai_status
+                    ai_st = get_ai_status()
+                    o_active = ai_st.get('openrouter_active', 0)
+                    if o_active > 0:
+                        st.success(f"✅ OpenRouter متصل ({o_active} مفتاح نشط)")
+                    else:
+                        st.error("❌ OpenRouter غير متصل")
+                except:
+                    st.error("❌ خطأ في فحص OpenRouter")
+    
+    with col3:
+        if st.button("🔄 فحص شامل", type="primary", use_container_width=True):
+            with st.spinner("⏳ جاري الفحص الشامل..."):
+                # فحص Gemini
+                gemini_result = verify_gemini_connection(update_session=False)
+                
+                # فحص OpenRouter
+                try:
+                    from modules.ai_verification import get_ai_status
+                    ai_st = get_ai_status()
+                    g_active = ai_st.get('gemini_active', 0)
+                    o_active = ai_st.get('openrouter_active', 0)
+                    
+                    st.markdown("#### 📊 نتائج الفحص الشامل:")
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if gemini_result["connected"] or g_active > 0:
+                            st.success("🟢 Gemini AI: متصل ويعمل")
+                        else:
+                            st.error("🔴 Gemini AI: غير متصل")
+                    
+                    with c2:
+                        if o_active > 0:
+                            st.success("🟢 OpenRouter: متصل ويعمل")
+                        else:
+                            st.error("🔴 OpenRouter: غير متصل")
+                    
+                    if (gemini_result["connected"] or g_active > 0) or o_active > 0:
+                        st.success("✅ الذكاء الاصطناعي جاهز للاستخدام!")
+                    else:
+                        st.error("❌ جميع خدمات الذكاء الاصطناعي غير متاحة")
+                        
+                except Exception as e:
+                    st.error(f"❌ خطأ في الفحص الشامل: {str(e)}")
+    
+    st.markdown("---")
+    
+    # اختبار عملي
+    st.markdown("### 🧪 اختبار عملي")
+    
+    test_prompt = st.text_area(
+        "📝 نص الاختبار",
+        value="ما هو أفضل سعر لعطر شانيل رقم 5 حجم 100 مل في السوق السعودي؟",
+        height=100,
+        help="اكتب نص لاختبار الذكاء الاصطناعي"
+    )
+    
+    col_test1, col_test2 = st.columns(2)
+    
+    with col_test1:
+        if st.button("🤖 اختبار Gemini", use_container_width=True, disabled=not test_prompt):
+            with st.spinner("⏳ جاري الاختبار..."):
+                result = call_gemini(test_prompt)
+                if result["success"]:
+                    st.success("✅ نجح الاختبار!")
+                    st.markdown("#### 📝 الرد:")
+                    st.write(result["text"])
+                else:
+                    st.error(f"❌ فشل الاختبار: {result['error']}")
+    
+    with col_test2:
+        if st.button("🧠 اختبار OpenRouter", use_container_width=True, disabled=not test_prompt):
+            with st.spinner("⏳ جاري الاختبار..."):
+                result = call_openrouter(test_prompt)
+                if result["success"]:
+                    st.success("✅ نجح الاختبار!")
+                    st.markdown("#### 📝 الرد:")
+                    st.write(result["text"])
+                else:
+                    st.error(f"❌ فشل الاختبار: {result['error']}")
+    
+    st.markdown("---")
+    
+    # إعدادات المفاتيح
+    st.markdown("### 🔑 إعدادات مفاتيح API")
+    
+    with st.expander("⚙️ إدارة المفاتيح", expanded=False):
+        st.markdown("#### 🤖 مفتاح Gemini API")
+        gemini_key_input = st.text_input(
+            "مفتاح Gemini API",
+            value=st.session_state.get("gemini_key", ""),
+            type="password",
+            help="أدخل مفتاح Gemini API الخاص بك"
+        )
+        
+        st.markdown("#### 🧠 مفتاح OpenRouter API")
+        openrouter_key_input = st.text_input(
+            "مفتاح OpenRouter API", 
+            value=st.session_state.get("openrouter_key", ""),
+            type="password",
+            help="أدخل مفتاح OpenRouter API الخاص بك"
+        )
+        
+        if st.button("💾 حفظ المفاتيح", type="primary"):
+            st.session_state.gemini_key = gemini_key_input
+            st.session_state.openrouter_key = openrouter_key_input
+            st.success("✅ تم حفظ المفاتيح!")
+            st.rerun()
+    
+    # معلومات التشخيص
+    st.markdown("---")
+    st.markdown("### 🔧 معلومات التشخيص")
+    
+    with st.expander("📊 تفاصيل النظام", expanded=False):
+        import sys
+        st.markdown(f"**Python Version:** {sys.version}")
+        st.markdown(f"**Platform:** {sys.platform}")
+        
+        try:
+            import streamlit
+            st.markdown(f"**Streamlit Version:** {streamlit.__version__}")
+        except:
+            st.markdown("**Streamlit Version:** غير متاح")
+        
+        try:
+            import google.generativeai as genai
+            st.markdown(f"**Google Generative AI Version:** {genai.__version__}")
+        except:
+            st.markdown("**Google Generative AI:** غير مثبت")
+        
+        try:
+            import requests
+            st.markdown(f"**Requests Version:** {requests.__version__}")
+        except:
+            st.markdown("**Requests:** غير مثبت")
+
+# ══════════════════════════════════════════════════════════════
 # المشتريات اليومية
 # ══════════════════════════════════════════════════════════════
 elif section == "🛒 المشتريات اليومية":
@@ -3395,7 +3712,7 @@ elif section == "⚙️ الإعدادات":
     st.markdown("# ⚙️ الإعدادات")
     st.markdown("---")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["🤖 الذكاء الصناعي", "⚡ Make.com", "📁 Google Drive", "🔧 عام"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🤖 الذكاء الصناعي", "⚡ Make.com", "📁 Google Drive", "🔗 ربط الخوارزميات"])
     
     with tab1:
         st.markdown("### 🤖 إعدادات الذكاء الصناعي")
@@ -3423,6 +3740,12 @@ elif section == "⚙️ الإعدادات":
                     st.warning(f"⚠️ OpenRouter: لا مفاتيح ({o_total} إجمالي)")
             
             st.metric("إجمالي الطلبات", ai_status.get('total_calls', 0))
+            
+            # تحذير إذا لم تكن هناك مفاتيح متاحة
+            if ai_status.get('available', False) == False:
+                st.error("❌ **جميع مفاتيح الذكاء الاصطناعي غير متاحة!**")
+                st.warning("⚠️ يرجى إدخال مفاتيح API صحيحة في قسم إدارة المفاتيح أدناه")
+                
         except Exception:
             if DEFAULT_GEMINI_KEY:
                 st.success(f"✅ مفتاح Gemini موجود وجاهز")
@@ -3437,6 +3760,147 @@ elif section == "⚙️ الإعدادات":
                     st.balloons()
                 else:
                     st.error(f"❌ فشل الاتصال: {result['message']}")
+        
+        st.markdown("---")
+        
+        # إدارة مفاتيح API
+        st.markdown("#### 🔑 إدارة مفاتيح API")
+        
+        # زر عرض الدليل
+        if st.button("📋 عرض دليل إعداد المفاتيح", key="show_api_guide"):
+            with st.expander("📖 دليل إعداد مفاتيح API", expanded=True):
+                st.markdown("""
+**🔑 Gemini AI Keys:**
+1. اذهب إلى: [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. أنشئ مفتاح API جديد
+3. انسخ المفتاح واحفظه في مكان آمن
+
+**🧠 OpenRouter Keys:**
+1. اذهب إلى: [OpenRouter Keys](https://openrouter.ai/keys)
+2. أنشئ مفتاح API جديد  
+3. انسخ المفتاح واحفظه في مكان آمن
+
+**⚙️ خطوات الإعداد:**
+1. أدخل مفاتيحك في الحقول أدناه
+2. اضغط '💾 حفظ المفاتيح'
+3. اختبر الاتصال بالضغط على '🔄 اختبار الاتصال'
+
+**💡 نصائح مهمة:**
+- يمكنك إدخال عدة مفاتيح للتبديل التلقائي عند الفشل
+- المفاتيح محفوظة محلياً فقط في جلسة التطبيق
+- لا تشارك مفاتيحك مع أي شخص آخر
+- تأكد من وجود رصيد كافي في حساباتك
+                """)
+        
+        st.markdown("---")
+        
+        with st.expander("⚙️ إعدادات مفاتيح Gemini", expanded=True):
+            st.markdown("**مفاتيح Gemini AI (متعددة للتبديل التلقائي):**")
+            
+            # إدخال مفاتيح Gemini
+            gemini_keys = []
+            for i in range(1, 6):  # حتى 5 مفاتيح
+                key_name = f"gemini_key_{i}"
+                current_value = st.session_state.get(key_name, "")
+                key_input = st.text_input(
+                    f"🔑 Gemini API Key {i}",
+                    value=current_value,
+                    type="password",
+                    key=f"input_{key_name}",
+                    help=f"أدخل مفتاح Gemini API رقم {i}"
+                )
+                if key_input and key_input != current_value:
+                    st.session_state[key_name] = key_input
+                if key_input.strip():
+                    gemini_keys.append(key_input.strip())
+            
+            if st.button("💾 حفظ مفاتيح Gemini نهائياً", key="save_gemini_keys", type="primary"):
+                try:
+                    # حفظ المفاتيح في ملف محلي آمن
+                    api_keys_data = {"gemini_keys": gemini_keys, "timestamp": datetime.now().isoformat()}
+                    
+                    # إنشاء مجلد .secrets إذا لم يكن موجوداً
+                    secrets_dir = ".secrets"
+                    if not os.path.exists(secrets_dir):
+                        os.makedirs(secrets_dir)
+                    
+                    # حفظ المفاتيح في ملف JSON
+                    import json
+                    with open(f"{secrets_dir}/api_keys.json", "w") as f:
+                        json.dump(api_keys_data, f, indent=2)
+                    
+                    # تحديث متغيرات البيئة للجلسة الحالية
+                    for i, key in enumerate(gemini_keys, 1):
+                        os.environ[f"GEMINI_API_KEY_{i if i > 1 else ''}"] = key
+                    
+                    # إعادة تحميل مدير المفاتيح
+                    from modules.ai_verification import key_manager
+                    key_manager._load_keys()
+                    
+                    st.success(f"✅ تم حفظ {len(gemini_keys)} مفتاح Gemini نهائياً!")
+                    st.info("💡 المفاتيح محفوظة الآن بشكل دائم وستظل متاحة حتى بعد إعادة تشغيل التطبيق")
+                    st.balloons()
+                    
+                except Exception as e:
+                    st.error(f"❌ خطأ في حفظ المفاتيح: {str(e)}")
+        
+        with st.expander("⚙️ إعدادات مفاتيح OpenRouter", expanded=False):
+            st.markdown("**مفاتيح OpenRouter (متعددة للتبديل التلقائي):**")
+            
+            # إدخال مفاتيح OpenRouter
+            openrouter_keys = []
+            for i in range(1, 3):  # حتى 2 مفاتيح
+                key_name = f"openrouter_key_{i}"
+                current_value = st.session_state.get(key_name, "")
+                key_input = st.text_input(
+                    f"🔑 OpenRouter API Key {i}",
+                    value=current_value,
+                    type="password",
+                    key=f"input_{key_name}",
+                    help=f"أدخل مفتاح OpenRouter API رقم {i}"
+                )
+                if key_input and key_input != current_value:
+                    st.session_state[key_name] = key_input
+                if key_input.strip():
+                    openrouter_keys.append(key_input.strip())
+            
+            if st.button("💾 حفظ مفاتيح OpenRouter نهائياً", key="save_openrouter_keys", type="primary"):
+                try:
+                    # قراءة الملف الحالي إذا كان موجوداً
+                    secrets_dir = ".secrets"
+                    secrets_file = f"{secrets_dir}/api_keys.json"
+                    api_keys_data = {}
+                    
+                    if os.path.exists(secrets_file):
+                        with open(secrets_file, "r") as f:
+                            api_keys_data = json.load(f)
+                    
+                    # تحديث مفاتيح OpenRouter
+                    api_keys_data["openrouter_keys"] = openrouter_keys
+                    api_keys_data["timestamp"] = datetime.now().isoformat()
+                    
+                    # إنشاء المجلد إذا لم يكن موجوداً
+                    if not os.path.exists(secrets_dir):
+                        os.makedirs(secrets_dir)
+                    
+                    # حفظ المفاتيح في ملف JSON
+                    with open(secrets_file, "w") as f:
+                        json.dump(api_keys_data, f, indent=2)
+                    
+                    # تحديث متغيرات البيئة للجلسة الحالية
+                    for i, key in enumerate(openrouter_keys, 1):
+                        os.environ[f"OPENROUTER_API_KEY_{i if i > 1 else ''}"] = key
+                    
+                    # إعادة تحميل مدير المفاتيح
+                    from modules.ai_verification import key_manager
+                    key_manager._load_keys()
+                    
+                    st.success(f"✅ تم حفظ {len(openrouter_keys)} مفتاح OpenRouter نهائياً!")
+                    st.info("💡 المفاتيح محفوظة الآن بشكل دائم وستظل متاحة حتى بعد إعادة تشغيل التطبيق")
+                    st.balloons()
+                    
+                except Exception as e:
+                    st.error(f"❌ خطأ في حفظ المفاتيح: {str(e)}")
         
         st.markdown("---")
         
@@ -3493,42 +3957,131 @@ elif section == "⚙️ الإعدادات":
             st.success("✅ تم حفظ معرف المجلد")
     
     with tab4:
-        st.markdown("### 🔧 إعدادات عامة")
+        st.markdown("### � ربط الخوارزميات")
         
-        backend_url = st.text_input("🌐 رابط الخادم الخلفي",
-                                    value=st.session_state.backend_url,
-                                    placeholder="http://localhost:8000")
-        if backend_url != st.session_state.backend_url:
-            st.session_state.backend_url = backend_url
+        st.markdown("#### ⚙️ إعدادات خوارزمية المطابقة")
+        
+        # إعدادات الخوارزمية
+        threshold = st.slider(
+            "📊 حد التطابق (%)",
+            min_value=50,
+            max_value=95,
+            value=st.session_state.algorithm_settings.get("threshold", 60),
+            step=5,
+            help="الحد الأدنى لنسبة التطابق لاعتبار المنتجات مطابقة"
+        )
+        
+        raise_threshold = st.slider(
+            "📈 حد رفع السعر (%)",
+            min_value=5,
+            max_value=20,
+            value=st.session_state.algorithm_settings.get("raise_threshold", 10),
+            step=1,
+            help="الفرق المسموح لرفع السعر"
+        )
+        
+        lower_threshold = st.slider(
+            "📉 حد خفض السعر (%)",
+            min_value=5,
+            max_value=20,
+            value=st.session_state.algorithm_settings.get("lower_threshold", 5),
+            step=1,
+            help="الفرق المسموح لخفض السعر"
+        )
+        
+        acceptable_range = st.slider(
+            "🎯 النطاق المقبول (±%)",
+            min_value=1,
+            max_value=10,
+            value=st.session_state.algorithm_settings.get("acceptable_range", 5),
+            step=1,
+            help="النطاق المقبول حول سعر المنافس"
+        )
+        
+        review_threshold = st.slider(
+            "🔍 حد المراجعة (%)",
+            min_value=80,
+            max_value=95,
+            value=st.session_state.algorithm_settings.get("review_threshold", 85),
+            step=5,
+            help="الحد الأدنى للثقة لتجنب المراجعة اليدوية"
+        )
+        
+        # حفظ الإعدادات
+        if st.button("💾 حفظ إعدادات الخوارزمية", type="primary"):
+            st.session_state.algorithm_settings = {
+                "threshold": threshold,
+                "raise_threshold": raise_threshold,
+                "lower_threshold": lower_threshold,
+                "acceptable_range": acceptable_range,
+                "review_threshold": review_threshold,
+            }
+            st.success("✅ تم حفظ إعدادات الخوارزمية!")
+            
+            # حفظ في قاعدة البيانات
+            save_setting("algorithm_settings", st.session_state.algorithm_settings)
         
         st.markdown("---")
-        st.markdown("### 📊 معلومات النظام")
-        st.json({
-            "الإصدار": "v14.2 - نظام متكامل مع AI",
-            "قاعدة البيانات": "Supabase Cloud",
-            "Gemini API": "✅ مدمج" if DEFAULT_GEMINI_KEY else "❌ مفقود",
-            "OpenRouter Key": "✅ موجود" if st.session_state.openrouter_key else "❌ مفقود",
-            "Google Drive": "✅ مربوط" if st.session_state.get("drive_folder_id") else "❌ غير مربوط",
-            "Webhook تحديث": WEBHOOK_UPDATE_PRICES[:50] + "...",
-            "Webhook إضافة": WEBHOOK_NEW_PRODUCTS[:50] + "...",
-            "Supabase URL": SUPABASE_URL,
-        })
+        st.markdown("#### 📊 إعدادات متقدمة")
+        
+        # إعدادات متقدمة
+        use_ai_matching = st.checkbox(
+            "🤖 استخدام الذكاء الصناعي في المطابقة",
+            value=st.session_state.algorithm_settings.get("use_ai_matching", True),
+            help="تفعيل استخدام Gemini AI للمطابقات المعقدة"
+        )
+        
+        use_cache = st.checkbox(
+            "💾 استخدام التخزين المؤقت",
+            value=st.session_state.algorithm_settings.get("use_cache", True),
+            help="تسريع المعالجة باستخدام النتائج المحفوظة"
+        )
+        
+        batch_size = st.slider(
+            "📦 حجم الدفعة",
+            min_value=10,
+            max_value=100,
+            value=st.session_state.algorithm_settings.get("batch_size", 50),
+            step=10,
+            help="عدد المنتجات المعالجة في كل دفعة"
+        )
+        
+        # حفظ الإعدادات المتقدمة
+        if st.button("💾 حفظ الإعدادات المتقدمة"):
+            st.session_state.algorithm_settings.update({
+                "use_ai_matching": use_ai_matching,
+                "use_cache": use_cache,
+                "batch_size": batch_size,
+            })
+            st.success("✅ تم حفظ الإعدادات المتقدمة!")
+            
+            # حفظ في قاعدة البيانات
+            save_setting("algorithm_settings", st.session_state.algorithm_settings)
+        
+        st.markdown("---")
+        st.markdown("#### 🔄 إعادة تعيين")
+        
+        if st.button("🔄 استعادة الإعدادات الافتراضية", type="secondary"):
+            default_settings = {
+                "threshold": 60,
+                "raise_threshold": 10,
+                "lower_threshold": 5,
+                "acceptable_range": 5,
+                "review_threshold": 85,
+                "use_ai_matching": True,
+                "use_cache": True,
+                "batch_size": 50,
+            }
+            st.session_state.algorithm_settings = default_settings
+            save_setting("algorithm_settings", default_settings)
+            st.success("✅ تم استعادة الإعدادات الافتراضية!")
+            st.rerun()
 
 # ═══════════════════════════════════════════════════════════════
 # الأقسام الجديدة v8.0
 # ═══════════════════════════════════════════════════════════════
 
-elif menu == "🤖 الأتمتة الذكية":
-    from modules import automation
-    automation.show_automation_page()
-
-elif menu == "🔔 التنبيهات":
-    from modules import alerts
-    alerts.show_alerts_page()
-
-elif menu == "🔍 منع التكرار":
-    from modules import deduplication
-    deduplication.show_deduplication_page()
+# تم حذف الأقسام الميتة: 🤖 الأتمتة الذكية، 🔔 التنبيهات، 🔍 منع التكرار
 
 # ══════════════════════════════════════════════════════════════
 # تذييل

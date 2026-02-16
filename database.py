@@ -578,7 +578,171 @@ def set_setting(key, value):
     conn.close()
 
 
+# ===== عمليات المنتجات المفقودة =====
+
+def is_product_added(product_name):
+    """التحقق من إضافة منتج مسبقاً."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT id FROM products WHERE name = ? AND status = 'active'",
+        (product_name.strip(),)
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def mark_product_added(product_name, source="manual"):
+    """تسجيل إضافة منتج."""
+    # لا نحتاج لتسجيل إضافي في قاعدة البيانات
+    # هذه الدالة موجودة للتوافق مع الكود الموجود
+    pass
+
+
+def log_operation(operation_type, product_name, new_price=0, status="success", details=None, user_action="manual"):
+    """تسجيل عملية على منتج."""
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO automation_log "
+        "(action_type, details, status) "
+        "VALUES (?, ?, ?)",
+        (operation_type, f"{product_name}: {details or ''}", status)
+    )
+    conn.commit()
+    conn.close()
+
+
+def save_send_log(action_type, total_count, success_count, failed_count, details=""):
+    """حفظ سجل الإرسال."""
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO automation_log "
+        "(action_type, details, status) "
+        "VALUES (?, ?, ?)",
+        (f"send_{action_type}", f"إجمالي: {total_count}, نجح: {success_count}, فشل: {failed_count}. {details}",
+         "success" if failed_count == 0 else "partial")
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_send_logs(limit=50):
+    """جلب سجل الإرسالات."""
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT * FROM automation_log "
+        "WHERE action_type LIKE 'send_%' "
+        "ORDER BY executed_at DESC LIMIT ?",
+        (limit,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_db_stats():
+    """جلب إحصائيات قاعدة البيانات."""
+    conn = get_connection()
+    stats = {}
+
+    # إحصائيات المنتجات
+    row = conn.execute("SELECT COUNT(*) as c FROM products WHERE status='active'").fetchone()
+    stats["total_products"] = row["c"]
+
+    row = conn.execute("SELECT COUNT(*) as c FROM products").fetchone()
+    stats["all_products"] = row["c"]
+
+    # إحصائيات المنافسين
+    row = conn.execute("SELECT COUNT(*) as c FROM competitors").fetchone()
+    stats["total_competitors"] = row["c"]
+
+    row = conn.execute("SELECT COUNT(*) as c FROM competitor_products").fetchone()
+    stats["total_comp_products"] = row["c"]
+
+    # إحصائيات المقارنات
+    row = conn.execute("SELECT COUNT(*) as c FROM comparisons").fetchone()
+    stats["total_comparisons"] = row["c"]
+
+    row = conn.execute("SELECT COUNT(*) as c FROM comparisons WHERE recommendation = 'raise'").fetchone()
+    stats["raise_count"] = row["c"]
+
+    row = conn.execute("SELECT COUNT(*) as c FROM comparisons WHERE recommendation = 'lower'").fetchone()
+    stats["lower_count"] = row["c"]
+
+    row = conn.execute("SELECT COUNT(*) as c FROM comparisons WHERE recommendation = 'ok'").fetchone()
+    stats["approved_count"] = row["c"]
+
+    # إحصائيات المصروفات
+    row = conn.execute("SELECT COUNT(*) as c FROM expenses").fetchone()
+    stats["total_expenses_count"] = row["c"]
+
+    row = conn.execute("SELECT COALESCE(SUM(amount), 0) as s FROM expenses").fetchone()
+    stats["total_expenses"] = row["s"]
+
+    # إحصائيات السجلات
+    row = conn.execute("SELECT COUNT(*) as c FROM automation_log").fetchone()
+    stats["total_logs"] = row["c"]
+
+    conn.close()
+    return stats
+
+
 # ===== إحصائيات =====
+
+def get_dashboard_stats():
+    """جلب إحصائيات لوحة القيادة."""
+    conn = get_connection()
+    stats = {}
+
+    row = conn.execute(
+        "SELECT COUNT(*) as c FROM products WHERE status='active'"
+    ).fetchone()
+    stats["total_products"] = row["c"]
+
+    row = conn.execute(
+        "SELECT COUNT(*) as c FROM competitors"
+    ).fetchone()
+    stats["total_competitors"] = row["c"]
+
+    row = conn.execute(
+        "SELECT COUNT(*) as c FROM competitor_products"
+    ).fetchone()
+    stats["total_comp_products"] = row["c"]
+
+    row = conn.execute(
+        "SELECT COUNT(*) as c FROM comparisons"
+    ).fetchone()
+    stats["total_comparisons"] = row["c"]
+
+    row = conn.execute(
+        "SELECT COUNT(*) as c FROM comparisons "
+        "WHERE recommendation = 'raise'"
+    ).fetchone()
+    stats["raise_count"] = row["c"]
+
+    row = conn.execute(
+        "SELECT COUNT(*) as c FROM comparisons "
+        "WHERE recommendation = 'lower'"
+    ).fetchone()
+    stats["lower_count"] = row["c"]
+
+    row = conn.execute(
+        "SELECT COUNT(*) as c FROM comparisons "
+        "WHERE recommendation = 'ok'"
+    ).fetchone()
+    stats["ok_count"] = row["c"]
+
+    row = conn.execute(
+        "SELECT COALESCE(SUM(sell_price - cost_price), 0) as p "
+        "FROM products WHERE status='active' AND cost_price > 0"
+    ).fetchone()
+    stats["total_profit_margin"] = row["p"]
+
+    row = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) as e FROM expenses"
+    ).fetchone()
+    stats["total_expenses"] = row["e"]
+
+    conn.close()
+    return stats
 
 def get_dashboard_stats():
     """جلب إحصائيات لوحة القيادة."""
