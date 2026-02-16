@@ -62,7 +62,6 @@ class MultiKeyManager:
             key_val = self._get_secret(key_name)
             if key_val and key_val.strip() and key_val not in self.openrouter_keys:
                 self.openrouter_keys.append(key_val.strip())
-    
     def _load_keys_from_file(self):
         """تحميل المفاتيح من ملف محلي"""
         try:
@@ -86,8 +85,9 @@ class MultiKeyManager:
         except Exception as e:
             # إذا فشل تحميل الملف، نستمر بدون أخطاء
             pass
-    
-    def _get_secret(self, name: str) -> str:
+
+    @staticmethod
+    def _get_secret(name: str) -> str:
         """قراءة سر من Streamlit Secrets أو متغيرات البيئة"""
         try:
             if hasattr(st, 'secrets') and name in st.secrets:
@@ -95,7 +95,7 @@ class MultiKeyManager:
         except:
             pass
         return os.getenv(name, "")
-    
+
     def _is_key_failed(self, key: str) -> bool:
         """هل المفتاح فاشل مؤخراً (خلال 5 دقائق)"""
         if key in self.failed_keys:
@@ -104,12 +104,12 @@ class MultiKeyManager:
             else:
                 del self.failed_keys[key]  # انتهت فترة الحظر
         return False
-    
+
     def mark_failed(self, key: str):
         """تسجيل فشل مفتاح"""
         self.failed_keys[key] = time.time()
         self.total_failures += 1
-    
+
     def mark_success(self, key: str):
         """تسجيل نجاح مفتاح"""
         self.call_counts[key] = self.call_counts.get(key, 0) + 1
