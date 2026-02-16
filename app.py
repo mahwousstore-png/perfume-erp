@@ -31,6 +31,9 @@ except ImportError:
     AI_PAGE_MANAGER_AVAILABLE = False
     print("⚠️ نظام إدارة الذكاء الاصطناعي غير متوفر")
 
+# ── استيراد دالة call_gemini من main ────────────────────────
+from main import call_gemini, call_openrouter
+
 # ── CSS مخصص ─────────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -526,20 +529,20 @@ elif page == "🤖 الأدوات الذكية":
         st.subheader("🤖 التحقق الذكي بـ AI")
         st.caption("تحقق فردي أو مجمع للمنتجات مع توصيات ذكية")
 
-        # مفتاح API
-        api_key = st.text_input(
-            "🔑 مفتاح Gemini API",
-            value=st.session_state.gemini_key,
-            type="password",
-            help="احصل عليه من: https://ai.google.dev/",
-        )
-        st.session_state.gemini_key = api_key
+        # الحصول على مفتاح API من Secrets
+        try:
+            api_key = st.secrets.get("GEMINI_API_KEY", "")
+            if not api_key:
+                st.warning("⚠️ مفتاح Gemini API غير مُعد في Secrets. اذهب إلى قسم الإعدادات.")
+        except:
+            st.error("❌ لا يمكن الوصول إلى Secrets.")
+            api_key = ""
 
         r = st.session_state.results
         if r is None:
             st.info("📋 ابدأ المعالجة أولاً.")
         elif not api_key:
-            st.warning("⚠️ أدخل مفتاح Gemini API أعلاه.")
+            st.warning("⚠️ مفتاح Gemini API غير متوفر.")
         else:
             df_all = r.get("all", pd.DataFrame())
             if df_all.empty:
@@ -1219,21 +1222,54 @@ elif page == "🛠️ الأدوات والإعدادات":
         st.caption("تكوين التطبيق وإدارة الإعدادات العامة")
         
         st.markdown("### 🔑 مفاتيح API")
-        gemini_key = st.text_input(
-            "مفتاح Gemini API",
-            value=st.session_state.gemini_key,
-            type="password",
-            key="settings_gemini_key"
-        )
-        st.session_state.gemini_key = gemini_key
         
-        openrouter_key = st.text_input(
-            "مفتاح OpenRouter API",
-            value=st.session_state.get("openrouter_key", ""),
-            type="password",
-            key="settings_openrouter_key"
-        )
-        st.session_state.openrouter_key = openrouter_key
+        # عرض حالة المفاتيح من Secrets (للقراءة فقط على Streamlit Sharing)
+        try:
+            gemini_key = st.secrets.get("GEMINI_API_KEY", "")
+            openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
+            
+            if gemini_key:
+                st.success("✅ مفتاح Gemini API مُعد في Secrets")
+            else:
+                st.warning("⚠️ مفتاح Gemini API غير مُعد في Secrets")
+                with st.expander("📖 كيفية إعداد مفتاح Gemini API"):
+                    st.markdown("""
+                    1. اذهب إلى [Google AI Studio](https://ai.google.dev/)
+                    2. أنشئ مشروع جديد ومفتاح API
+                    3. في Streamlit Sharing، اذهب إلى Settings > Secrets
+                    4. أضف: `GEMINI_API_KEY = "your_key_here"`
+                    5. أعد تشغيل التطبيق
+                    """)
+                
+            if openrouter_key:
+                st.success("✅ مفتاح OpenRouter API مُعد في Secrets")
+            else:
+                st.info("ℹ️ مفتاح OpenRouter API غير مُعد في Secrets (اختياري)")
+                with st.expander("📖 كيفية إعداد مفتاح OpenRouter API (اختياري)"):
+                    st.markdown("""
+                    1. اذهب إلى [OpenRouter](https://openrouter.ai/)
+                    2. سجل حساب وأنشئ مفتاح API
+                    3. في Streamlit Sharing، أضف: `OPENROUTER_API_KEY = "your_key_here"`
+                    """)
+                
+        except:
+            st.error("❌ لا يمكن الوصول إلى Secrets. تأكد من إعدادها في Streamlit Sharing.")
+            with st.expander("🚀 دليل إعداد Streamlit Sharing"):
+                st.markdown("""
+                **لنشر التطبيق على Streamlit Sharing:**
+                
+                1. **ارفع الكود إلى GitHub** - تأكد من رفع جميع الملفات
+                2. **اذهب إلى [share.streamlit.io](https://share.streamlit.io)**
+                3. **سجل الدخول واختر الـ repository**
+                4. **أضف Secrets في Settings:**
+                   - `GEMINI_API_KEY = "مفتاحك_هنا"`
+                   - `OPENROUTER_API_KEY = "مفتاحك_هنا"` (اختياري)
+                5. **اضغط Deploy**
+                
+                للمزيد من التفاصيل، راجع ملف `STREAMLIT_SHARING_README.md`
+                """)
+            gemini_key = ""
+            openrouter_key = ""
         
         st.markdown("### 📡 حالة الاتصالات")
         col1, col2, col3 = st.columns(3)
@@ -1248,7 +1284,7 @@ elif page == "🛠️ الأدوات والإعدادات":
             else:
                 st.warning("🟡 OpenRouter غير مُعد")
         with col3:
-            if st.session_state.make_url:
+            if st.session_state.get("make_url"):
                 st.success("🟢 Make متصل")
             else:
                 st.error("🔴 Make غير متصل")
