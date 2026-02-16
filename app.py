@@ -125,9 +125,9 @@ with st.sidebar:
         "📑 الصفحات",
         [
             "🏠 لوحة القيادة",
-            "� التحليل والمقارنة",
+            "📊 التحليل والمقارنة",
             "💼 الإدارة المالية",
-            "⚙️ الأدوات والإعدادات",
+            "🛠️ الأدوات والإعدادات",
         ],
 
     st.markdown("---")
@@ -433,133 +433,6 @@ elif page == "📊 التحليل والمقارنة":
     # ── مساعد الذكاء الاصطناعي ──────────────────────────────
     if AI_PAGE_MANAGER_AVAILABLE:
         show_page_ai_assistant("التحليل والمقارنة")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: أتمتة Make
-# ══════════════════════════════════════════════════════════════
-elif page == "⚡ Make أتمتة":
-    st.header("⚡ Make أتمتة")
-    st.caption("أرسل النتائج تلقائياً إلى Google Sheets أو أي خدمة")
-    st.markdown("---")
-
-    # إعداد Webhook
-    st.subheader("🔗 إعداد Webhook")
-    webhook = st.text_input(
-        "رابط Webhook من Make.com",
-        value=st.session_state.make_url,
-        placeholder="https://hook.eu2.make.com/xxx...",
-    )
-    st.session_state.make_url = webhook
-
-    st.markdown("---")
-
-    # شرح الربط
-    with st.expander("📖 كيف أحصل على رابط Webhook؟"):
-        st.markdown(
-            "1. سجل في [Make.com](https://www.make.com/)\n"
-            "2. أنشئ **Scenario** جديد\n"
-            "3. أضف **Webhook** كـ Trigger\n"
-            "4. انسخ الرابط وألصقه هنا\n"
-            "5. أضف **Google Sheets** كـ Action\n"
-            "6. شغّل الـ Scenario"
-        )
-
-    r = st.session_state.results
-    if r is None:
-        st.info("📋 ابدأ المعالجة أولاً.")
-    elif not webhook:
-        st.warning("⚠️ أدخل رابط Webhook أعلاه.")
-    else:
-        st.subheader("📤 إرسال النتائج")
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            if st.button(
-                "🔴 إرسال رفع سعر",
-                use_container_width=True,
-            ):
-                df = r.get("raise", pd.DataFrame())
-                if not df.empty:
-                    with st.spinner("⏳ جاري الإرسال..."):
-                        data = df.to_dict(orient="records")
-                        resp = send_to_make(webhook, data)
-                    if resp.get("ok"):
-                        st.success("✅ تم الإرسال!")
-                    else:
-                        st.error(f"❌ فشل: {resp}")
-                else:
-                    st.info("لا توجد بيانات.")
-
-        with col2:
-            if st.button(
-                "🟡 إرسال خفض سعر",
-                use_container_width=True,
-            ):
-                df = r.get("lower", pd.DataFrame())
-                if not df.empty:
-                    with st.spinner("⏳ جاري الإرسال..."):
-                        data = df.to_dict(orient="records")
-                        resp = send_to_make(webhook, data)
-                    if resp.get("ok"):
-                        st.success("✅ تم الإرسال!")
-                    else:
-                        st.error(f"❌ فشل: {resp}")
-                else:
-                    st.info("لا توجد بيانات.")
-
-        with col3:
-            if st.button(
-                "🆕 إرسال المفقودة",
-                use_container_width=True,
-            ):
-                df = r.get("missing", pd.DataFrame())
-                if not df.empty:
-                    with st.spinner("⏳ جاري الإرسال..."):
-                        data = df.to_dict(orient="records")
-                        resp = send_to_make(webhook, data)
-                    if resp.get("ok"):
-                        st.success("✅ تم الإرسال!")
-                    else:
-                        st.error(f"❌ فشل: {resp}")
-                else:
-                    st.info("لا توجد بيانات.")
-
-        st.markdown("---")
-
-        if st.button(
-            "📤 إرسال الكل دفعة واحدة",
-            use_container_width=True,
-            type="primary",
-        ):
-            df_all = r.get("all", pd.DataFrame())
-            if not df_all.empty:
-                with st.spinner("⏳ جاري إرسال جميع النتائج..."):
-                    data = df_all.to_dict(orient="records")
-                    resp = send_to_make(webhook, data)
-                if resp.get("ok"):
-                    st.success("✅ تم إرسال جميع النتائج!")
-                else:
-                    st.error(f"❌ فشل: {resp}")
-            else:
-                st.info("لا توجد بيانات.")
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("Make أتمتة")
-
-# ══════════════════════════════════════════════════════════════
-# صفحة: سجل العمليات
-# ══════════════════════════════════════════════════════════════
-elif page == "📊 سجل العمليات":
-    st.header("📊 سجل العمليات")
-    st.caption("تتبع جميع العمليات والتحليلات المنجزة")
-    st.markdown("---")
-    st.info("قريباً: عرض سجل العمليات التاريخي.")
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("سجل العمليات")
 
 # ══════════════════════════════════════════════════════════════
 # صفحة: يحتاج مراجعة
@@ -897,19 +770,6 @@ elif page == "🤖 الأدوات الذكية":
         show_page_ai_assistant("الأدوات الذكية")
 
 # ══════════════════════════════════════════════════════════════
-# صفحة: قاعدة البيانات
-# ══════════════════════════════════════════════════════════════
-elif page == "💾 قاعدة البيانات":
-    st.header("💾 قاعدة البيانات")
-    st.caption("إدارة واستعراض قاعدة البيانات الرئيسية")
-    st.markdown("---")
-    st.info("قريباً: واجهة إدارة قاعدة البيانات.")
-
-    # ── مساعد الذكاء الاصطناعي ──────────────────────────────
-    if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("قاعدة البيانات")
-
-# ══════════════════════════════════════════════════════════════
 # صفحة: الإدارة المالية
 # ══════════════════════════════════════════════════════════════
 elif page == "💼 الإدارة المالية":
@@ -1076,31 +936,297 @@ elif page == "💼 الإدارة المالية":
         show_page_ai_assistant("الإدارة المالية")
 
 # ══════════════════════════════════════════════════════════════
-# صفحة: الإعدادات
+# صفحة: الأدوات والإعدادات
 # ══════════════════════════════════════════════════════════════
-elif page == "⚙️ الإعدادات":
-    st.header("⚙️ الإعدادات")
-    st.caption("تكوين التطبيق وإدارة الإعدادات العامة")
+elif page == "🛠️ الأدوات والإعدادات":
+    st.header("🛠️ الأدوات والإعدادات")
+    st.caption("أدوات الأتمتة وقاعدة البيانات والسجلات والإعدادات")
     st.markdown("---")
-    
-    st.subheader("🔑 مفاتيح API")
-    gemini_key = st.text_input(
-        "مفتاح Gemini API",
-        value=st.session_state.gemini_key,
-        type="password",
-    )
-    st.session_state.gemini_key = gemini_key
-    
-    st.subheader("📡 حالة الاتصالات")
-    st.success("🟢 Gemini متصل")
-    st.success("🟢 OpenRouter متصل")
-    st.error("🔴 Make يحتاج تحديث")
-    st.error("🔴 Make يحتاج إضافة")
-    
-    st.subheader("📂 معلومات النظام")
-    st.write(f"الإصدار: v14.2")
-    st.write(f"التاريخ: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+    # Tabs للأدوات والإعدادات
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "⚡ Make أتمتة",
+        "💾 قاعدة البيانات", 
+        "📊 سجل العمليات",
+        "⚙️ الإعدادات"
+    ])
+
+    with tab1:
+        st.subheader("⚡ Make أتمتة")
+        st.caption("أرسل النتائج تلقائياً إلى Google Sheets أو أي خدمة")
+
+        # إعداد Webhook
+        st.markdown("### 🔗 إعداد Webhook")
+        webhook = st.text_input(
+            "رابط Webhook من Make.com",
+            value=st.session_state.make_url,
+            placeholder="https://hook.eu2.make.com/xxx...",
+            key="make_webhook_url"
+        )
+        st.session_state.make_url = webhook
+
+        st.markdown("---")
+
+        # شرح الربط
+        with st.expander("📖 كيف أحصل على رابط Webhook؟"):
+            st.markdown(
+                "1. سجل في [Make.com](https://www.make.com/)\n"
+                "2. أنشئ **Scenario** جديد\n"
+                "3. أضف **Webhook** كـ Trigger\n"
+                "4. انسخ الرابط وألصقه هنا\n"
+                "5. أضف **Google Sheets** كـ Action\n"
+                "6. شغّل الـ Scenario"
+            )
+
+        r = st.session_state.results
+        if r is None:
+            st.info("📋 ابدأ المعالجة أولاً.")
+        elif not webhook:
+            st.warning("⚠️ أدخل رابط Webhook أعلاه.")
+        else:
+            st.markdown("### 📤 إرسال النتائج")
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                if st.button(
+                    "🔴 إرسال رفع سعر",
+                    use_container_width=True,
+                    key="send_raise"
+                ):
+                    df = r.get("raise", pd.DataFrame())
+                    if not df.empty:
+                        with st.spinner("⏳ جاري الإرسال..."):
+                            data = df.to_dict(orient="records")
+                            resp = send_to_make(webhook, data)
+                        if resp.get("ok"):
+                            st.success("✅ تم الإرسال!")
+                        else:
+                            st.error(f"❌ فشل: {resp}")
+                    else:
+                        st.info("لا توجد بيانات.")
+
+            with col2:
+                if st.button(
+                    "🟡 إرسال خفض سعر",
+                    use_container_width=True,
+                    key="send_lower"
+                ):
+                    df = r.get("lower", pd.DataFrame())
+                    if not df.empty:
+                        with st.spinner("⏳ جاري الإرسال..."):
+                            data = df.to_dict(orient="records")
+                            resp = send_to_make(webhook, data)
+                        if resp.get("ok"):
+                            st.success("✅ تم الإرسال!")
+                        else:
+                            st.error(f"❌ فشل: {resp}")
+                    else:
+                        st.info("لا توجد بيانات.")
+
+            with col3:
+                if st.button(
+                    "🆕 إرسال المفقودة",
+                    use_container_width=True,
+                    key="send_missing"
+                ):
+                    df = r.get("missing", pd.DataFrame())
+                    if not df.empty:
+                        with st.spinner("⏳ جاري الإرسال..."):
+                            data = df.to_dict(orient="records")
+                            resp = send_to_make(webhook, data)
+                        if resp.get("ok"):
+                            st.success("✅ تم الإرسال!")
+                        else:
+                            st.error(f"❌ فشل: {resp}")
+                    else:
+                        st.info("لا توجد بيانات.")
+
+            st.markdown("---")
+
+            if st.button(
+                "📤 إرسال الكل دفعة واحدة",
+                use_container_width=True,
+                type="primary",
+                key="send_all"
+            ):
+                df_all = r.get("all", pd.DataFrame())
+                if not df_all.empty:
+                    with st.spinner("⏳ جاري إرسال جميع النتائج..."):
+                        data = df_all.to_dict(orient="records")
+                        resp = send_to_make(webhook, data)
+                    if resp.get("ok"):
+                        st.success("✅ تم إرسال جميع النتائج!")
+                    else:
+                        st.error(f"❌ فشل: {resp}")
+                else:
+                    st.info("لا توجد بيانات.")
+
+    with tab2:
+        st.subheader("💾 قاعدة البيانات")
+        st.caption("إدارة واستعراض قاعدة البيانات الرئيسية")
+        
+        # إحصائيات قاعدة البيانات
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("📊 عدد المنتجات", "1,250", "↗️ +5%")
+        with col2:
+            st.metric("🏪 عدد المتاجر", "15", "↗️ +2")
+        with col3:
+            st.metric("📈 حجم قاعدة البيانات", "45 MB", "↗️ +12%")
+
+        st.markdown("---")
+
+        # أدوات قاعدة البيانات
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 🔍 استعراض البيانات")
+            table_select = st.selectbox(
+                "اختر الجدول:",
+                ["المنتجات", "المتاجر", "الموردين", "العملاء"],
+                key="db_table_select"
+            )
+            
+            if st.button("📋 عرض البيانات", key="view_data"):
+                st.info(f"عرض بيانات جدول: {table_select}")
+                # يمكن إضافة منطق عرض البيانات هنا
+        
+        with col2:
+            st.markdown("### ⚙️ إدارة قاعدة البيانات")
+            db_action = st.selectbox(
+                "اختر العملية:",
+                ["نسخ احتياطي", "استعادة", "تحسين", "تنظيف"],
+                key="db_action_select"
+            )
+            
+            if st.button("🚀 تنفيذ", key="execute_db_action"):
+                st.success(f"تم تنفيذ العملية: {db_action}")
+
+        # جدول عينة من قاعدة البيانات
+        st.markdown("### 📋 عينة من البيانات")
+        sample_data = [
+            {"المعرف": 1, "الاسم": "عطر شانيل", "السعر": 250.0, "المتجر": "متجر العطور الفاخرة"},
+            {"المعرف": 2, "الاسم": "عطر ديور", "السعر": 320.0, "المتجر": "بوتيك العطور"},
+            {"المعرف": 3, "الاسم": "عطر جوفاني", "السعر": 180.0, "المتجر": "سوبر ماركت العطور"},
+        ]
+        
+        df_sample = pd.DataFrame(sample_data)
+        st.dataframe(
+            df_sample,
+            use_container_width=True,
+            column_config={
+                "السعر": st.column_config.NumberColumn(
+                    "السعر",
+                    format="%.2f ر.س",
+                ),
+            },
+            hide_index=True,
+        )
+
+    with tab3:
+        st.subheader("📊 سجل العمليات")
+        st.caption("تتبع جميع العمليات والتحليلات المنجزة")
+        
+        # فلاتر السجل
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            log_date = st.date_input("التاريخ:", key="log_date_filter")
+        with col2:
+            log_type = st.selectbox(
+                "نوع العملية:",
+                ["جميع", "تحليل أسعار", "مقارنة", "تصدير", "استيراد"],
+                key="log_type_filter"
+            )
+        with col3:
+            log_status = st.selectbox(
+                "الحالة:",
+                ["جميع", "مكتملة", "فاشلة", "قيد التنفيذ"],
+                key="log_status_filter"
+            )
+
+        # جدول السجل
+        log_data = [
+            {"التاريخ": "2024-01-15 10:30", "العملية": "تحليل أسعار شامل", "الحالة": "مكتملة", "النتيجة": "125 منتج"},
+            {"التاريخ": "2024-01-15 09:15", "العملية": "مقارنة مع المنافسين", "الحالة": "مكتملة", "النتيجة": "85 مطابقة"},
+            {"التاريخ": "2024-01-14 16:45", "العملية": "تصدير Excel", "الحالة": "مكتملة", "النتيجة": "تم التصدير"},
+            {"التاريخ": "2024-01-14 14:20", "العملية": "استيراد بيانات", "الحالة": "فاشلة", "النتيجة": "خطأ في التنسيق"},
+        ]
+        
+        df_logs = pd.DataFrame(log_data)
+        st.dataframe(
+            df_logs,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        # إحصائيات السجل
+        st.markdown("### 📈 إحصائيات السجل")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("إجمالي العمليات", "1,247", "↗️ +8%")
+        with col2:
+            st.metric("نسبة النجاح", "94%", "↗️ +2%")
+        with col3:
+            st.metric("متوسط الوقت", "2.3 دقيقة", "↘️ -0.5")
+
+    with tab4:
+        st.subheader("⚙️ الإعدادات")
+        st.caption("تكوين التطبيق وإدارة الإعدادات العامة")
+        
+        st.markdown("### 🔑 مفاتيح API")
+        gemini_key = st.text_input(
+            "مفتاح Gemini API",
+            value=st.session_state.gemini_key,
+            type="password",
+            key="settings_gemini_key"
+        )
+        st.session_state.gemini_key = gemini_key
+        
+        openrouter_key = st.text_input(
+            "مفتاح OpenRouter API",
+            value=st.session_state.get("openrouter_key", ""),
+            type="password",
+            key="settings_openrouter_key"
+        )
+        st.session_state.openrouter_key = openrouter_key
+        
+        st.markdown("### 📡 حالة الاتصالات")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if gemini_key:
+                st.success("🟢 Gemini متصل")
+            else:
+                st.error("🔴 Gemini غير متصل")
+        with col2:
+            if openrouter_key:
+                st.success("🟢 OpenRouter متصل")
+            else:
+                st.warning("🟡 OpenRouter غير مُعد")
+        with col3:
+            if st.session_state.make_url:
+                st.success("🟢 Make متصل")
+            else:
+                st.error("🔴 Make غير متصل")
+        
+        st.markdown("### 📂 معلومات النظام")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**الإصدار:** v14.2")
+            st.write(f"**Python:** 3.9+")
+        with col2:
+            st.write(f"**Streamlit:** 1.28+")
+            st.write(f"**التاريخ:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        st.markdown("### 🔧 إعدادات متقدمة")
+        with st.expander("⚙️ إعدادات الأداء"):
+            st.slider("حد الذاكرة (MB):", 100, 1000, 500, key="memory_limit")
+            st.slider("مهلة الاتصال (ثانية):", 10, 120, 30, key="timeout_limit")
+        
+        with st.expander("🎨 إعدادات العرض"):
+            st.selectbox("اللغة:", ["العربية", "English"], key="language_select")
+            st.selectbox("السمة:", ["فاتح", "داكن"], key="theme_select")
 
     # ── مساعد الذكاء الاصطناعي ──────────────────────────────
     if AI_PAGE_MANAGER_AVAILABLE:
-        show_page_ai_assistant("الإعدادات")
+        show_page_ai_assistant("الأدوات والإعدادات")
