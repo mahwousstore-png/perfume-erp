@@ -218,7 +218,7 @@ class AIPageManager:
 
     def get_all_page_assistants(self):
         """الحصول على مساعدي الذكاء الاصطناعي لجميع الصفحات"""
-        return {name: self.get_page_ai_assistant(name) for name in self.page_configs.keys()}
+        return {name: self.get_page_ai_assistant(name) for name in self.page_configs}
 
 
 class PageAIAssistant:
