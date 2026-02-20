@@ -8,7 +8,7 @@ import time
 from rapidfuzz import fuzz
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from engine import normalize_columns, _get_name, _get_price, extract_brand, extract_size
+from engine import normalize_columns, extract_brand
 from engine_v2 import run_smart_matching, light_normalize
 
 DATA_DIR = "test_data"

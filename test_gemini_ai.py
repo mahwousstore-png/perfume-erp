@@ -8,8 +8,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from engine import normalize_columns, _get_name, _get_price, extract_brand, extract_size
-from engine_v2 import run_smart_matching, light_normalize, GEMINI_AVAILABLE, SmartMatcher
+from engine import normalize_columns
+from engine_v2 import run_smart_matching, GEMINI_AVAILABLE
 
 DATA_DIR = "test_data"
 

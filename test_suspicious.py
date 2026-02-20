@@ -3,7 +3,6 @@
 import sys
 sys.path.insert(0, '.')
 from engine_v2 import SmartMatcher, light_normalize, extract_brand, extract_size, extract_concentration
-from fuzzywuzzy import fuzz
 
 matcher = SmartMatcher()
 
