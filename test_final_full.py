@@ -4,7 +4,7 @@ sys.path.insert(0, '/home/ubuntu/perfume-erp')
 os.environ['GEMINI_API_KEY'] = os.environ.get('GEMINI_API_KEY', '')
 
 import pandas as pd
-from engine import normalize_columns, _get_name, _get_price
+from engine import normalize_columns
 from engine_v2 import run_smart_matching
 
 # ===== تحميل البيانات =====

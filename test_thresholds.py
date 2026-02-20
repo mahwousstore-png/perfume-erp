@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """اختبار عتبات مختلفة لإيجاد التوازن الأمثل بين الدقة والتغطية"""
-import sys, os, io, time
+import sys, os
 sys.path.insert(0, '.')
 os.environ['GEMINI_API_KEY'] = os.environ.get('GEMINI_API_KEY', 'test')
 

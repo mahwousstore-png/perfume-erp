@@ -7,7 +7,7 @@ import sys
 from rapidfuzz import fuzz
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from engine import normalize_columns, _get_name, _get_price, extract_brand, extract_size, normalize_name
+from engine import normalize_columns, _get_name, _get_price, extract_size
 from engine_v2 import extract_brand_dynamic, normalize_for_matching
 
 DATA_DIR = "test_data"

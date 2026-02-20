@@ -4,11 +4,10 @@
 import pandas as pd
 import os
 import sys
-import random
 from rapidfuzz import fuzz
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from engine import normalize_columns, _get_name, _get_price, extract_brand, extract_size, normalize_name
+from engine import normalize_columns, _get_name, extract_brand
 from engine_v2 import run_smart_matching, normalize_for_matching
 
 DATA_DIR = "test_data"

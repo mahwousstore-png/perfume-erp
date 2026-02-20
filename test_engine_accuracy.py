@@ -9,7 +9,7 @@ import time
 import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from engine import normalize_columns, _get_name, _get_price, extract_brand, extract_size, extract_concentration, classify_product
+from engine import normalize_columns, _get_name, _get_price, extract_brand, extract_size, classify_product
 from engine_v2 import SmartMatcher, run_smart_matching
 
 DATA_DIR = "test_data"
